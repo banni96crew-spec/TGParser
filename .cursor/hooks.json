@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "node .cursor/hooks/session-start.mjs"
+      }
+    ],
+    "afterMCPExecution": [
+      {
+        "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
+        "matcher": "sequentialthinking"
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
+        "matcher": "sequentialthinking|sequential-thinking"
+      },
+      {
+        "command": "node .cursor/hooks/require-preflight.mjs",
+        "matcher": "Read|Grep|Glob|Shell|Task|Write|StrReplace|Delete|EditNotebook",
+        "failClosed": true
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "node .cursor/hooks/require-preflight-subagent.mjs",
+        "failClosed": true
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .cursor/hooks/audit-compliance.mjs",
+        "loop_limit": 1
+      }
+    ]
+  }
+}

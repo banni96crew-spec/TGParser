@@ -1,0 +1,197 @@
+---
+description: Global always-apply engineering rules, Definition of Done, stack, architecture, testing, security, and agent workflow for Telegram Lead Discovery.
+alwaysApply: true
+---
+
+# Генеральные правила проекта Telegram Lead Discovery
+
+## 1. Область действия и приоритет
+
+Применяй это правило к каждой задаче в репозитории.
+
+Маркировка:
+
+- `[U]` — универсальный инженерный принцип.
+- `[S]` — правило утверждённого технического стека.
+- `[P]` — обязательное правило проекта Telegram Lead Discovery.
+
+При конфликте соблюдай приоритет:
+
+1. `[P]` hard invariants, master PRD и owner PRD.
+2. `[S]` ограничения стека и архитектуры.
+3. `[U]` инженерные стандарты.
+4. Остальные рекомендации.
+
+Жёсткий запрет выше удобства реализации. SRP выше локального стиля. Не выдумывай компромисс при конфликте: остановись и укажи точные конфликтующие требования.
+
+### Deep Reasoning Protocol
+
+Для нетривиальных задач:
+
+- исследуй релевантную реализацию и доказательства до предположения о причине;
+- не представляй правдоподобную гипотезу как подтверждённую причину;
+- разделяй выводы на `Confirmed`, `Inference` и `Candidate`;
+- для ошибок докажи механизм от входа к наблюдаемому симптому;
+- не пиши код до завершения диагностики и плана реализации;
+- после реализации проверяй наблюдаемый runtime-результат, а не только тесты;
+- технически корректное изменение, не решающее наблюдаемую проблему, считается `FAIL`.
+
+При большом контексте зафиксируй текущий state, защищаемые ограничения, отвергнутые подходы и активную гипотезу перед реализацией.
+
+## 2. Source of truth и границы проекта
+
+- `[P]` Проект называется **Telegram Lead Discovery**: персональное локальное приложение для одного оператора, которое выявляет коммерческие запросы в публичных вручную одобренных Telegram sources.
+- `[P]` `docs/prd/README.md` — master PRD; `docs/prd/DECISION_LOG.md` содержит принятые решения.
+- `[P]` Точный владелец поведения — module owner PRD в `docs/prd/modules/`; общие DTO и межмодульные события определены только в `docs/prd/shared/`.
+- `[P]` `docs/prd/TRACEABILITY.md` связывает requirement IDs с acceptance tests; изменение требования одновременно обновляет одноимённый acceptance test.
+- `[P]` Не используй старые промты, skills, существующий код или неформальные документы как более высокий источник истины, чем master PRD, Decision Log, shared contracts и owner PRD.
+- `[P]` Не меняй контракты, DTO, lifecycle, лимиты, интервалы, state machine, retry schedule, score bands, retention, source scope или security boundary без изменения документа-владельца.
+- `[P]` Если требования отсутствуют, противоречат друг другу или требуют нового доменного/API/state решения, не угадывай: останови затронутую часть и зафиксируй точный blocker.
+- `[P]` Для задачи читай owner PRD, непосредственные upstream/downstream PRD и релевантные shared contracts; не загружай весь PRD без необходимости.
+
+## 3. Definition of Done
+
+- `[U]` Код готов только после цепочки `written → tested → working`.
+- `[U]` Не считай задачу выполненной, пока реализация не написана, не протестирована и не проверена в рабочем состоянии.
+- `[U]` Не называй код готовым, если он не импортируется/не запускается, не проходит обязательные проверки или не имеет требуемых тестов.
+- `[P]` Изменение schema требует Alembic migration и проверки migration head; изменение контракта обновляет producer, consumers и contract tests.
+- `[P]` Изменения pipeline, dedupe, checkpoint, outbox, retries, retention или recovery требуют релевантных integration/replay/fault-injection проверок.
+- `[U]` Не утверждай, что непроведённая проверка прошла. Указывай `pass`, `fail` или `not run` с конкретной причиной.
+- `[U]` Не коммить и не передавай как готовый код с падающими обязательными тестами.
+
+## 4. Универсальные правила разработки
+
+- `[U]` Перед добавлением логики найди существующие реализации, helpers, constants, fixtures и owner modules.
+- `[U]` Не дублируй поведение. Повторяемую логику выноси в подходящий shared helper только при реальном повторении и без нарушения ownership.
+- `[U]` Не добавляй mock/fake/placeholder data в production runtime.
+- `[U]` Test doubles, fixtures и stubs допустимы только в тестах или как явно разрешённый временный технический stub; stub не должен изображать готовый product behavior.
+- `[U]` Не пиши очевидные комментарии. Комментируй причины нетривиальных решений, invariants и сложную domain logic.
+- `[U]` Если выполняются коммиты, один commit должен содержать один логический change. Не создавай commit без прямого запроса пользователя.
+- `[U]` Разделяй runtime, tests, tooling и deployment/CI configuration.
+- `[U]` Не выполняй unrelated cleanup, массовое форматирование, переименование или рефакторинг вне текущей задачи.
+- `[U]` Сохраняй пользовательские и параллельные изменения; не откатывай то, что не создавал в текущей задаче.
+
+## 5. Стек и запрещённые технологии
+
+- `[S]` Runtime — Python `3.12.x`, один process и независимые `asyncio` services.
+- `[S]` Telegram collection использует Telethon `1.44.x` только через port `TelegramGateway`.
+- `[S]` Local web UI использует FastAPI, Uvicorn, Jinja2, HTMX и обычный CSS; отдельный SPA frontend не создаётся.
+- `[S]` Persistence использует SQLite, SQLAlchemy `2.x`, Alembic и `aiosqlite`.
+- `[S]` Regex использует пакет `regex`, timeout `50 ms`, input cap `4096` characters.
+- `[S]` Управление зависимостями — `uv`, `pyproject.toml` и закреплённый lock-файл.
+- `[P]` Поддерживаемая платформа MVP — Windows `10/11 x64`; автозапуск — Windows Task Scheduler.
+- `[P]` PostgreSQL, Redis, Celery, распределённые workers, отдельные backend processes, mobile application и browser-first architecture вне MVP.
+- `[P]` AI/LLM, embeddings, semantic/vector search, fuzzy deduplication, automatic outreach, private-source auto-join, account rotation и multi-user/RBAC вне MVP.
+
+## 6. Архитектура и SRP
+
+- `[U]` Модуль, класс и функция должны иметь одну причину для изменения.
+- `[U]` Если ответственность описывается как «делает X и Y», раздели её, если X и Y меняются независимо.
+- `[U]` Если функция смешивает уровни абстракции, вынеси независимые блоки в focused private helpers или отдельный owner module.
+- `[U]` Не импортируй зависимости, не относящиеся к ответственности файла; не создавай god objects.
+- `[P]` Соблюдай канонический pipeline: `Source Registry → Collector → Processing → Detection → Scoring → Storage/Outbox → Dashboard/Notifications`.
+- `[P]` Domain modules не импортируют Telethon objects, SQLAlchemy models или HTTP client responses.
+- `[P]` Telethon imports существуют только в collector adapter package; HTTP routes не выполняют direct SQL.
+- `[P]` DTO представлены immutable Python dataclasses/Pydantic models с явным `schema_version`; commands содержат `command_id`, events — `event_id`.
+- `[P]` Повтор команды с тем же idempotency key возвращает ранее committed result.
+- `[P]` `Source Registry` в SQLite — единственный authoritative источник monitoring sources; collector обращается к Telegram только для sources в состоянии `monitoring`.
+- `[P]` Только один process владеет Telegram user session. Не допускай Telethon types или session access за границами gateway.
+
+## 7. Data consistency, async и I/O
+
+- `[P]` Внешний I/O изолирован в gateways/adapters; domain logic получает typed inputs и возвращает structured results.
+- `[P]` Один active `RuleSetVersion`; после activation версия immutable. Нельзя перезаписывать исторические detection/score results.
+- `[P]` `UNIQUE(source_id, telegram_message_id)` задаёт Telegram identity; exact repost не создаёт второй canonical lead или notification.
+- `[P]` Checkpoint обновляется только после commit message data и в той же транзакционной границе.
+- `[P]` Lead и notification outbox создаются одной SQLite transaction; outbox delivery имеет уникальный idempotency key.
+- `[P]` SQLite работает с `WAL`, `foreign_keys=ON`, `busy_timeout=5000` и одним logical writer.
+- `[P]` Все timestamps хранятся в UTC; UI отображает `Europe/Moscow`.
+- `[U]` Не блокируй event loop CPU-bound работой, синхронным network/filesystem I/O или неограниченными regex.
+- `[U]` Не переписывай синхронную библиотеку в псевдо-async API. Изолируй blocking boundary и сохраняй простой асинхронный orchestration layer.
+- `[P]` При `FloodWait` ожидай до точного `until`; не выполняй account switching и не делай Telegram retry раньше срока.
+- `[P]` Автоматизированные тесты не используют реальные Telegram credentials или Bot API credentials.
+
+## 8. Тестирование
+
+- `[U]` Новое или изменённое поведение требует новых либо обновлённых тестов.
+- `[U]` Тест «не упало» недостаточен как единственная проверка. Проверяй конкретные outputs, errors, state changes и side effects.
+- `[U]` Для каждого изменённого behavior group покрой happy path, edge case и error/failure case.
+- `[P]` Используй соответствующий слой: unit для pure domain logic, contract для ports/DTO, integration для SQLite и jobs, adapter для fake external clients, E2E для operator journeys, fault injection для отказов, calibration для rule quality.
+- `[P]` Изменение async behavior проверяет cancellation, retry, idempotency, ordering и отсутствие duplicate committed effects.
+- `[P]` Для rule processing используй фиксированный versioned corpus; проверяй детерминированность result, timeout regex и quality thresholds.
+- `[P]` Используй fixed clocks, IDs и fixtures; не делай результат теста зависимым от текущего времени, внешней сети или порядка выполнения.
+- `[P]` Не ослабляй, не удаляй и не пропускай валидный тест ради зелёного результата.
+- `[P]` Проверяй релевантные `NFR-*` и `AT-<PREFIX>-NNN`; каждый requirement/test ID уникален.
+
+## 9. Error handling, logging и observability
+
+- `[U]` Не используй `print()` и аналоги как application output, audit history или обработку ошибок.
+- `[U]` Не скрывай ошибки и не используй silent fallback/default для нарушения domain invariant.
+- `[U]` Любой failure path должен вернуть/передать ошибку выше, записать диагностику с контекстом либо выполнить документированное recovery action.
+- `[U]` Используй минимально необходимую область error handling; broad boundary допустим только там, где процесс/loop не должен падать, и обязан сохранить полный контекст.
+- `[P]` Expected external failures выражай typed/structured errors, а не ad-hoc strings.
+- `[P]` Structured logs используют stable event codes и не содержат secrets, session data или полного чувствительного user text.
+- `[U]` Severity semantics: `debug` — internal tracing; `info` — normal operation; `warning` — recoverable issue; `error` — failure, влияющая на результат.
+- `[U]` Warning/error diagnostics содержат воспроизводимый context: module, operation, source/message/job ID, input boundary или retry state — без secrets и чувствительного текста.
+- `[P]` Каждый job имеет correlation ID, state, counters и duration. Account, source, pipeline, outbox, database и backup имеют видимый health state.
+- `[P]` Critical system failure создаёт один idempotent alert через canonical outbox flow.
+
+## 10. Security, secrets и external state
+
+- `[U]` Не хардкодь credentials, API keys, tokens, private URLs, passwords и environment-specific machine paths.
+- `[P]` Secrets и Telegram session не попадают в product database, logs, exports или backups; session/secret files доступны только текущему Windows user и `SYSTEM`.
+- `[P]` Web server слушает только `127.0.0.1`; login screen и network-accessible deployment отсутствуют в MVP.
+- `[P]` State-changing HTTP routes требуют CSRF token и same-origin checks; пользовательский text экранируется в HTML и Telegram formatting.
+- `[U]` Secrets передаются только через environment variables или ACL-protected files, не коммитятся и не попадают в `.env.example` иначе чем placeholders/comments.
+- `[U]` Попадание secret в git — security incident: останови публикацию, сообщи пользователю и потребуй rotate/revoke; удаления строки из последнего commit недостаточно.
+- `[P]` Не добавляй telemetry, analytics, crash uploads, remote config, auth, cloud sync или неутверждённые network calls.
+
+## 11. Dependency management
+
+- `[U]` Перед новой dependency проверь Python standard library и уже утверждённый stack.
+- `[U]` Добавляй dependency только при явном техническом обосновании и отсутствии достаточного решения в текущем stack.
+- `[U]` Если сомневаешься, используй возможности стандартного стека и не расширяй supply chain.
+- `[P]` Версии dependencies закрепляются в `uv.lock`; изменение dependency включает clean `uv sync --frozen` проверку.
+- `[P]` Не добавляй package managers или manifests неутверждённого frontend/backend/distributed stack.
+
+## 12. UI/UX
+
+- `[P]` UI — локальный RU-first web interface на FastAPI/Jinja2/HTMX и обычном CSS.
+- `[P]` Dashboard отображает safe views и вызывает только application ports соответствующих owner modules.
+- `[P]` Inbox поддерживает bounded pagination не более `100 leads/request`; не загружай все lead records для одного списка.
+- `[P]` UI показывает rule IDs, score breakdown, source/permalink и stable validation reasons, но не реализует detection, scoring, direct SQL или Telegram collection.
+- `[P]` Не навязывай визуальный стиль, theme, fonts или assets без спецификации и согласования пользователя.
+
+## 13. Workflow coding assistant
+
+- `[U]` Перед новой feature сначала проверь repository state, owner/dependency PRDs, существующие modules и пересечения логики.
+- `[U]` До генерации кода дай краткий план: изменяемые файлы, ownership, state/API/architecture impact и planned tests.
+- `[P]` Для новой feature после плана дождись явного approval пользователя до изменения production/test файлов.
+- `[U]` Если новая логика дублирует существующую или смешивает ownership, остановись и предложи reuse, helper или разделение module/component.
+- `[P]` Работай только в scope текущего rollout phase и не обходи unmet quality/release gates.
+- `[U]` После реализации запусти релевантные tests/checks и проверь запуск, архитектуру, отсутствие регрессий и Definition of Done.
+- `[U]` Для bug fix сначала воспроизведи проблему тестом, когда это практически возможно, затем добавь regression coverage.
+- `[U]` Не меняй production behavior только ради ошибочного теста; сверяй expected behavior с owner PRD.
+- `[P]` Не создавай hidden product rules. Если нужен новый state field, API, error code, event или lifecycle transition, сначала обновляется owner PRD и shared contract по установленному процессу.
+
+## 14. Обязательный отчёт
+
+Перед реализацией укажи:
+
+- target rollout phase;
+- owner и dependency PRDs;
+- allowed files;
+- affected data, APIs, events, transactions и retries;
+- plan и required tests;
+- blockers/assumptions;
+- для новой feature — статус approval.
+
+После реализации укажи:
+
+- созданные/изменённые файлы и их responsibility;
+- реализованное behavior;
+- tests/checks и exact result `pass|fail|not run`;
+- сохранённые пользовательские изменения;
+- оставшиеся failures, blockers и limitations.
+
+Финальное правило: coding assistant реализует и проверяет спецификацию, но не становится автором скрытых продуктовых решений.

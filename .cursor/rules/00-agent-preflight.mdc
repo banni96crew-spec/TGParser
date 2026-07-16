@@ -1,0 +1,99 @@
+---
+description: Mandatory agent preflight — sequential-thinking, tool inventory, Pre-flight block before any work.
+alwaysApply: true
+---
+
+# Agent Preflight
+
+## Applies when
+
+Every agent turn in all modes (Agent, Plan, Ask). No mode exempts preflight.
+
+## Source of truth
+
+1. [00-project-overview.mdc](00-project-overview.mdc) — project identity; agent workflow lives here.
+2. [.cursor/skills/agent-preflight/SKILL.md](../skills/agent-preflight/SKILL.md) — step-by-step procedure when uncertain.
+3. [.cursor/skills/INVENTORY.md](../skills/INVENTORY.md) — skill trigger reference for complex tasks.
+4. [.cursor/hooks.json](../hooks.json) — fail-closed enforcement (when hooks are loaded).
+
+## Required behavior
+
+### First turn order (mandatory)
+
+1. Call MCP `user-sequential-thinking` / `sequentialthinking` (minimum thought 1 of N).
+2. Print `### Pre-flight` block (same turn, after sequential-thinking).
+3. Only then call `Read`, `Grep`, `Glob`, `Shell`, `Task`, `Write`, `StrReplace`, `Delete`, `EditNotebook`, or other MCP tools.
+
+### Pre-flight output contract
+
+```markdown
+### Pre-flight
+- Mode: Agent|Plan|Ask
+- Complex: yes|no
+- Reason: <1 sentence why complex or not>
+- Sequential-thinking: pending|done
+- Subagents: <id> — <why> | none — <reason>
+- MCPs: <server/tool> — <why> | none — <reason>
+- Skills: <path/to/SKILL.md> — <why> | none — <reason>
+- First action after preflight: <concrete next step>
+```
+
+### Complex task criteria
+
+**Complex = yes** (inventory subagents, MCPs, skills required):
+
+- Changing ≥2 files or adding a new module
+- Orchestrator, gates (`src/gates/`), pipeline stages (`src/steps/`)
+- New or changed skill, agent prompt, or cursor rule
+- Task with tests + code
+- Cross-module refactor
+- Any task where a plan already lists subagents or skills
+
+**Complex = no** (1 sequential-thinking thought; inventory = `none — trivial`):
+
+- Answer about one known file or symbol
+- Explain already cited code
+- «Where is X defined» with a single lookup
+
+### Complex task follow-through
+
+- If `Complex: yes` and a matching skill exists in [INVENTORY.md](../skills/INVENTORY.md), `Read` that `SKILL.md` before implementation.
+- If subagents are declared, use `Task` with declared `subagent_type` only.
+- If uncertain about procedure, `Read` [.cursor/skills/agent-preflight/SKILL.md](../skills/agent-preflight/SKILL.md).
+
+### MCP unavailable in mode
+
+If sequential-thinking MCP is blocked (e.g. Ask mode restriction), state it in Pre-flight `Reason`, set `Sequential-thinking: pending`, and ask user to switch to Agent mode — do not skip preflight silently.
+
+### End-of-task compliance block
+
+After completing work, print:
+
+```markdown
+### Compliance
+- sequential-thinking: pass|fail
+- preflight-block: pass|fail
+- skills-used: [paths] | none
+- subagents-used: [ids] | none
+- hook-audit: pass|fail|not_run
+```
+
+## Forbidden behavior
+
+- Do not call `Read`, `Grep`, `Glob`, `Shell`, `Task`, `Write`, `StrReplace`, `Delete`, `EditNotebook`, or non-sequential-thinking MCP before Pre-flight.
+- Do not print `### Pre-flight` without calling sequential-thinking MCP first (hooks verify MCP execution).
+- Do not skip skill/subagent inventory on `Complex: yes` tasks.
+- Do not claim Ask/Plan mode exempts preflight.
+
+## Output requirements
+
+- First assistant message in a task must include `### Pre-flight`.
+- Final message in a completed task must include `### Compliance`.
+- `skills-used` and `subagents-used` must match actual tool calls.
+
+## Verification checklist
+
+- [ ] Sequential-thinking MCP called before any other tool.
+- [ ] Pre-flight block present with all fields.
+- [ ] Complex criteria applied; inventory filled when `Complex: yes`.
+- [ ] Compliance block present at task end.

@@ -1,0 +1,63 @@
+[project]
+name = "telegram-lead-discovery"
+version = "0.1.0"
+description = "Local Telegram Lead Discovery MVP for a single operator"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "aiosqlite>=0.20.0,<0.22",
+    "alembic>=1.14.0,<1.16",
+    "fastapi>=0.115.0,<0.116",
+    "httpx>=0.28.0,<0.29",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.4,<3.2",
+    "pydantic>=2.10.0,<3",
+    "python-multipart>=0.0.18,<0.1",
+    "itsdangerous>=2.2.0,<3",
+    "regex>=2024.11.6",
+    "sqlalchemy[asyncio]>=2.0.36,<2.1",
+    "telethon==1.44.0",
+    "uvicorn[standard]>=0.32.0,<0.35",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0,<9",
+    "pytest-asyncio>=0.24.0,<0.26",
+    "ruff>=0.8.0,<0.10",
+]
+
+[project.scripts]
+tld = "telegram_lead_discovery.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/telegram_lead_discovery"]
+
+[tool.hatch.build.targets.editable]
+packages = ["src/telegram_lead_discovery"]
+
+[tool.hatch.build]
+dev-mode-dirs = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# DET-A regex catalogs and seed SQL payloads intentionally keep long pattern literals.
+"src/telegram_lead_discovery/detection/rules_data.py" = ["E501"]
+"src/telegram_lead_discovery/detection/seed.py" = ["E501"]

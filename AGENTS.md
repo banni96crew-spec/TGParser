@@ -2,7 +2,7 @@
 
 ## Назначение
 
-Этот файл маршрутизирует работу по техническому PRD. Нормативные требования находятся в `docs/prd`, а не в `AGENTS.md`. Продукт предназначен для одного локального оператора. До отдельной команды разрешена только работа с документацией; продуктовый код создавать нельзя.
+Этот файл маршрутизирует работу по техническому PRD. Нормативные требования находятся в `docs/prd`, а не в `AGENTS.md`. Продукт предназначен для одного локального оператора. Product implementation is authorized after Phase 0 contract freeze (D-039..D-047) and explicit owner implementation approval dated 2026-07-16; product code MUST follow PRD.
 
 Engineering-governance для качества работы LLM-агентов вынесен в [docs/engineering/README.md](docs/engineering/README.md). Его owner contract регулирует только процесс изменения репозитория, не входит в product PRD/`TRACEABILITY.md`, не разрешает AI/LLM в product runtime и не расширяет допустимый scope задачи. Feature flags и shadow/preventive matrix — в [.cursor/hooks/policy-manifest.json](.cursor/hooks/policy-manifest.json). Локальные evidence claims проверяются независимо (`tools/quality/verify-local-claim.mjs`) и важнее самоотчёта `### Compliance`. Authoritative CI / required merge blocked until [GIT_HOSTING_PREREQUISITE.md](docs/engineering/GIT_HOSTING_PREREQUISITE.md) (`AT-GOV-009`).
 

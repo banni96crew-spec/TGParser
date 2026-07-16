@@ -49,20 +49,22 @@ Collector публикует технические message envelopes и не а
 
 ### COL-002 — Gateway interface
 
-Gateway MUST предоставлять async-операции:
+Gateway MUST предоставлять async-операции, совпадающие с shared `TelegramGateway` (D-039):
 
 ```text
-connect() -> GatewaySessionInfo
+connect() -> AccountSnapshot
 disconnect() -> None
-resolve_public_source(source_ref) -> GatewaySource
-validate_source(telegram_id) -> GatewaySource
-get_recommendations(telegram_id, limit) -> list[GatewaySourceRef]
-iter_messages(telegram_id, min_message_id, max_items, not_before) -> AsyncIterator[GatewayMessage]
-register_live_handler(handler) -> None
-get_message(telegram_id, message_id) -> GatewayMessage | None
+resolve_public_source(ref) -> SourceSnapshot
+validate_source(ref | telegram_id) -> SourceSnapshot
+get_recommendations(source, limit) -> list[SourceSnapshot]
+iter_history(request) -> AsyncIterator[TelegramMessageDTO]
+iter_updates() -> AsyncIterator[TelegramUpdateDTO]
+get_message(source, message_id) -> TelegramMessageDTO | None
 ```
 
-Gateway MUST преобразовывать library exceptions в `GatewayFloodWait(seconds)`, `GatewayTransientError(code)`, `GatewaySourceUnavailable(code)`, `GatewayAuthError(code)` и `GatewayFatalError(code)`.
+Методы `iter_messages` и `register_live_handler` запрещены. Live envelopes публикуются из `iter_updates`.
+
+Gateway MUST преобразовывать library exceptions в `GatewayFloodWait(until)`, `GatewayUnauthorized`, `GatewayFrozen`, `GatewaySourceInaccessible`, `GatewayTransientError` и `GatewayPermanentError`.
 
 ### COL-003 — Session startup
 
@@ -86,11 +88,11 @@ Gateway MUST преобразовывать library exceptions в `GatewayFloodW
 
 ### COL-006 — Live updates
 
-Gateway MUST зарегистрировать обработчики new message, edit и delete до запуска backfill jobs. Live envelope записывается немедленно в persisted inbox. Source state, отличный от `monitoring`, приводит к безопасному discard с metric; сетевой callback не выполняет классификацию.
+До запуска backfill jobs Gateway MUST начать `iter_updates` и публиковать envelopes для `message_new`, `message_edited` и `message_deleted`. Live envelope записывается немедленно в persisted inbox. Source state, отличный от `monitoring`, приводит к безопасному discard с metric; сетевой callback не выполняет классификацию.
 
 ### COL-007 — Startup reconciliation
 
-После подключения и регистрации live handlers система MUST создать для каждого monitoring source reconciliation job от `checkpoint.last_seen_message_id`, с batch cap `5000`. При достижении cap создаётся continuation job с новым cursor в той же транзакции, что и commit последнего envelope.
+После подключения и старта `iter_updates` система MUST создать для каждого monitoring source reconciliation job от `checkpoint.last_committed_message_id`, с batch cap `5000`. При достижении cap создаётся continuation job с новым cursor в той же транзакции, что и commit последнего envelope.
 
 ### COL-008 — Periodic reconciliation
 
@@ -102,7 +104,7 @@ Backfill/reconciliation envelopes записываются в порядке `(p
 
 ### COL-010 — Checkpoint
 
-Checkpoint содержит `source_id`, `last_seen_message_id`, `last_seen_published_at`, `last_reconciled_at`, `updated_at`. Он изменяется только в той же SQLite-транзакции, где устойчиво сохранён соответствующий envelope. Значение message ID монотонно: `max(current, committed_message_id)`.
+Checkpoint содержит `source_id`, `last_committed_message_id`, `last_committed_published_at`, `last_reconciled_at`, `version` (compare-and-swap). Он изменяется только в той же SQLite-транзакции, где устойчиво сохранён соответствующий envelope (D-040). Значение message ID монотонно: `max(current, committed_message_id)`. `PersistProcessingResult` MUST NOT обновлять `CollectorCheckpoint`.
 
 ### COL-011 — Pause и disable
 
@@ -110,7 +112,7 @@ Checkpoint содержит `source_id`, `last_seen_message_id`, `last_seen_publ
 
 ### COL-012 — Inaccessible source
 
-`GatewaySourceUnavailable` с permanent code `USERNAME_NOT_OCCUPIED`, `CHANNEL_PRIVATE`, `CHANNEL_INVALID` или `CHAT_FORBIDDEN` MUST публиковать `CollectorSourceInaccessible`. Transient failures не меняют source state.
+`GatewaySourceInaccessible` с permanent code `USERNAME_NOT_OCCUPIED`, `CHANNEL_PRIVATE`, `CHANNEL_INVALID` или `CHAT_FORBIDDEN` MUST публиковать `CollectorSourceInaccessible`. Transient failures не меняют source state.
 
 ## 6. Envelope contracts
 
@@ -119,7 +121,7 @@ Checkpoint содержит `source_id`, `last_seen_message_id`, `last_seen_publ
 Каждый envelope MUST содержать:
 
 - UUIDv7 `event_id`;
-- `event_type`: `new`, `edit` или `delete`;
+- `event_type`: `message_new`, `message_edited` или `message_deleted`;
 - internal `source_id`;
 - Telegram `peer_id` и `message_id`;
 - `published_at` UTC;
@@ -132,7 +134,7 @@ Checkpoint содержит `source_id`, `last_seen_message_id`, `last_seen_publ
 - `collection_mode`: `backfill`, `live`, `startup_reconciliation`, `periodic_reconciliation`;
 - `gateway_schema_version=1`.
 
-Delete envelope MUST содержать source/message IDs и `received_at`; текст не требуется.
+Delete envelope (`message_deleted`) MUST содержать source/message IDs и `received_at`; текст не требуется.
 
 ### COL-014 — Idempotency key
 
@@ -152,7 +154,7 @@ Job имеет type `initial_backfill`, `startup_reconciliation`, `periodic_reco
 
 ### COL-017 — FloodWait
 
-При `GatewayFloodWait(seconds)` job переходит в `retry_wait`, `available_at=now+seconds`, attempt не увеличивается. Никакой другой Telegram job не стартует до `available_at`; account rotation отсутствует.
+При `GatewayFloodWait(until)` job переходит в `retry_wait`, `available_at=until` (точный UTC timestamp), attempt не увеличивается. Никакой другой Telegram job не стартует до `until`; account rotation отсутствует.
 
 ### COL-018 — Transient retry
 
@@ -164,7 +166,7 @@ Job имеет type `initial_backfill`, `startup_reconciliation`, `periodic_reco
 
 ### COL-020 — Connection recovery
 
-При disconnect Gateway переподключается через `1`, `5`, `30`, `120`, затем каждые `300` секунд без ограничения числа попыток. После reconnect заново регистрируются live handlers и запускается startup reconciliation.
+При disconnect Gateway переподключается через `1`, `5`, `30`, `120`, затем каждые `300` секунд без ограничения числа попыток. После reconnect снова запускается `iter_updates` и startup reconciliation.
 
 ## 8. Data ownership
 
@@ -232,10 +234,10 @@ MVP включает COL-001—COL-020. Исключены multiple sessions, ac
 | `AT-COL-014` | COL-014 | Replay одного batch дважды | Inbox records не дублируются |
 | `AT-COL-015` | COL-015 | Public username известен | Ссылка сформирована точно |
 | `AT-COL-016` | COL-016 | Job проходит retry_wait и continuation | State transitions валидны и persisted |
-| `AT-COL-017` | COL-017 | Gateway возвращает FloodWait 90 | Job ждёт не менее 90 секунд, attempt неизменен |
-| `AT-COL-018` | COL-018 | Пять transient failures | Delay sequence точна; job failed после пятого retry |
+| `AT-COL-017` | COL-017 | Gateway возвращает FloodWait с `until=now+90s` | Job ждёт до точного `until`, attempt неизменен |
+| `AT-COL-018` | COL-018 | Пять transient failures | Delay sequence `1/5/30/120/600` точна; job `dead` после пятого retry |
 | `AT-COL-019` | COL-019 | Process crash после envelope commit до ack | Restart даёт ноль duplicate inbox rows |
-| `AT-COL-020` | COL-020 | Disconnect и reconnect | Handlers восстановлены; startup reconciliation создан |
+| `AT-COL-020` | COL-020 | Disconnect и reconnect | `iter_updates` восстановлен; startup reconciliation создан |
 
 ## 14. Принятые записи decision log
 

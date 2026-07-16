@@ -176,7 +176,7 @@ running/retry_wait → dead
 3. ручном запуске bulk re-score после активации новой RuleSetVersion;
 4. ручном re-score одного lead.
 
-Lead identity и операторский status сохраняются. Если новый результат становится irrelevant, lead остаётся в истории, получает текущий band `irrelevant` и исчезает из стандартного Inbox; он доступен через фильтр «Все результаты».
+Lead identity и операторский status сохраняются. Если новый результат становится irrelevant, lead остаётся в истории, получает текущий `Lead.band=irrelevant` (D-042) и исчезает из стандартного Inbox; он доступен через фильтр «Все результаты».
 
 ## 10. Observability
 

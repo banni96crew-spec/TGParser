@@ -50,20 +50,19 @@ Worker MUST атомарно claim один незавершённый `Telegram
 
 ### PROC-002 — Pipeline stages
 
-Для `new` или `edit` stages выполняются строго:
+Для `message_new` или `message_edited` stages выполняются строго (D-040):
 
-1. validate envelope schema;
-2. upsert author metadata;
-3. normalize display text и dedup text;
-4. upsert message identity;
-5. append revision при изменении content fingerprint;
-6. update duplicate group и canonical flag;
-7. вызвать Lead Detection для canonical non-deleted message;
-8. вызвать Lead Scoring для положительного detection result;
-9. записать processing result, lead mutation и outbox events;
-10. отметить inbox record completed.
+1. claim envelope;
+2. apply revision (upsert message identity / append revision);
+3. normalize text;
+4. Telegram identity dedupe;
+5. exact repost canonical selection;
+6. вызвать Lead Detection только для eligible canonical non-deleted message;
+7. вызвать Lead Scoring для положительного detection result;
+8. persist lead/non-lead outcome и transactional outbox (по eligibility);
+9. processing completion ack.
 
-Stages 4–10 MUST выполняться одной SQLite-транзакцией. Внешние сетевые вызовы в транзакции отсутствуют.
+Stages 2–9 MUST выполняться одной SQLite-транзакцией processing. Внешние сетевые вызовы в транзакции отсутствуют. `CollectorCheckpoint` в этой транзакции не обновляется.
 
 ### PROC-003 — Text normalization
 

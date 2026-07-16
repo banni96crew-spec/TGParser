@@ -87,13 +87,14 @@ rejected -> candidate
 
 ### SRC-003 — Методы discovery
 
-Система MUST поддерживать:
+Система MUST поддерживать методы `SourceDiscoveryEvent.method` (D-046):
 
-1. ручной public username или URL;
-2. импорт seed-списка;
-3. Telegram recommendations через `TelegramGateway.get_recommendations`;
-4. публичные `t.me`-ссылки и `@username` в сообщениях одобренных источников;
-5. origin публичных forwarded messages в одобренных источниках.
+1. `manual` — ручной public username или URL;
+2. `seed_import` — импорт seed-списка;
+3. `recommendation` — Telegram recommendations через `TelegramGateway.get_recommendations`;
+4. `public_link` — публичные `t.me`-ссылки в сообщениях одобренных источников;
+5. `mention` — `@username` в сообщениях одобренных источников;
+6. `forward_origin` — origin публичных forwarded messages в одобренных источниках.
 
 ### SRC-004 — Контроль глубины
 
@@ -111,7 +112,7 @@ rejected -> candidate
 
 ### SRC-007 — Техническая проверка
 
-Resolve MUST выполняться только через `TelegramGateway`. Валидным кандидатом является публичный `channel`, `supergroup` или `group`, для которого Gateway вернул Telegram ID, title, source type и public username. Пользователи, боты, private invite links и источники без public username получают outcome `unsupported_source`.
+Resolve MUST выполняться только через `TelegramGateway`. Валидным кандидатом является публичный `channel`, `megagroup` или `group`, для которого Gateway вернул Telegram ID, title, source type и public username. Пользователи, боты, private invite links и источники без public username получают outcome `unsupported_source`. Gateway adapter может принять Telethon `supergroup` только как внутреннее отображение в `megagroup`; в domain enum значение `supergroup` отсутствует.
 
 ### SRC-008 — Дедупликация кандидатов
 

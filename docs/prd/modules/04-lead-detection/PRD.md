@@ -63,13 +63,15 @@ Rule MUST содержать:
 - `rule_set_version_id`;
 - `kind`: `hard_exclusion`, `service`, `positive_intent`, `signal`;
 - `target` — category, service profile или signal name;
+- `dimension` — score/exclusion dimension (D-041);
+- `weight` — целое contribution weight (для hard exclusion — `0`);
 - `pattern`;
 - `priority` integer;
 - `explanation_code`;
 - `enabled` boolean;
 - `checksum`.
 
-В version `ru-mvp-1` все правила из DET-A имеют `enabled=true`.
+В version `ru-mvp-1` все правила из DET-A имеют `enabled=true`, а `dimension`/`weight` равны нормативным значениям приложения DET-A.
 
 ### DET-003 — Validation и activation
 
@@ -116,7 +118,7 @@ Processing job сохраняет active rule-set version ID до начала e
 
 ### DET-011 — Result
 
-`DetectionResult` MUST содержать message revision ID, rule-set version ID/checksum, category, `is_lead`, service profiles, matched hard-exclusion/intent/service/signal rule IDs, timed-out IDs, explanation codes, exact explanation text, duration и created timestamp.
+`DetectionResult` MUST содержать message revision ID, rule-set version ID/checksum, category, `is_lead`, service profiles, `matched_rules[]` (`stable_rule_id`, `rule_type`, `dimension`, `weight`, `matched_excerpt` ≤120 Unicode code points), timed-out IDs, explanation codes, exact explanation text, duration и created timestamp.
 
 ### DET-012 — Explanation
 
@@ -212,7 +214,7 @@ MVP включает DET-001—DET-014 и приложение DET-A. Исклю
 | ID | Requirement | Сценарий | Ожидаемый результат |
 |---|---|---|---|
 | `AT-DET-001` | DET-001 | Попытаться изменить active rule | Изменение отклонено; требуется новая version |
-| `AT-DET-002` | DET-002 | Загрузить seed `ru-mvp-1` | Все DET-A rules и поля сохранены |
+| `AT-DET-002` | DET-002 | Загрузить seed `ru-mvp-1` | Все DET-A rules сохранены с `dimension`+`weight` |
 | `AT-DET-003` | DET-003 | Добавить invalid/slow regex | Activation заблокирована |
 | `AT-DET-004` | DET-004 | Повторить corpus в 100 прогонах | Matched IDs и category идентичны |
 | `AT-DET-005` | DET-005 | Fake rule превышает 50 ms | Rule пропущен, result completed_with_timeout |
@@ -221,7 +223,7 @@ MVP включает DET-001—DET-014 и приложение DET-A. Исклю
 | `AT-DET-008` | DET-008 | Текст содержит сайт и Telegram-бот | Сохранены оба profiles в заданном порядке |
 | `AT-DET-009` | DET-009 | Совпали direct и contractor | Итог direct_order |
 | `AT-DET-010` | DET-010 | Есть service без intent | Итог irrelevant |
-| `AT-DET-011` | DET-011 | Проверить result schema | Все IDs, version, matches и duration присутствуют |
+| `AT-DET-011` | DET-011 | Проверить result schema | Все IDs, version, matches с `weight`/`dimension`/`matched_excerpt`≤120 и duration присутствуют |
 | `AT-DET-012` | DET-012 | Повторить один fixture | Explanation byte-for-byte идентично |
 | `AT-DET-013` | DET-013 | Fixture содержит бюджет, срок, контакт | Три boolean signals true |
 | `AT-DET-014` | DET-014 | Бюджет указан дважды | Один boolean signal и два matched IDs без усиления |
@@ -261,75 +263,75 @@ Golden classification fixtures:
 
 ## A.2 Hard exclusions
 
-Нормативные строки ниже заключены в code block, поэтому символ `|` внутри pattern является частью regex без Markdown-экранирования. Формат строки: `Rule ID | Priority | Target | Exact pattern | Explanation code`.
+Нормативные строки ниже заключены в code block, поэтому символ `|` внутри pattern является частью regex без Markdown-экранирования. Формат строки: `Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code`.
 
 ```text
-| Rule ID | Priority | Target | Exact pattern | Explanation code |
-|---|---:|---|---|---|
-| `NEG-SPAM-001` | 100 | `spam` | `\b(?:казино|слоты|ставки на спорт|букмекер|джекпот)\b` | `spam_gambling` |
-| `NEG-SPAM-002` | 101 | `spam` | `\b(?:гарантированный заработок|быстрый заработок|доход без вложений|крипто[- ]?сигналы|раздача криптовалюты)\b` | `spam_income` |
-| `NEG-SPAM-003` | 102 | `spam` | `\b(?:рассылка по чатам|массовая рассылка|накрутка подписчиков|накрутка реакций)\b` | `spam_bulk` |
-| `NEG-ADV-001` | 120 | `advertising` | `\b(?:мы|наша команда|наше агентство)\b.{0,80}\b(?:делаем|разрабатываем|создаём|оказываем|предлагаем)\b` | `advertising_provider` |
-| `NEG-ADV-002` | 121 | `advertising` | `\b(?:скидка|акция|спецпредложение|специальное предложение)\b.{0,80}\b(?:на сайт|на разработку|на бота|на услуги|до пятницы|до конца месяца)\b` | `advertising_promo` |
-| `NEG-ADV-003` | 122 | `advertising` | `\b(?:принимаем заказы|свободны для новых проектов|возьмём ваш проект|закажите у нас)\b` | `advertising_solicitation` |
-| `NEG-VAC-001` | 140 | `vacancy` | `\b(?:вакансия|открыта позиция|открыта вакансия|ищем сотрудника)\b` | `vacancy_marker` |
-| `NEG-VAC-002` | 141 | `vacancy` | `\b(?:в штат|полная занятость|частичная занятость|оформление по тк|трудоустройство)\b` | `vacancy_employment` |
-| `NEG-VAC-003` | 142 | `vacancy` | `\b(?:зарплата|оклад)\b\s*(?:от\s*)?\d[\d\s]{2,}` | `vacancy_salary` |
-| `NEG-VAC-004` | 143 | `vacancy` | `(?:https?://)?(?:www\.)?(?:hh\.ru|career\.habr\.com)/\S+` | `vacancy_link` |
-| `NEG-VAC-005` | 144 | `vacancy` | `\b(?:присылайте резюме|отправляйте резюме|откликнуться на вакансию|испытательный срок)\b` | `vacancy_application` |
+| Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code |
+|---|---:|---|---|---:|---|---|
+| `NEG-SPAM-001` | 100 | `spam` | `hard_exclusion` | 0 | `\b(?:казино|слоты|ставки на спорт|букмекер|джекпот)\b` | `spam_gambling` |
+| `NEG-SPAM-002` | 101 | `spam` | `hard_exclusion` | 0 | `\b(?:гарантированный заработок|быстрый заработок|доход без вложений|крипто[- ]?сигналы|раздача криптовалюты)\b` | `spam_income` |
+| `NEG-SPAM-003` | 102 | `spam` | `hard_exclusion` | 0 | `\b(?:рассылка по чатам|массовая рассылка|накрутка подписчиков|накрутка реакций)\b` | `spam_bulk` |
+| `NEG-ADV-001` | 120 | `advertising` | `hard_exclusion` | 0 | `\b(?:мы|наша команда|наше агентство)\b.{0,80}\b(?:делаем|разрабатываем|создаём|оказываем|предлагаем)\b` | `advertising_provider` |
+| `NEG-ADV-002` | 121 | `advertising` | `hard_exclusion` | 0 | `\b(?:скидка|акция|спецпредложение|специальное предложение)\b.{0,80}\b(?:на сайт|на разработку|на бота|на услуги|до пятницы|до конца месяца)\b` | `advertising_promo` |
+| `NEG-ADV-003` | 122 | `advertising` | `hard_exclusion` | 0 | `\b(?:принимаем заказы|свободны для новых проектов|возьмём ваш проект|закажите у нас)\b` | `advertising_solicitation` |
+| `NEG-VAC-001` | 140 | `vacancy` | `hard_exclusion` | 0 | `\b(?:вакансия|открыта позиция|открыта вакансия|ищем сотрудника)\b` | `vacancy_marker` |
+| `NEG-VAC-002` | 141 | `vacancy` | `hard_exclusion` | 0 | `\b(?:в штат|полная занятость|частичная занятость|оформление по тк|трудоустройство)\b` | `vacancy_employment` |
+| `NEG-VAC-003` | 142 | `vacancy` | `hard_exclusion` | 0 | `\b(?:зарплата|оклад)\b\s*(?:от\s*)?\d[\d\s]{2,}` | `vacancy_salary` |
+| `NEG-VAC-004` | 143 | `vacancy` | `hard_exclusion` | 0 | `(?:https?://)?(?:www\.)?(?:hh\.ru|career\.habr\.com)/\S+` | `vacancy_link` |
+| `NEG-VAC-005` | 144 | `vacancy` | `hard_exclusion` | 0 | `\b(?:присылайте резюме|отправляйте резюме|откликнуться на вакансию|испытательный срок)\b` | `vacancy_application` |
 ```
 
 ## A.3 Service profiles
 
 ```text
-| Rule ID | Priority | Target | Exact pattern | Explanation code |
-|---|---:|---|---|---|
-| `SVC-WEB-001` | 200 | `websites` | `\b(?:сайт(?:а|е|ом|у|ы|ов)?|лендинг(?:а|е|и|ов)?|веб[- ]?приложени(?:е|я|ю|ем|й)|frontend|backend|фронтенд|бэкенд)\b` | `service_websites` |
-| `SVC-WEB-002` | 201 | `websites` | `\b(?:wordpress|tilda|webflow|react|vue|django|fastapi)\b` | `service_web_stack` |
-| `SVC-BOT-001` | 210 | `telegram_bots` | `\b(?:telegram|телеграм|тг)\b.{0,30}\b(?:бот(?:а|е|ом|у|ы|ов)?|mini app|мини[- ]?приложени(?:е|я))\b` | `service_telegram_bot` |
-| `SVC-BOT-002` | 211 | `telegram_bots` | `\b(?:чат[- ]?бот(?:а|ы|ов)?|бот для (?:заказов|оплаты|поддержки|записи))\b` | `service_chatbot` |
-| `SVC-INT-001` | 220 | `integrations_api` | `\b(?:интеграц(?:ия|ии|ию|ией)|api|апи|webhook|вебхук)\b` | `service_integration` |
-| `SVC-INT-002` | 221 | `integrations_api` | `\b(?:crm|amo ?crm|битрикс ?24|1с|мой ?склад)\b` | `service_business_system` |
-| `SVC-AUT-001` | 230 | `automation_parsers` | `\b(?:автоматизац(?:ия|ии|ию|ией)|автоматизировать|автоматизируем|автоматизируется|парсер(?:а|ы|ов)?|парсинг|скрейпинг|scraping)\b` | `service_automation` |
-| `SVC-AUT-002` | 231 | `automation_parsers` | `\b(?:сбор данных|выгрузка данных|обработка данных|перенос данных)\b` | `service_data_flow` |
-| `SVC-ECOM-001` | 240 | `ecommerce` | `\b(?:интернет[- ]?магазин(?:а|е|ы|ов)?|e[- ]?commerce|электронн(?:ая|ой) коммерци(?:я|и))\b` | `service_ecommerce` |
-| `SVC-ECOM-002` | 241 | `ecommerce` | `\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|ozon|яндекс маркет|товарн(?:ый|ого) каталог|корзин(?:а|ы)|перенос заказов|обработка заказов|приём заказов)\b` | `service_marketplace` |
+| Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code |
+|---|---:|---|---|---:|---|---|
+| `SVC-WEB-001` | 200 | `websites` | `service_fit` | 12 | `\b(?:сайт(?:а|е|ом|у|ы|ов)?|лендинг(?:а|е|и|ов)?|веб[- ]?приложени(?:е|я|ю|ем|й)|frontend|backend|фронтенд|бэкенд)\b` | `service_websites` |
+| `SVC-WEB-002` | 201 | `websites` | `service_fit` | 8 | `\b(?:wordpress|tilda|webflow|react|vue|django|fastapi)\b` | `service_web_stack` |
+| `SVC-BOT-001` | 210 | `telegram_bots` | `service_fit` | 12 | `\b(?:telegram|телеграм|тг)\b.{0,30}\b(?:бот(?:а|е|ом|у|ы|ов)?|mini app|мини[- ]?приложени(?:е|я))\b` | `service_telegram_bot` |
+| `SVC-BOT-002` | 211 | `telegram_bots` | `service_fit` | 8 | `\b(?:чат[- ]?бот(?:а|ы|ов)?|бот для (?:заказов|оплаты|поддержки|записи))\b` | `service_chatbot` |
+| `SVC-INT-001` | 220 | `integrations_api` | `service_fit` | 12 | `\b(?:интеграц(?:ия|ии|ию|ией)|api|апи|webhook|вебхук)\b` | `service_integration` |
+| `SVC-INT-002` | 221 | `integrations_api` | `service_fit` | 8 | `\b(?:crm|amo ?crm|битрикс ?24|1с|мой ?склад)\b` | `service_business_system` |
+| `SVC-AUT-001` | 230 | `automation_parsers` | `service_fit` | 12 | `\b(?:автоматизац(?:ия|ии|ию|ией)|автоматизировать|автоматизируем|автоматизируется|парсер(?:а|ы|ов)?|парсинг|скрейпинг|scraping)\b` | `service_automation` |
+| `SVC-AUT-002` | 231 | `automation_parsers` | `service_fit` | 8 | `\b(?:сбор данных|выгрузка данных|обработка данных|перенос данных)\b` | `service_data_flow` |
+| `SVC-ECOM-001` | 240 | `ecommerce` | `service_fit` | 12 | `\b(?:интернет[- ]?магазин(?:а|е|ы|ов)?|e[- ]?commerce|электронн(?:ая|ой) коммерци(?:я|и))\b` | `service_ecommerce` |
+| `SVC-ECOM-002` | 241 | `ecommerce` | `service_fit` | 8 | `\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|ozon|яндекс маркет|товарн(?:ый|ого) каталог|корзин(?:а|ы)|перенос заказов|обработка заказов|приём заказов)\b` | `service_marketplace` |
 ```
 
 ## A.4 Positive intent
 
 ```text
-| Rule ID | Priority | Target | Exact pattern | Explanation code |
-|---|---:|---|---|---|
-| `POS-DIR-001` | 300 | `direct_order` | `\b(?:нужно|надо|хочу|хотим|планирую|планируем)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать|перенести|запустить)\b` | `intent_direct_need` |
-| `POS-DIR-002` | 301 | `direct_order` | `\b(?:задача|тз|техническое задание)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать)\b` | `intent_direct_task` |
-| `POS-DIR-003` | 302 | `direct_order` | `\b(?:кто|кто-нибудь|кто-то)\b.{0,60}\b(?:сделает|разработает|создаст|доработает|настроит|подключит|интегрирует|автоматизирует)\b` | `intent_direct_who` |
-| `POS-DIR-004` | 303 | `direct_order` | `\b(?:заказать|закажу|готов оплатить|готовы оплатить)\b.{0,80}\b(?:сайт|лендинг|бот|интеграцию|автоматизацию|парсер|интернет[- ]?магазин)\b` | `intent_direct_purchase` |
-| `POS-CTR-001` | 320 | `contractor_search` | `\b(?:ищу|ищем|нужен|нужна|нужны|требуется|требуются)\b.{0,80}\b(?:разработчик(?:а|и|ов)?|программист(?:а|ы|ов)?|фрилансер(?:а|ы|ов)?|специалист(?:а|ы|ов)?|подрядчик(?:а|и|ов)?|исполнитель|команда|агентство)\b` | `intent_contractor_search` |
-| `POS-CTR-002` | 321 | `contractor_search` | `\b(?:кто возьмётся|кто может взяться|есть свободный разработчик|есть свободный специалист)\b` | `intent_contractor_available` |
-| `POS-REC-001` | 340 | `recommendation_request` | `\b(?:посоветуйте|порекомендуйте|можете посоветовать|можете порекомендовать)\b.{0,100}\b(?:разработчик(?:а)?|программист(?:а)?|специалист(?:а)?|подрядчик(?:а)?|исполнитель|команду|агентство)\b` | `intent_recommend_person` |
-| `POS-REC-002` | 341 | `recommendation_request` | `\b(?:у кого есть контакты|дайте контакт|поделитесь контактом|кого можете рекомендовать)\b` | `intent_recommend_contact` |
-| `POS-POT-001` | 360 | `potential_need` | `\b(?:можно ли|реально ли|как лучше|как можно|как)\b.{0,100}\b(?:сделать|реализовать|подключить|интегрировать|автоматизировать|перенести|собрать)\b` | `intent_potential_how` |
-| `POS-POT-002` | 361 | `potential_need` | `\b(?:есть|возникла|появилась|столкнулся|столкнулись)\b.{0,40}\b(?:проблема|ошибка|сложность|потребность)\b` | `intent_potential_problem` |
-| `POS-POT-003` | 362 | `potential_need` | `\b(?:устал|устали)\b.{0,60}\b(?:вручную|руками|копировать|переносить|обрабатывать)\b` | `intent_potential_manual_work` |
+| Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code |
+|---|---:|---|---|---:|---|---|
+| `POS-DIR-001` | 300 | `direct_order` | `intent` | 15 | `\b(?:нужно|надо|хочу|хотим|планирую|планируем)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать|перенести|запустить)\b` | `intent_direct_need` |
+| `POS-DIR-002` | 301 | `direct_order` | `intent` | 15 | `\b(?:задача|тз|техническое задание)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать)\b` | `intent_direct_task` |
+| `POS-DIR-003` | 302 | `direct_order` | `intent` | 12 | `\b(?:кто|кто-нибудь|кто-то)\b.{0,60}\b(?:сделает|разработает|создаст|доработает|настроит|подключит|интегрирует|автоматизирует)\b` | `intent_direct_who` |
+| `POS-DIR-004` | 303 | `direct_order` | `intent` | 18 | `\b(?:заказать|закажу|готов оплатить|готовы оплатить)\b.{0,80}\b(?:сайт|лендинг|бот|интеграцию|автоматизацию|парсер|интернет[- ]?магазин)\b` | `intent_direct_purchase` |
+| `POS-CTR-001` | 320 | `contractor_search` | `intent` | 14 | `\b(?:ищу|ищем|нужен|нужна|нужны|требуется|требуются)\b.{0,80}\b(?:разработчик(?:а|и|ов)?|программист(?:а|ы|ов)?|фрилансер(?:а|ы|ов)?|специалист(?:а|ы|ов)?|подрядчик(?:а|и|ов)?|исполнитель|команда|агентство)\b` | `intent_contractor_search` |
+| `POS-CTR-002` | 321 | `contractor_search` | `intent` | 10 | `\b(?:кто возьмётся|кто может взяться|есть свободный разработчик|есть свободный специалист)\b` | `intent_contractor_available` |
+| `POS-REC-001` | 340 | `recommendation_request` | `intent` | 10 | `\b(?:посоветуйте|порекомендуйте|можете посоветовать|можете порекомендовать)\b.{0,100}\b(?:разработчик(?:а)?|программист(?:а)?|специалист(?:а)?|подрядчик(?:а)?|исполнитель|команду|агентство)\b` | `intent_recommend_person` |
+| `POS-REC-002` | 341 | `recommendation_request` | `intent` | 8 | `\b(?:у кого есть контакты|дайте контакт|поделитесь контактом|кого можете рекомендовать)\b` | `intent_recommend_contact` |
+| `POS-POT-001` | 360 | `potential_need` | `intent` | 6 | `\b(?:можно ли|реально ли|как лучше|как можно|как)\b.{0,100}\b(?:сделать|реализовать|подключить|интегрировать|автоматизировать|перенести|собрать)\b` | `intent_potential_how` |
+| `POS-POT-002` | 361 | `potential_need` | `intent` | 5 | `\b(?:есть|возникла|появилась|столкнулся|столкнулись)\b.{0,40}\b(?:проблема|ошибка|сложность|потребность)\b` | `intent_potential_problem` |
+| `POS-POT-003` | 362 | `potential_need` | `intent` | 5 | `\b(?:устал|устали)\b.{0,60}\b(?:вручную|руками|копировать|переносить|обрабатывать)\b` | `intent_potential_manual_work` |
 ```
 
 ## A.5 Scoring signals
 
 ```text
-| Rule ID | Priority | Target | Exact pattern | Explanation code |
-|---|---:|---|---|---|
-| `SIG-BUD-001` | 400 | `budget_present` | `\b(?:бюджет|стоимость|оплата)\b\s*(?:[:=—-]\s*)?(?:до\s*|от\s*)?\d[\d\s]*(?:₽|руб(?:лей|ля|\.)?|р\b|usd|eur|\$|€)` | `signal_budget_amount` |
-| `SIG-BUD-002` | 401 | `budget_present` | `\b(?:готов|готовы|готова)\s+(?:заплатить|оплатить)\b` | `signal_budget_ready` |
-| `SIG-DUE-001` | 410 | `deadline_present` | `\b(?:срок|дедлайн)\b\s*(?:[:=—-]\s*)?(?:до\s*)?\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?` | `signal_deadline_date` |
-| `SIG-DUE-002` | 411 | `deadline_present` | `\b(?:за|в течение)\s+\d+\s+(?:час(?:а|ов)?|дн(?:я|ей)|недел(?:ю|и|ь)|месяц(?:а|ев)?)\b` | `signal_deadline_period` |
-| `SIG-URG-001` | 420 | `urgency_present` | `\b(?:срочно|очень срочно|как можно быстрее|asap|горит)\b` | `signal_urgency` |
-| `SIG-STA-001` | 430 | `ready_to_start` | `\b(?:готов начать|готовы начать|можем начать|стартуем|начать сразу|приступить сегодня)\b` | `signal_ready_start` |
-| `SIG-CON-001` | 440 | `contact_present` | `(?<![\w@])@[a-z0-9_]{5,32}\b` | `signal_contact_username` |
-| `SIG-CON-002` | 441 | `contact_present` | `\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b` | `signal_contact_email` |
-| `SIG-CON-003` | 442 | `contact_present` | `(?<!\d)(?:\+7|8)[\s()\-]*\d{3}[\s()\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}(?!\d)` | `signal_contact_phone` |
-| `SIG-SPC-001` | 450 | `task_specificity` | `\b(?:нужно|задача|тз)\b.{0,160}\b(?:для|чтобы|с функцией|который|которая|интеграция с)\b` | `signal_task_detail` |
-| `SIG-SPC-002` | 451 | `task_specificity` | `\b(?:оплата|авторизация|личный кабинет|админ(?:ка|панель)|каталог|корзина|уведомления|выгрузка|синхронизация)\b` | `signal_task_feature` |
+| Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code |
+|---|---:|---|---|---:|---|---|
+| `SIG-BUD-001` | 400 | `budget_present` | `budget` | 10 | `\b(?:бюджет|стоимость|оплата)\b\s*(?:[:=—-]\s*)?(?:до\s*|от\s*)?\d[\d\s]*(?:₽|руб(?:лей|ля|\.)?|р\b|usd|eur|\$|€)` | `signal_budget_amount` |
+| `SIG-BUD-002` | 401 | `budget_present` | `budget` | 8 | `\b(?:готов|готовы|готова)\s+(?:заплатить|оплатить)\b` | `signal_budget_ready` |
+| `SIG-DUE-001` | 410 | `deadline_present` | `deadline` | 5 | `\b(?:срок|дедлайн)\b\s*(?:[:=—-]\s*)?(?:до\s*)?\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?` | `signal_deadline_date` |
+| `SIG-DUE-002` | 411 | `deadline_present` | `deadline` | 4 | `\b(?:за|в течение)\s+\d+\s+(?:час(?:а|ов)?|дн(?:я|ей)|недел(?:ю|и|ь)|месяц(?:а|ев)?)\b` | `signal_deadline_period` |
+| `SIG-URG-001` | 420 | `urgency_present` | `urgency` | 5 | `\b(?:срочно|очень срочно|как можно быстрее|asap|горит)\b` | `signal_urgency` |
+| `SIG-STA-001` | 430 | `ready_to_start` | `readiness` | 5 | `\b(?:готов начать|готовы начать|можем начать|стартуем|начать сразу|приступить сегодня)\b` | `signal_ready_start` |
+| `SIG-CON-001` | 440 | `contact_present` | `contactability` | 3 | `(?<![\w@])@[a-z0-9_]{5,32}\b` | `signal_contact_username` |
+| `SIG-CON-002` | 441 | `contact_present` | `contactability` | 4 | `\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}\b` | `signal_contact_email` |
+| `SIG-CON-003` | 442 | `contact_present` | `contactability` | 4 | `(?<!\d)(?:\+7|8)[\s()\-]*\d{3}[\s()\-]*\d{3}[\s\-]*\d{2}[\s\-]*\d{2}(?!\d)` | `signal_contact_phone` |
+| `SIG-SPC-001` | 450 | `task_specificity` | `specificity` | 10 | `\b(?:нужно|задача|тз)\b.{0,160}\b(?:для|чтобы|с функцией|который|которая|интеграция с)\b` | `signal_task_detail` |
+| `SIG-SPC-002` | 451 | `task_specificity` | `specificity` | 8 | `\b(?:оплата|авторизация|личный кабинет|админ(?:ка|панель)|каталог|корзина|уведомления|выгрузка|синхронизация)\b` | `signal_task_feature` |
 ```
 
 ## A.6 Seed integrity

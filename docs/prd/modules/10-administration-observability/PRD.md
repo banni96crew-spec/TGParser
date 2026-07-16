@@ -67,7 +67,7 @@
 | AT-OBS-009 | Без confirmation действие не отправляется; повтор POST с тем же idempotency key выполняет действие один раз. |
 | AT-OBS-010 | Dashboard корректно отображает каждое из семи утверждённых job states. |
 | AT-OBS-011 | Startup recovery возвращает job без heartbeat 5 минут в очередь, не дублируя committed result. |
-| AT-OBS-012 | Каждое из четырёх критических событий создаёт ровно один `critical.system_event.v1`. |
+| AT-OBS-012 | Каждое из четырёх критических событий создаёт ровно один `critical.system_event.v1` (в т.ч. при `delivery_mode=shadow`); Telegram critical outbox — только при `live`+secrets. |
 | AT-OBS-013 | Dashboard отображает p95 live-to-lead ≤10 секунд, lead-to-notification ≤30 секунд, 0 duplicates и recovery не более 20 минут на принятом тестовом наборе. |
 | AT-OBS-014 | После restart система достигает readiness не более чем за 5 минут при исправных зависимостях; каждая обязательная неисправность отдельно переводит её в not-ready. |
 | AT-OBS-015 | `/health/live` отвечает при недоступном Telegram; `/health/ready` возвращает failure при ошибке migration или integrity check. |

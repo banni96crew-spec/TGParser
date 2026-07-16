@@ -2,7 +2,7 @@
 
 ## 1. Назначение и границы
 
-Модуль предоставляет единственное authoritative хранилище продукта: SQLite schema, repositories, migrations, транзакционные границы, persisted jobs, transactional outbox, очистку, backup и restore. Модуль не содержит Telegram API logic, правил классификации, HTML и доставки уведомлений.
+Модуль предоставляет единственное authoritative хранилище продукта: SQLite schema, repositories, migrations, транзакционные границы, persisted jobs, transactional outbox и очистку. Online backup API primitives и integrity helpers предоставляются STO; semantic owner lifecycle `BackupManifest` (schedule, rotation, restore CLI) — `INF` (D-046). Модуль не содержит Telegram API logic, правил классификации, HTML и доставки уведомлений.
 
 ## 2. Goals
 
@@ -102,13 +102,13 @@ PRAGMA synchronous=NORMAL
 Одна transaction:
 
 1. сохраняет processing result;
-2. создаёт или обновляет Lead;
+2. создаёт или обновляет Lead (Lead создаётся только для band ∈ {hot, warm, cold}; rescore в irrelevant сохраняет Lead с `band=irrelevant`, D-042);
 3. сохраняет LeadScore и components;
 4. устанавливает `current_score_id`, category и band;
-5. при notification-eligible transition создаёт outbox event;
+5. при notification-eligible transition создаёт outbox event только если `notifications.delivery_mode=live` и присутствуют `TG_BOT_TOKEN`/`TG_NOTIFY_CHAT_ID` (D-047); в shadow/missing secrets outbox не вставляется;
 6. commit выполняется только после успешного завершения всех шагов.
 
-Любая ошибка откатывает все шесть шагов.
+Любая ошибка откатывает все шесть шагов. Transaction MUST NOT обновлять `CollectorCheckpoint` (D-040).
 
 ### 7.3. Operator action
 
@@ -272,22 +272,24 @@ Logs содержат только internal IDs, operation, duration, row count 
 
 ## 17. Acceptance test catalogue
 
-| Test ID | Проверка | Ожидаемый результат |
-|---|---|---|
-| AT-STO-001 | Два workers вставляют одну Telegram identity | Существует одна message row |
-| AT-STO-002 | Ошибка после Lead до outbox insert | Transaction полностью откатывается |
-| AT-STO-003 | Restart при running job | Job возвращается в queued после lease expiry |
-| AT-STO-004 | Replay одного event | Unique key оставляет одну outbox row |
-| AT-STO-005 | Non-lead text старше 30 дней | Текст очищен, hash сохранён |
-| AT-STO-006 | Non-lead graph старше 90 дней | Graph удалён |
-| AT-STO-007 | Lead inactive 180 дней | Lead graph удалён, tombstone сохранён |
-| AT-STO-008 | CSV старше 1 часа | Файл удалён cleanup job |
-| AT-STO-009 | Повреждённый backup | Integrity check блокирует публикацию |
-| AT-STO-010 | Restore при запущенном приложении | Restore отклонён |
-| AT-STO-011 | Migration fault | Backup восстановлен, startup завершён с ошибкой |
-| AT-STO-012 | Cross-source exact repost | Один canonical lead и duplicate relation |
-| AT-STO-013 | Manual delete fault | Все данные сохраняются через rollback |
-| AT-STO-014 | Parallel UI и worker writes | Нет lost update и FK violation |
+Каждый `AT-STO-NNN` проверяет одноимённый `STO-NNN` (D-043).
+
+| Test ID | Requirement | Проверка | Ожидаемый результат |
+|---|---|---|---|
+| AT-STO-001 | STO-001 | PRAGMA probe foreign_keys/WAL/busy_timeout | `foreign_keys=ON`, WAL mode, `busy_timeout=5000` |
+| AT-STO-002 | STO-002 | Concurrent writers через единый coordinator | Нет lost update и FK violation |
+| AT-STO-003 | STO-003 | Schema change вне Alembic | Отклонён; checksum соответствует migrations |
+| AT-STO-004 | STO-004 | Два workers вставляют одну Telegram identity | Существует одна message row (`UNIQUE(source_id, telegram_message_id)`) |
+| AT-STO-005 | STO-005 | Fault после Lead до outbox insert | Transaction полностью откатывается |
+| AT-STO-006 | STO-006 | Restart при running job с истёкшим lease | Job возвращается в `queued` |
+| AT-STO-007 | STO-007 | Replay одного business event | Unique `idempotency_key` оставляет одну outbox row |
+| AT-STO-008 | STO-008 | Boundary cleanup: text 30d, non-lead graph 90d, lead 180d, CSV 1h | Удаляются только истёкшие данные по матрице §11 |
+| AT-STO-009 | STO-009 | Manual delete fault injection | Полный rollback, данные сохранены |
+| AT-STO-010 | STO-010 | Повреждённый backup artifact | Integrity check блокирует публикацию |
+| AT-STO-011 | STO-011 | Restore при запущенном приложении | Restore отклонён |
+| AT-STO-012 | STO-012 | Scan backup artifacts | Session/credentials отсутствуют |
+| AT-STO-013 | STO-013 | Timestamp round-trip UTC | Момент времени не меняется |
+| AT-STO-014 | STO-014 | Cross-source exact repost в окне 30 дней | Один canonical lead и duplicate relation; вне окна — без связи |
 
 ## 18. DEFERRED
 

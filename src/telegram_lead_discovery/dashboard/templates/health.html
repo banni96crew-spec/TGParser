@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Состояние системы</h1>
+<table>
+  <tr><th>Компонент</th><th>Статус</th></tr>
+  {% for name, state in components.items() %}
+  <tr><td>{{ name }}</td><td>{{ state }}</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

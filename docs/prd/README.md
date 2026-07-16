@@ -255,8 +255,8 @@ Scheduled purge запускается ежедневно в `04:00`. Daily onli
 2. **Foundation:** runtime, security, migrations, storage и settings.
 3. **Ingestion sandbox:** ручные sources, backfill, live updates и reconciliation без notifications.
 4. **Offline calibration:** corpus `500/10`, fixed rule set и quality gates.
-5. **Shadow mode:** leads видны только в dashboard; проверяются latency, duplicates и recovery.
-6. **Notification pilot:** включаются только `hot` lead alerts.
+5. **Shadow mode:** `notifications.delivery_mode=shadow` (default). Leads видны в dashboard; `hot_lead` NotificationOutbox не создаётся; critical OBS events эмитятся; Bot API delivery отсутствует. Переход в `live` не flush backlog (D-047).
+6. **Notification pilot:** `delivery_mode=live` при наличии `TG_BOT_TOKEN`/`TG_NOTIFY_CHAT_ID`; включаются только `hot` lead alerts и critical outbox.
 7. **MVP release:** autostart, backup, purge, alerts и acceptance suite включены.
 
 Rollback отключает новые collector jobs и notification delivery, сохраняет committed checkpoints и позволяет read-only доступ к dashboard.
@@ -274,6 +274,7 @@ Rollback отключает новые collector jobs и notification delivery, 
 ## 17. Сопутствующие документы
 
 - [Decision Log](DECISION_LOG.md)
+- [Phase 0 Resolution Register](PHASE0_RESOLUTION_REGISTER.md)
 - [Traceability](TRACEABILITY.md)
 - [Domain Model](shared/DOMAIN_MODEL.md)
 - [Integration Contracts](shared/INTEGRATION_CONTRACTS.md)

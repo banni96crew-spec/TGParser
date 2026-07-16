@@ -100,7 +100,7 @@
 
 ## 7. Data ownership
 
-Модуль владеет application directory layout, process lock, Task Scheduler definition, backup manifests и maintenance run metadata. Schema и business records принадлежат Storage; session принадлежит TelegramGateway и остаётся в `secrets`.
+Модуль владеет application directory layout, process lock, Task Scheduler definition, semantic lifecycle `BackupManifest` (D-046) и maintenance run metadata. Schema persistence и business records принадлежат Storage; STO предоставляет SQLite backup API primitives и integrity helpers, вызываемые INF. Session принадлежит TelegramGateway и остаётся в `secrets`.
 
 ## 8. Состояния и переходы
 

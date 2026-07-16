@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Preview экспорта</h1>
+<p>Строк: <strong>{{ preview.row_count }}</strong></p>
+{% if preview.band_filter %}
+<p>Фильтр band: {{ preview.band_filter }}</p>
+{% endif %}
+<p>Колонки: {{ preview.columns | join(", ") }}</p>
+<form method="post" action="/exports/leads">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  {% if preview.band_filter %}
+  <input type="hidden" name="band" value="{{ preview.band_filter }}" />
+  {% endif %}
+  <input type="hidden" name="confirm" value="ДА" />
+  <button type="submit">Подтвердить и сохранить CSV</button>
+</form>
+<p><a href="/">Назад в Inbox</a></p>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Источники</h1>
+{% if sources %}
+<table>
+  <thead>
+    <tr><th>ID</th><th>Username</th><th>Title</th><th>State</th><th>Действие</th></tr>
+  </thead>
+  <tbody>
+  {% for source in sources %}
+    <tr>
+      <td>{{ source.id }}</td>
+      <td>{{ source.username_normalized }}</td>
+      <td>{{ source.title }}</td>
+      <td>{{ source.lifecycle_state }}</td>
+      <td>
+        {% if source.lifecycle_state == "candidate" %}
+        <form method="post" action="/sources/{{ source.id }}/approve">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+          <button type="submit">Одобрить</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>Источников пока нет.</p>
+{% endif %}
+{% endblock %}

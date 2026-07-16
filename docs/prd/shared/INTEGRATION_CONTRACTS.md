@@ -19,10 +19,14 @@ class TelegramGateway(Protocol):
     async def connect(self) -> AccountSnapshot: ...
     async def disconnect(self) -> None: ...
     async def resolve_public_source(self, ref: PublicSourceRef) -> SourceSnapshot: ...
+    async def validate_source(self, ref: PublicSourceRef | int) -> SourceSnapshot: ...
     async def get_recommendations(self, source: SourceRef, limit: int) -> list[SourceSnapshot]: ...
     async def iter_history(self, request: HistoryRequest) -> AsyncIterator[TelegramMessageDTO]: ...
     async def iter_updates(self) -> AsyncIterator[TelegramUpdateDTO]: ...
+    async def get_message(self, source: SourceRef, message_id: int) -> TelegramMessageDTO | None: ...
 ```
+
+Методы `iter_messages` и `register_live_handler` отсутствуют. Live-канал — только `iter_updates`.
 
 `PublicSourceRef`
 
@@ -95,21 +99,21 @@ Delete event может не содержать text или author.
 
 Producer: `PROC`; consumers: `DET`, `SCR`, `STO`, `OBS`.
 
-Порядок стадий фиксирован:
+Порядок стадий фиксирован (D-040):
 
 ```text
-source check
-→ atomic claim
-→ revision apply
-→ normalization
-→ Telegram identity dedupe
+claim
+→ revision
+→ normalize
+→ identity dedupe
+→ exact repost canonical
 → detection
 → scoring
-→ exact repost dedupe
-→ lead/non-lead persistence
-→ transactional outbox
-→ checkpoint
+→ persist lead/outbox
+→ processing ack
 ```
+
+`CollectorCheckpoint` не входит в processing stages: он обновляется только COL в той же SQLite-транзакции, что и durable envelope inbox write.
 
 `NormalizedMessage`
 
@@ -141,9 +145,11 @@ Producer: `DET`, consumer: `SCR`.
 - `rule_set_version_id`;
 - `category`;
 - `hard_exclusion: bool`;
-- `matched_rules[]` с `stable_rule_id`, `rule_type`, `dimension`, `weight`, `matched_excerpt`;
+- `matched_rules[]` с `stable_rule_id`, `rule_type`, `dimension`, `weight`, `matched_excerpt` (максимум `120` Unicode code points);
 - `service_profiles[]`;
 - `explanation_items_ru[]`.
+
+`matched_excerpt` — UTF-8 substring `analysis_text`, покрывающий regex match; при zero-width — пустая строка. В structured logs excerpt не записывается.
 
 Для одного `revision_id + rule_set_version_id` результат детерминирован.
 
@@ -175,8 +181,8 @@ Producer: `PROC`, owner: `STO`.
 - detection result;
 - score result;
 - canonical/duplicate decision;
-- checkpoint proposal;
-- notification eligibility.
+- notification eligibility;
+- processing completion ack.
 
 Одна SQLite transaction выполняет:
 
@@ -184,8 +190,10 @@ Producer: `PROC`, owner: `STO`.
 2. insert processing outcome;
 3. link duplicate либо create/update canonical Lead;
 4. insert score/components;
-5. insert outbox для eligible canonical hot lead;
-6. commit checkpoint compare-and-swap.
+5. insert outbox для eligible canonical hot lead (только при `notifications.delivery_mode=live` и наличии notification secrets);
+6. processing inbox/job completion ack.
+
+`PersistProcessingResult` MUST NOT мутировать `CollectorCheckpoint`. Checkpoint compare-and-swap выполняется только COL вместе с envelope write.
 
 При rollback ни один из шагов не виден consumers.
 
@@ -195,12 +203,15 @@ Producer: `STO` outbox, consumer: `NOT`.
 
 `NotificationEvent`
 
-- `event_type: hot_lead | collector_stopped | session_unavailable | migration_failed | integrity_failed`;
+- `event_type: hot_lead | collector_stopped | telegram_session_unavailable | migration_failed | integrity_check_failed`;
 - `lead_id: int | null`;
+- `incident_id: str | null`;
 - `score_version: int | null`;
 - `idempotency_key`;
 - `destination_chat_ref`;
 - structured fields для template.
+
+Для `hot_lead` обязателен `lead_id` (+ `score_version`); для critical events обязателен `incident_id`. Ровно одно из двух присутствует: lead или incident.
 
 Hot lead payload:
 

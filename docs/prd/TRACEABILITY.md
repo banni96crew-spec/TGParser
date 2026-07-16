@@ -36,7 +36,7 @@
 | `NFR-REL-002` | `STO`, `NOT` | Outbox crash-boundary suite |
 | `NFR-REL-003` | `COL`, `OBS` | Disconnect/reconciliation suite |
 | `NFR-REL-004` | `INF`, `COL`, `STO`, `NOT` | Forced process restart suite |
-| `NFR-REL-005` | `COL`, `STO` | Checkpoint transaction fault injection |
+| `NFR-REL-005` | `COL`, `STO` | Checkpoint transaction fault injection (envelope TX only; не `PersistProcessingResult`) |
 | `NFR-REL-006` | `COL` | Fake FloodWait gateway test |
 | `NFR-REL-007` | `STO`, `INF` | Migration/restore integrity suite |
 | `NFR-QLT-001` | `DET`, `SCR` | Corpus manifest validation |
@@ -77,11 +77,11 @@
 | Journey | Requirements | Gate |
 |---|---|---|
 | Add and approve source | `SRC-001`, `SRC-007..014`, `COL-004..005`, `UI-006` | Candidate не мониторится до approve; backfill создаётся один раз |
-| Live lead | `COL-006`, `PROC-001..004`, `DET-004..014`, `SCR-001..013`, `STO-001..004`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s |
+| Live lead | `COL-006`, `PROC-001..004`, `DET-004..014`, `SCR-001..013`, `STO-001..005`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s только при `delivery_mode=live`+secrets; в shadow Lead без outbox |
 | Disconnect recovery | `COL-007..010`, `COL-017..020`, `STO-010`, `OBS-001..016`, `INF-002..010` | Gap ≤20 min; duplicates `0` |
 | Edit/delete/repost | `COL-013..015`, `PROC-005..014`, `STO-003..007`, `UI-012..014`, `NOT-009..015` | Revision/tombstone/canonical behavior детерминировано |
 | Rule activation/re-score | `DET-001..006`, `DET-011..014`, `SCR-001..016`, `UI-007..011` | Immutable versions; historical score не перезаписан |
-| Backup/restore | `STO-011..014`, `SEC-001..015`, `INF-011..020` | Integrity `ok`; session отсутствует; runtime stopped |
+| Backup/restore | `STO-010..014`, `SEC-001..015`, `INF-011..020` | Integrity `ok`; session отсутствует; runtime stopped; INF owns `BackupManifest` lifecycle |
 
 ## 5. Release evidence
 
@@ -95,3 +95,11 @@ Release evidence включает:
 - latest verified backup/restore result;
 - secret scan result;
 - список версий dependencies из lock-файла.
+
+## 6. Phase 0 contract freeze notes (D-039..D-047)
+
+- `AT-STO-NNN` ↔ `STO-NNN` 1:1 после D-043; см. catalogue в [06-lead-storage/PRD.md](modules/06-lead-storage/PRD.md).
+- `AT-COL-018` terminal state = `dead` (не `failed`).
+- `AT-COL-002/013/017` соответствуют shared `TelegramGateway` + `FloodWait(until)` + `message_*` event types.
+- Critical codes OBS-012 / NOT: `collector_stopped`, `telegram_session_unavailable`, `migration_failed`, `integrity_check_failed`.
+- Shadow (`notifications.delivery_mode`): см. [PHASE0_RESOLUTION_REGISTER.md](PHASE0_RESOLUTION_REGISTER.md) и D-047.

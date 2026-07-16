@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Inbox лидов</h1>
+{% if band_filter %}
+<p>Фильтр band: {{ band_filter }}</p>
+{% else %}
+<p>По умолчанию скрыты irrelevant.</p>
+{% endif %}
+<p>
+  <a href="/?band=hot">hot</a> ·
+  <a href="/?band=warm">warm</a> ·
+  <a href="/?band=cold">cold</a> ·
+  <a href="/">все (hot/warm/cold)</a>
+</p>
+
+<div id="inbox-list">
+  {% include "inbox_fragment.html" %}
+</div>
+
+<section>
+  <h2>Экспорт CSV</h2>
+  <form method="post" action="/exports/leads/preview">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    {% if band_filter %}
+    <input type="hidden" name="band" value="{{ band_filter }}" />
+    {% endif %}
+    <button type="submit">Preview экспорта</button>
+  </form>
+</section>
+{% endblock %}

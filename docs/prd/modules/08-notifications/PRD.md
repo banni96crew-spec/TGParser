@@ -26,8 +26,9 @@
 
 - direct Telegram Bot API;
 - один shared `httpx.AsyncClient`;
-- bot token читается только из environment variable `TLD_TELEGRAM_BOT_TOKEN`;
-- destination chat ID хранится в SQLite setting `notification.telegram_chat_id`;
+- bot token читается только из environment variable `TG_BOT_TOKEN`;
+- destination chat ID читается только из environment variable `TG_NOTIFY_CHAT_ID`;
+- SQLite setting не является authoritative store для bot token или chat ID;
 - recipient ровно один;
 - quiet hours отключены;
 - worker poll interval — 1 секунда;
@@ -39,7 +40,15 @@
 
 ### 5.1. Lead events
 
-Notification создаётся только если:
+Notification outbox row для hot lead создаётся только если одновременно выполнены:
+
+1. eligibility band (ниже);
+2. `notifications.delivery_mode=live` (D-047);
+3. присутствуют `TG_BOT_TOKEN` и `TG_NOTIFY_CHAT_ID`.
+
+В режиме `shadow` или при отсутствии secrets Lead/Score создаются как обычно, но `hot_lead` `NotificationOutbox` MUST NOT вставляться. Переход `shadow → live` применяется только к будущим eligible transitions и MUST NOT flush backlog.
+
+Band eligibility:
 
 1. первый score Lead имеет band `hot`; или
 2. текущий band Lead изменился с `warm`, `cold` или `irrelevant` на `hot`.
@@ -50,19 +59,23 @@ Notification не создаётся:
 - при re-score `hot → hot`;
 - при снижении `hot → warm/cold/irrelevant`;
 - для duplicate non-canonical message;
-- при replay уже обработанного scoring event.
+- при replay уже обработанного scoring event;
+- при `delivery_mode=shadow` или missing notification secrets.
 
 Повторный переход того же Lead из non-hot в hot создаёт новый event с новой `score_version`.
 
 ### 5.2. System events
 
-Отправляются только три типа критических incidents:
+Отправляются только четыре типа критических incidents (D-044):
 
 - `collector_stopped`;
 - `telegram_session_unavailable`;
-- `database_startup_failed` для migration или integrity check error.
+- `migration_failed`;
+- `integrity_check_failed`.
 
-Один incident создаёт один outbox event. Повторяющиеся health probes не создают новые events, пока component не вернётся в healthy state. Новый отказ после recovery получает новый `incident_id`.
+Агрегированный код `database_startup_failed` не используется.
+
+Один incident создаёт один outbox event только если `delivery_mode=live` и notification secrets присутствуют. Critical OBS event `critical.system_event.v1` эмитится независимо от shadow. Повторяющиеся health probes не создают новые events, пока component не вернётся в healthy state. Новый отказ после recovery получает новый `incident_id`.
 
 ## 6. Idempotency
 
@@ -185,8 +198,9 @@ delivering without confirmed response → dead (`delivery_uncertain`)
 
 - `id`;
 - `event_type`;
-- `lead_id`/`incident_id`;
-- `score_version` для lead event;
+- `lead_id: int | null`;
+- `incident_id: str | null`;
+- `score_version: int | null` для lead event;
 - `idempotency_key`;
 - `schema_version`;
 - `state`;
@@ -195,6 +209,8 @@ delivering without confirmed response → dead (`delivery_uncertain`)
 - `automatic_attempt_count`;
 - `manual_retry_count`;
 - `created_at`, `updated_at`.
+
+Constraint: ровно одно из `lead_id` (hot lead) или `incident_id` (critical) не-null.
 
 ### 12.2. `NotificationDelivery`
 
@@ -224,9 +240,9 @@ Outbox terminal rows и deliveries хранятся 30 дней. Bot token и re
 | NOT-007 | Пятая подтверждённая ошибка даёт dead | MUST | Шестой automatic attempt отсутствует |
 | NOT-008 | Uncertain delivery не повторяется автоматически | MUST | Event становится dead с отдельным error code |
 | NOT-009 | Delivery state виден в Dashboard | MUST | Отображаются attempts, result и error code |
-| NOT-010 | System events ограничены тремя типами | MUST | Другие health changes не создают Telegram alert |
+| NOT-010 | System events ограничены четырьмя кодами OBS-012 | MUST | Другие health changes не создают Telegram alert; `database_startup_failed` отсутствует |
 | NOT-011 | Один incident не создаёт alert storm | MUST | Повтор probe до recovery не создаёт event |
-| NOT-012 | Bot token читается только из environment | MUST | Token отсутствует в SQLite и logs |
+| NOT-012 | Bot token и chat id читаются только из `TG_BOT_TOKEN` / `TG_NOTIFY_CHAT_ID` | MUST | Значения отсутствуют в SQLite settings и logs |
 | NOT-013 | Automatic reply отсутствует | MUST | Модуль вызывает только Bot API для configured operator chat |
 | NOT-014 | Lead notification latency p95 не превышает 30 секунд | MUST | Нагрузочный тест подтверждает target при healthy Bot API |
 | NOT-015 | Quiet hours отсутствуют | MUST | Eligible event сразу получает первый attempt |
@@ -276,7 +292,7 @@ Structured logs содержат outbox ID, event type, lead/incident internal I
 
 | Test ID | Проверка | Ожидаемый результат |
 |---|---|---|
-| AT-NOT-001 | Созданы hot, warm и cold leads | Outbox event создан только для hot |
+| AT-NOT-001 | Созданы hot, warm и cold leads; отдельно shadow и missing secrets | Outbox event создан только для hot при `live`+secrets; в shadow/missing secrets — ноль `hot_lead` rows, Lead существует |
 | AT-NOT-002 | Fault injection происходит между Score и Outbox | Transaction не оставляет частичный результат |
 | AT-NOT-003 | Scoring event повторён 100 раз | Существует одна outbox row с установленным key |
 | AT-NOT-004 | Text длиннее 500 code points | Excerpt ограничен и заканчивается `…` |

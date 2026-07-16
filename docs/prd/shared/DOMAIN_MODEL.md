@@ -46,8 +46,11 @@
 - `setting_key`;
 - `old_value_json`;
 - `new_value_json`;
+- `reason: str | null`;
 - `changed_at`;
-- `change_source: enum(ui, startup_seed, migration)`.
+- `change_source: enum(ui, startup_seed, migration, system)`.
+
+Reset to default записывает `reason=reset_to_default`.
 
 ### 3.2. Telegram account
 
@@ -228,12 +231,14 @@ Group ID остаётся неизменным при смене canonical messa
 `ProcessingLog`
 
 - `id`, `run_id`, `message_id`;
-- `stage: enum(claim, normalize, identity_dedupe, detect, score, repost_dedupe, persist, outbox, checkpoint)`;
+- `stage: enum(claim, revision, normalize, identity_dedupe, repost_canonical, detect, score, persist, outbox, processing_ack)`;
 - `outcome: enum(succeeded, skipped, retryable_error, permanent_error)`;
 - `error_code: str | null`;
 - `attempt: int >= 1`;
 - `duration_ms >= 0`;
 - `created_at`.
+
+Стадия `checkpoint` отсутствует: `CollectorCheckpoint` принадлежит COL и не пишется processing pipeline.
 
 ### 3.6. Rules и scoring
 
@@ -269,10 +274,30 @@ Group ID остаётся неизменным при смене canonical messa
 - `group_id`;
 - `pattern: str`;
 - `flags: str`;
+- `dimension: str`;
 - `weight: int`;
 - `explanation_template_ru: str`;
 - `enabled`;
 - unique `(rule_set_version_id, stable_rule_id)` через group relationship.
+
+`MatchedRule`
+
+- `stable_rule_id`;
+- `rule_type`;
+- `dimension`;
+- `weight`;
+- `matched_excerpt: str` — максимум `120` Unicode code points.
+
+`DetectionResult`
+
+- `id`, `message_id`, `revision_id`, `rule_set_version_id`;
+- `category`;
+- `hard_exclusion: bool`;
+- `matched_rules: list[MatchedRule]`;
+- `service_profiles[]`;
+- `explanation_items_ru[]`;
+- `created_at`;
+- unique `(revision_id, rule_set_version_id)`.
 
 `LeadScore`
 
@@ -298,10 +323,12 @@ Group ID остаётся неизменным при смене canonical messa
 - `id`, `canonical_message_id unique`;
 - `current_score_id`;
 - `category: enum(direct_order, contractor_search, recommendation_request, potential_need)`;
-- `band: enum(hot, warm, cold)`;
+- `band: enum(hot, warm, cold, irrelevant)`;
 - `status: enum(new, reviewed, contacted, won, lost, ignored, source_deleted)`;
 - `last_activity_at`;
 - `created_at`, `updated_at`.
+
+Lead row создаётся только при первом committed score band ∈ `{hot, warm, cold}`. Rescore в `irrelevant` сохраняет существующий Lead и устанавливает `band=irrelevant`.
 
 `LeadStatusHistory`
 
@@ -334,11 +361,15 @@ Group ID остаётся неизменным при смене canonical messa
 
 `NotificationOutbox`
 
-- `id`, `event_type`, `lead_id`;
-- `score_version: int`;
+- `id`, `event_type`;
+- `lead_id: int | null`;
+- `incident_id: str | null`;
+- `score_version: int | null`;
 - `idempotency_key: str unique`;
 - `state: enum(queued, delivering, retry_wait, sent, dead, cancelled)`;
 - `available_at`, `created_at`.
+
+Constraint: ровно одно из `lead_id` (для `hot_lead`) или `incident_id` (для critical event) не-null.
 
 `NotificationDelivery`
 
@@ -381,10 +412,14 @@ Group ID остаётся неизменным при смене canonical messa
 
 `BackupManifest`
 
+- semantic owner: `INF`;
+- physical persistence: schema/migrations `STO`;
 - `id`, `path_ref`, `backup_type: enum(daily, weekly)`;
 - `database_checksum`, `database_size`, `schema_version`;
 - `integrity_result: enum(ok, failed)`;
 - `created_at`, `verified_at`.
+
+INF владеет lifecycle (schedule, rotation, restore CLI, публикация manifest). STO предоставляет SQLite backup API primitives и integrity helpers.
 
 ## 4. Состояния источника
 

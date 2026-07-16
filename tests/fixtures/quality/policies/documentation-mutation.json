@@ -1,0 +1,36 @@
+{
+  "schema_version": "1.1.0",
+  "conversation_id": "conversation-documentation",
+  "task_id": "task-documentation",
+  "profile": "documentation_mutation",
+  "allowed_paths": [
+    "docs/engineering",
+    "schemas/quality",
+    "tools/quality",
+    "tests/quality",
+    "tests/fixtures/quality"
+  ],
+  "denied_paths": [
+    ".git",
+    ".github",
+    "docs/prd",
+    "src"
+  ],
+  "owner_documents": [
+    "docs/engineering/LLM_ASSURANCE_MODEL.md"
+  ],
+  "requirement_ids": [
+    "GOV-005",
+    "GOV-006"
+  ],
+  "required_checks": [
+    "node --test tests/quality/*.test.mjs"
+  ],
+  "approval": {
+    "status": "approved",
+    "approved_by": "local_operator"
+  },
+  "allowed_mcp_tools": [
+    "user-sequential-thinking/sequentialthinking"
+  ]
+}

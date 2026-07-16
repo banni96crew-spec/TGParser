@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.1.0",
+  "fixture_id": "capability-pre-tool-use",
+  "source": {
+    "path": ".cursor/hooks.json",
+    "configuration_version": 1
+  },
+  "event_key": "preToolUse",
+  "configured": true,
+  "status": "runtime_verified",
+  "capability_class": "preventive",
+  "stable_instance_id_status": "verified",
+  "stable_instance_id_field": "tool_use_id",
+  "failure_behavior": "configured_fail_closed",
+  "configured_handlers": [
+    {
+      "command": "node .cursor/hooks/quality-pre-tool-use.mjs"
+    },
+    {
+      "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
+      "matcher": "sequentialthinking|sequential-thinking"
+    },
+    {
+      "command": "node .cursor/hooks/require-preflight.mjs",
+      "matcher": "Read|Grep|Glob|Shell|Task|Write|StrReplace|Delete|EditNotebook",
+      "failClosed": true
+    }
+  ],
+  "runtime_payload_verification": {
+    "support_status": "verified",
+    "execution_status": "observed",
+    "cursor_version": "3.11.25",
+    "evidence_reference": ".cursor/quality-spike/events.jsonl",
+    "evidence_sha256": "ac94002012486249c4dd161b943f68f9bd1d8b6eaaf192f2ddb8605e569a8301",
+    "observation_count": 160,
+    "verified_fields": {
+      "conversation_id": ["string"],
+      "cursor_version": ["string"],
+      "cwd": ["string"],
+      "generation_id": ["string"],
+      "hook_event_name": ["string"],
+      "model": ["string"],
+      "session_id": ["string"],
+      "tool_input": ["object"],
+      "tool_name": ["string"],
+      "tool_use_id": ["string"],
+      "transcript_path": ["null", "string"],
+      "user_email": ["string"],
+      "workspace_roots": ["array"]
+    }
+  }
+}

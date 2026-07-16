@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.1.0",
+  "conversation_id": "conversation-read-only",
+  "task_id": "task-read-only",
+  "profile": "read_only",
+  "allowed_paths": [
+    "docs/engineering"
+  ],
+  "denied_paths": [
+    ".git",
+    ".github",
+    "docs/prd",
+    "src"
+  ],
+  "owner_documents": [
+    "docs/engineering/LLM_ASSURANCE_MODEL.md"
+  ],
+  "requirement_ids": [
+    "GOV-002"
+  ],
+  "required_checks": [],
+  "approval": {
+    "status": "not_required",
+    "approved_by": null
+  },
+  "allowed_mcp_tools": [
+    "user-sequential-thinking/sequentialthinking"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.1.0",
+  "fixture_id": "capability-stop",
+  "source": {
+    "path": ".cursor/hooks.json",
+    "configuration_version": 1
+  },
+  "event_key": "stop",
+  "configured": true,
+  "status": "declared_not_runtime_verified",
+  "capability_class": "advisory",
+  "stable_instance_id_status": "not_run",
+  "stable_instance_id_field": null,
+  "failure_behavior": "configured_advisory",
+  "configured_handlers": [
+    {
+      "command": "node .cursor/hooks/audit-compliance.mjs",
+      "loop_limit": 1
+    }
+  ],
+  "runtime_payload_verification": {
+    "support_status": "unsupported",
+    "execution_status": "not_run",
+    "cursor_version": null,
+    "evidence_reference": null,
+    "evidence_sha256": null,
+    "observation_count": 0,
+    "verified_fields": {}
+  }
+}

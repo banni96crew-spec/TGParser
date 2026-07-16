@@ -1,9 +1,13 @@
 ---
 name: gate-g2-audit-research
-description: Run Gate G2 code checks after Audit or Research — schema validation, at least 3 findings, and each evidence reference must be verifiable (filesystem paths for Audit; URL, query, or lead.json field for Research). Use this skill when implementing runGateG2 in src/gates/g2Audit.ts, debugging why Copy did not start, or verifying audit.json and research.json before the next stage. Also use for G2 failures, missing evidence, findings count, or has_website vs no_website branch artifacts. Do NOT use for writing audit.json (agent-audit), web research (web-research-company S13), ajv-only checks (validate-contract), or G2 LLM tone-check.
+description: "QUARANTINED — LeadGenerator website pipeline skill; not part of Telegram Lead Discovery. Do not use for this product. Kept on disk pending a separate deletion decision. Original: Run Gate G2 code checks after Audit or Research."
+status: quarantined
+evidence: "Removed from .cursor/skills/INVENTORY.md active table; LeadGenerator website pipeline drift. Not deleted without separate owner decision."
 ---
 
-# Gate G2 Audit / Research
+# Gate G2 Audit / Research (QUARANTINED)
+
+> **Quarantine:** This skill belongs to a LeadGenerator website pipeline and is **not** an active Telegram Lead Discovery skill. Do not declare it in Pre-flight. File retained pending a separate deletion decision.
 
 Quality gate after Audit (`has_website`) or Research (`no_website`) — **code checks only**.
 

@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.1.0",
+  "fixture_id": "capability-after-file-edit",
+  "source": {
+    "path": ".cursor/hooks.json",
+    "configuration_version": 1
+  },
+  "event_key": "afterFileEdit",
+  "configured": true,
+  "status": "runtime_verified",
+  "capability_class": "observational",
+  "stable_instance_id_status": "unsupported",
+  "stable_instance_id_field": null,
+  "failure_behavior": "configured_observe",
+  "configured_handlers": [
+    {
+      "command": "node .cursor/hooks/quality-after-file-edit.mjs"
+    }
+  ],
+  "runtime_payload_verification": {
+    "support_status": "verified",
+    "execution_status": "observed",
+    "cursor_version": "3.11.25",
+    "evidence_reference": ".cursor/quality-spike/events.jsonl",
+    "evidence_sha256": "ac94002012486249c4dd161b943f68f9bd1d8b6eaaf192f2ddb8605e569a8301",
+    "observation_count": 59,
+    "verified_fields": {
+      "conversation_id": ["string"],
+      "cursor_version": ["string"],
+      "edits": ["array"],
+      "file_path": ["string"],
+      "generation_id": ["string"],
+      "hook_event_name": ["string"],
+      "model": ["string"],
+      "session_id": ["string"],
+      "transcript_path": ["null", "string"],
+      "user_email": ["string"],
+      "workspace_roots": ["array"]
+    }
+  }
+}

@@ -8,11 +8,22 @@
     ],
     "afterMCPExecution": [
       {
+        "command": "node .cursor/hooks/quality-after-mcp-execution.mjs"
+      },
+      {
         "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
         "matcher": "sequentialthinking"
       }
     ],
+    "beforeMCPExecution": [
+      {
+        "command": "node .cursor/hooks/quality-before-mcp-execution.mjs"
+      }
+    ],
     "preToolUse": [
+      {
+        "command": "node .cursor/hooks/quality-pre-tool-use.mjs"
+      },
       {
         "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
         "matcher": "sequentialthinking|sequential-thinking"
@@ -23,7 +34,30 @@
         "failClosed": true
       }
     ],
+    "postToolUse": [
+      {
+        "command": "node .cursor/hooks/quality-post-tool-use.mjs"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/quality-before-shell-execution.mjs"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "node .cursor/hooks/quality-after-shell-execution.mjs"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/quality-after-file-edit.mjs"
+      }
+    ],
     "subagentStart": [
+      {
+        "command": "node .cursor/hooks/quality-subagent-start.mjs"
+      },
       {
         "command": "node .cursor/hooks/require-preflight-subagent.mjs",
         "failClosed": true

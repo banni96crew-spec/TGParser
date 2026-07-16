@@ -12,9 +12,12 @@ Every agent turn in all modes (Agent, Plan, Ask). No mode exempts preflight.
 ## Source of truth
 
 1. [00-project-overview.mdc](00-project-overview.mdc) — project identity; agent workflow lives here.
-2. [.cursor/skills/agent-preflight/SKILL.md](../skills/agent-preflight/SKILL.md) — step-by-step procedure when uncertain.
-3. [.cursor/skills/INVENTORY.md](../skills/INVENTORY.md) — skill trigger reference for complex tasks.
-4. [.cursor/hooks.json](../hooks.json) — fail-closed enforcement (when hooks are loaded).
+2. [docs/engineering/LLM_ASSURANCE_MODEL.md](../../docs/engineering/LLM_ASSURANCE_MODEL.md) — LLM governance owner contract (`GOV-*` / `AT-GOV-*`).
+3. [.cursor/skills/agent-preflight/SKILL.md](../skills/agent-preflight/SKILL.md) — step-by-step procedure when uncertain.
+4. [.cursor/skills/INVENTORY.md](../skills/INVENTORY.md) — skill trigger reference for complex tasks (project skills only).
+5. [.cursor/hooks.json](../hooks.json) + [.cursor/hooks/policy-manifest.json](../hooks/policy-manifest.json) — enforcement / shadow flags.
+
+Evidence: local evidence claims under `.cursor/quality-claims/` (untrusted) verified by `tools/quality/verify-local-claim.mjs` outweigh self-reported `### Compliance` text (`AT-GOV-007`). Sequential-thinking unlocks tools via hooks; it is advisory for stop-audit quality, not sole proof of task correctness.
 
 ## Required behavior
 
@@ -76,7 +79,10 @@ After completing work, print:
 - skills-used: [paths] | none
 - subagents-used: [ids] | none
 - hook-audit: pass|fail|not_run
+- evidence-claim: pass|fail|not_run
 ```
+
+Self-reported Compliance text is advisory relative to an independently recomputed evidence claim (`AT-GOV-007`).
 
 ## Forbidden behavior
 

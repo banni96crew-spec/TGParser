@@ -1,0 +1,83 @@
+[
+  {
+    "name": "apply-patch-product",
+    "action": {
+      "kind": "tool",
+      "tool_name": "ApplyPatch",
+      "paths": ["src/app.py"]
+    }
+  },
+  {
+    "name": "encoded-powershell",
+    "action": {
+      "kind": "shell",
+      "command": "powershell -EncodedCommand Z2l0IHN0YXR1cw=="
+    }
+  },
+  {
+    "name": "unknown-tool",
+    "action": {
+      "kind": "tool",
+      "tool_name": "MysteryMutation",
+      "paths": ["tools/quality/x.mjs"]
+    }
+  },
+  {
+    "name": "unknown-mcp",
+    "action": {
+      "kind": "mcp",
+      "server": "unknown",
+      "tool": "write"
+    }
+  },
+  {
+    "name": "unknown-browser",
+    "action": {
+      "kind": "browser",
+      "server": "browser",
+      "tool": "click"
+    }
+  },
+  {
+    "name": "git-scope",
+    "action": {
+      "kind": "file_mutation",
+      "paths": [".git/config"]
+    }
+  },
+  {
+    "name": "github-scope",
+    "action": {
+      "kind": "file_mutation",
+      "paths": [".github/workflows/quality.yml"]
+    }
+  },
+  {
+    "name": "product-prd",
+    "action": {
+      "kind": "file_mutation",
+      "paths": ["docs/prd/README.md"]
+    }
+  },
+  {
+    "name": "user-config",
+    "action": {
+      "kind": "file_mutation",
+      "paths": ["C:\\Users\\Operator\\.cursor\\hooks.json"]
+    }
+  },
+  {
+    "name": "parser-failure",
+    "action": {
+      "kind": "file_mutation",
+      "paths": ["%ZZ"]
+    }
+  },
+  {
+    "name": "path-traversal",
+    "action": {
+      "kind": "file_mutation",
+      "paths": ["tools/quality/../../src/app.py"]
+    }
+  }
+]

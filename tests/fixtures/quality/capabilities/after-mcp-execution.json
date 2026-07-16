@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.1.0",
+  "fixture_id": "capability-after-mcp-execution",
+  "source": {
+    "path": ".cursor/hooks.json",
+    "configuration_version": 1
+  },
+  "event_key": "afterMCPExecution",
+  "configured": true,
+  "status": "runtime_verified",
+  "capability_class": "observational",
+  "stable_instance_id_status": "unsupported",
+  "stable_instance_id_field": null,
+  "failure_behavior": "configured_observe",
+  "configured_handlers": [
+    {
+      "command": "node .cursor/hooks/quality-after-mcp-execution.mjs"
+    },
+    {
+      "command": "node .cursor/hooks/mark-sequential-thinking.mjs",
+      "matcher": "sequentialthinking"
+    }
+  ],
+  "runtime_payload_verification": {
+    "support_status": "verified",
+    "execution_status": "observed",
+    "cursor_version": "3.11.25",
+    "evidence_reference": ".cursor/quality-spike/events.jsonl",
+    "evidence_sha256": "ac94002012486249c4dd161b943f68f9bd1d8b6eaaf192f2ddb8605e569a8301",
+    "observation_count": 14,
+    "verified_fields": {
+      "conversation_id": ["string"],
+      "cursor_version": ["string"],
+      "duration": ["number"],
+      "generation_id": ["string"],
+      "hook_event_name": ["string"],
+      "mcp_server_name": ["string"],
+      "model": ["string"],
+      "result_json": ["string"],
+      "session_id": ["string"],
+      "tool_input": ["string"],
+      "tool_name": ["string"],
+      "transcript_path": ["null", "string"],
+      "user_email": ["string"],
+      "workspace_roots": ["array"]
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.1.0",
+  "fixture_id": "capability-before-mcp-execution",
+  "source": {
+    "path": ".cursor/hooks.json",
+    "configuration_version": 1
+  },
+  "event_key": "beforeMCPExecution",
+  "configured": true,
+  "status": "runtime_verified",
+  "capability_class": "preventive",
+  "stable_instance_id_status": "unsupported",
+  "stable_instance_id_field": null,
+  "failure_behavior": "configured_allow",
+  "configured_handlers": [
+    {
+      "command": "node .cursor/hooks/quality-before-mcp-execution.mjs"
+    }
+  ],
+  "runtime_payload_verification": {
+    "support_status": "verified",
+    "execution_status": "observed",
+    "cursor_version": "3.11.25",
+    "evidence_reference": ".cursor/quality-spike/events.jsonl",
+    "evidence_sha256": "ac94002012486249c4dd161b943f68f9bd1d8b6eaaf192f2ddb8605e569a8301",
+    "observation_count": 14,
+    "verified_fields": {
+      "command": ["string"],
+      "conversation_id": ["string"],
+      "cursor_version": ["string"],
+      "generation_id": ["string"],
+      "hook_event_name": ["string"],
+      "mcp_server_name": ["string"],
+      "model": ["string"],
+      "session_id": ["string"],
+      "tool_input": ["string"],
+      "tool_name": ["string"],
+      "transcript_path": ["null", "string"],
+      "user_email": ["string"],
+      "workspace_roots": ["array"]
+    }
+  }
+}

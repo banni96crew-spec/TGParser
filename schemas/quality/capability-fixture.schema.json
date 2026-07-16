@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://telegram-lead-discovery.local/schemas/quality/capability-fixture.schema.json",
+  "title": "Configured hook capability fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "source",
+    "event_key",
+    "configured",
+    "status",
+    "capability_class",
+    "stable_instance_id_status",
+    "stable_instance_id_field",
+    "failure_behavior",
+    "configured_handlers",
+    "runtime_payload_verification"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.1.0"
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^capability-[a-z0-9-]+$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "configuration_version"
+      ],
+      "properties": {
+        "path": {
+          "const": ".cursor/hooks.json"
+        },
+        "configuration_version": {
+          "const": 1
+        }
+      }
+    },
+    "event_key": {
+      "enum": [
+        "sessionStart",
+        "afterMCPExecution",
+        "beforeMCPExecution",
+        "preToolUse",
+        "postToolUse",
+        "beforeShellExecution",
+        "afterShellExecution",
+        "afterFileEdit",
+        "afterTabFileEdit",
+        "subagentStart",
+        "stop"
+      ]
+    },
+    "configured": {
+      "type": "boolean"
+    },
+    "status": {
+      "enum": [
+        "runtime_verified",
+        "declared_not_runtime_verified"
+      ]
+    },
+    "capability_class": {
+      "enum": [
+        "preventive",
+        "observational",
+        "advisory"
+      ]
+    },
+    "stable_instance_id_status": {
+      "enum": [
+        "verified",
+        "unsupported",
+        "not_run"
+      ]
+    },
+    "stable_instance_id_field": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "failure_behavior": {
+      "enum": [
+        "configured_allow",
+        "configured_observe",
+        "configured_fail_closed",
+        "configured_advisory"
+      ]
+    },
+    "configured_handlers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "command"
+        ],
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "matcher": {
+            "type": "string",
+            "minLength": 1
+          },
+          "failClosed": {
+            "type": "boolean"
+          },
+          "loop_limit": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "runtime_payload_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "support_status",
+        "execution_status",
+        "cursor_version",
+        "evidence_reference",
+        "evidence_sha256",
+        "observation_count",
+        "verified_fields"
+      ],
+      "properties": {
+        "support_status": {
+          "enum": [
+            "verified",
+            "unsupported"
+          ]
+        },
+        "execution_status": {
+          "enum": [
+            "observed",
+            "not_run"
+          ]
+        },
+        "cursor_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_reference": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence_sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observation_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verified_fields": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "enum": [
+                "array",
+                "boolean",
+                "null",
+                "number",
+                "object",
+                "string"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

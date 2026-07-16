@@ -1,9 +1,13 @@
 ---
 name: gate-g1-capture
-description: Run Gate G1 after Capture — schema via validate-contract, then HTTP 200, screenshot size, and text length checks on capture artifacts. Use this skill when implementing runGateG1 in src/gates/g1Capture.ts, debugging why capture failed G1, or verifying desktop.png/mobile.png and text.txt before Audit starts. Also use for G1 gate failures, screenshot empty or under 5KB, text under 200 chars, or capture retry policy. Do NOT use for ajv-only validation (validate-contract), Playwright capture (capture-website), or running capture again without orchestrator (run-pipeline-stage).
+description: "QUARANTINED — LeadGenerator website pipeline skill; not part of Telegram Lead Discovery. Do not use for this product. Kept on disk pending a separate deletion decision. Original: Run Gate G1 after Capture on capture artifacts."
+status: quarantined
+evidence: "Removed from .cursor/skills/INVENTORY.md active table; LeadGenerator website pipeline drift. Not deleted without separate owner decision."
 ---
 
-# Gate G1 Capture
+# Gate G1 Capture (QUARANTINED)
+
+> **Quarantine:** This skill belongs to a LeadGenerator website pipeline and is **not** an active Telegram Lead Discovery skill. Do not declare it in Pre-flight. File retained pending a separate deletion decision.
 
 Quality gate after Capture stage — deterministic tech checks on `capture/*`.
 

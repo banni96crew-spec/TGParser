@@ -19,8 +19,11 @@ Mandatory workflow before any implementation, exploration, or answer that requir
 ## Related rules
 
 - [00-agent-preflight.mdc](../../rules/00-agent-preflight.mdc) — output contract and complex criteria
-- [INVENTORY.md](../INVENTORY.md) — skill trigger reference
+- [INVENTORY.md](../INVENTORY.md) — skill trigger reference (Telegram Lead Discovery only)
 - [AGENT-COMPLIANCE-TESTS.md](../../rules/AGENT-COMPLIANCE-TESTS.md) — manual test prompts
+- [LLM_ASSURANCE_MODEL.md](../../../docs/engineering/LLM_ASSURANCE_MODEL.md) — governance owner contract
+
+Evidence claims verified by `tools/quality/verify-local-claim.mjs` outweigh self-reported `### Compliance` text. Sequential-thinking is required for tool unlock; treat it as advisory for final quality proof.
 
 ## Procedure (ordered)
 
@@ -76,7 +79,10 @@ Execute `First action after preflight`. Use only declared subagents for `Task` c
 - skills-used: [paths] | none
 - subagents-used: [ids] | none
 - hook-audit: pass|fail|not_run
+- evidence-claim: pass|fail|not_run
 ```
+
+Prefer an independently verified evidence claim over this self-report when both exist.
 
 ## Complex criteria (quick reference)
 

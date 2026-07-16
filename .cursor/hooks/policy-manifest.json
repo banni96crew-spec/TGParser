@@ -1,0 +1,195 @@
+{
+  "schema_version": "1.1.0",
+  "cursor_version": "3.11.25",
+  "source_of_truth": "This manifest is the source of truth for quality feature flags, event→capability_class mapping, verified tool IDs, allowed roots, task-profile transitions, and the failure matrix. Shadow hooks and policy-engine must not invent flags outside this file.",
+  "enforcement_owner": "project_hooks",
+  "user_hooks_install": {
+    "automatic": false,
+    "script": ".cursor/hooks/install-user-hooks.ps1",
+    "requires_separate_approval": true,
+    "notes": "Project hooks are the sole enforcement owner. Do not run the user installer automatically; AT-GOV-012 applies only after explicit operator approval."
+  },
+  "feature_flags": {
+    "mode": "shadow",
+    "preventive_enforcement": false,
+    "observational_journal": true,
+    "advisory_stop": true,
+    "evidence_claims": true,
+    "hard_completion_gate_on_stop": false
+  },
+  "allowed_roots": [
+    "docs/engineering",
+    "schemas/quality",
+    "tools/quality",
+    "tests/quality",
+    "tests/fixtures/quality",
+    ".cursor/hooks",
+    ".cursor/rules",
+    ".cursor/skills"
+  ],
+  "protected_roots": [
+    ".git",
+    ".github",
+    "docs/prd",
+    "src",
+    "~/.cursor"
+  ],
+  "task_profile_transitions": {
+    "read_only": {
+      "may_transition_to": ["documentation_mutation", "product_mutation"],
+      "requires_approval": false,
+      "may_mutate": false
+    },
+    "documentation_mutation": {
+      "may_transition_to": ["read_only", "product_mutation"],
+      "requires_approval": true,
+      "may_mutate": true,
+      "allowed_path_prefixes": [
+        "docs/engineering",
+        "schemas/quality",
+        "tools/quality",
+        "tests/quality",
+        "tests/fixtures/quality",
+        ".cursor/hooks",
+        ".cursor/rules",
+        ".cursor/skills"
+      ]
+    },
+    "product_mutation": {
+      "may_transition_to": ["read_only", "documentation_mutation"],
+      "requires_approval": true,
+      "may_mutate": true,
+      "notes": "Requires separate explicit product workflow approval; this governance batch does not grant it."
+    }
+  },
+  "verified_tool_ids": {
+    "read": [
+      "ReadFile",
+      "functions.ReadFile",
+      "Glob",
+      "functions.Glob",
+      "rg",
+      "functions.rg",
+      "ReadLints",
+      "functions.ReadLints"
+    ],
+    "mutation": [
+      "ApplyPatch",
+      "functions.ApplyPatch",
+      "Write",
+      "functions.Write",
+      "WriteFile",
+      "functions.WriteFile",
+      "StrReplace",
+      "functions.StrReplace",
+      "Delete",
+      "functions.Delete",
+      "EditNotebook",
+      "functions.EditNotebook"
+    ],
+    "notes": "IDs are the exact Cursor tool_name values accepted by the quality-hook-adapter path mapper on Cursor 3.11.25. Unknown tool IDs deny under GOV-005."
+  },
+  "events": {
+    "preToolUse": {
+      "capability_class": "preventive",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": "tool_use_id"
+    },
+    "postToolUse": {
+      "capability_class": "observational",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": "tool_use_id"
+    },
+    "beforeShellExecution": {
+      "capability_class": "preventive",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null
+    },
+    "afterShellExecution": {
+      "capability_class": "observational",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null
+    },
+    "beforeMCPExecution": {
+      "capability_class": "preventive",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null
+    },
+    "afterMCPExecution": {
+      "capability_class": "observational",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null
+    },
+    "subagentStart": {
+      "capability_class": "preventive",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null
+    },
+    "afterFileEdit": {
+      "capability_class": "observational",
+      "runtime_verified": true,
+      "feature_mode": "shadow",
+      "mapped": true,
+      "stable_instance_id_field": null,
+      "records_path_hash": true
+    },
+    "afterTabFileEdit": {
+      "capability_class": "observational",
+      "runtime_verified": false,
+      "feature_mode": "unsupported",
+      "mapped": false,
+      "preventive": false,
+      "notes": "Not observed in .cursor/quality-spike/events.jsonl on Cursor 3.11.25. Leave unmapped; do not enable preventive or observational capture until runtime payload is verified."
+    },
+    "sessionStart": {
+      "capability_class": "observational",
+      "runtime_verified": false,
+      "feature_mode": "compliance_state_only",
+      "mapped": false,
+      "resets_journals": false,
+      "notes": "sessionStart may reset .cursor/session-compliance.json only. It must not reset or delete conversation journals. Correctness does not depend on sessionStart (GOV-004 / AT-GOV-004)."
+    },
+    "stop": {
+      "capability_class": "advisory",
+      "runtime_verified": false,
+      "feature_mode": "advisory",
+      "mapped": false,
+      "hard_completion_gate": false,
+      "notes": "stop/audit-compliance.mjs always allows; may emit one bounded followup_message when claim/journal evidence is missing or dirty."
+    }
+  },
+  "failure_matrix": {
+    "unknown_tool": "deny",
+    "unknown_mcp": "ask",
+    "unknown_browser": "ask",
+    "action_parse_failed": "deny",
+    "shell_parse_failed": "deny",
+    "shell_high_risk": "deny",
+    "protected_scope": "deny",
+    "path_not_allowed": "deny",
+    "profile_read_only": "deny",
+    "approval_required": "deny",
+    "mutation_path_missing": "deny",
+    "corrupt_journal_side_effect": "deny",
+    "corrupt_journal_read": "allow",
+    "missing_contract_shadow": "allow_with_would_deny",
+    "unverified_event_mapping": "throw_unmapped",
+    "afterTabFileEdit": "unsupported_leave_unmapped",
+    "stop_missing_claim": "allow_with_advisory_followup",
+    "hook_script_crash_failClosed": "deny"
+  }
+}

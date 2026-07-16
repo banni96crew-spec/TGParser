@@ -1,0 +1,7 @@
+# Local governance runtime artifacts
+.cursor/quality-journals/
+.cursor/quality-spike/
+.cursor/quality-claims/
+.cursor/session-compliance.json
+.quality-test-tmp/
+tests/.quality-tmp/

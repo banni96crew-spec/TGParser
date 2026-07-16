@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.1.0",
+  "conversation_id": "conversation-product-profile",
+  "task_id": "task-product-profile",
+  "profile": "product_mutation",
+  "allowed_paths": [
+    "tools/quality",
+    "tests/quality"
+  ],
+  "denied_paths": [
+    ".git",
+    ".github",
+    "docs/prd",
+    "src"
+  ],
+  "owner_documents": [
+    "docs/engineering/LLM_ASSURANCE_MODEL.md"
+  ],
+  "requirement_ids": [
+    "GOV-006"
+  ],
+  "required_checks": [
+    "node --test tests/quality/*.test.mjs"
+  ],
+  "approval": {
+    "status": "approved",
+    "approved_by": "local_operator"
+  },
+  "allowed_mcp_tools": []
+}

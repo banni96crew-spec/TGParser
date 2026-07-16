@@ -2,15 +2,19 @@
 
 Manual test prompts for verifying [00-agent-preflight.mdc](00-agent-preflight.mdc) and [hooks](../hooks.json) enforcement.
 
+Governance owner: [docs/engineering/LLM_ASSURANCE_MODEL.md](../../docs/engineering/LLM_ASSURANCE_MODEL.md).
+Evidence claim > self-report: a local claim verified by `tools/quality/verify-local-claim.mjs` outweighs `### Compliance` text (`AT-GOV-007`).
+Sequential-thinking is required to unlock tools; it is advisory for stop-audit quality, not sole task proof.
+
 **Procedure:** new Cursor session → send prompt → check Hooks output channel → verify `### Pre-flight` and `### Compliance` blocks.
 
 ## Phase A tests (rules only, before hooks)
 
 | ID | Prompt | Expected |
 |----|--------|----------|
-| A-T1 | «Где определён `runGateG4`?» | Pre-flight `Complex: no`, then Grep |
-| A-T2 | «Добавь hook для preflight» | Pre-flight `Complex: yes`, skills: create-hook, MCP: sequential-thinking |
-| A-T3 | «Объясни pipeline.ts» without preflight | User reject: *«Rejected: no preflight. Retry step 1.»* |
+| A-T1 | «Где в AGENTS.md описан модуль SRC?» | Pre-flight `Complex: no`, then Read/Grep |
+| A-T2 | «Добавь hook для preflight» | Pre-flight `Complex: yes`, skills from INVENTORY, MCP: sequential-thinking |
+| A-T3 | «Объясни LLM_ASSURANCE_MODEL» without preflight | User reject: *«Rejected: no preflight. Retry step 1.»* |
 
 ## Phase B tests (hooks)
 
@@ -21,14 +25,15 @@ Manual test prompts for verifying [00-agent-preflight.mdc](00-agent-preflight.md
 | B-T3 | Broken hook script with `failClosed: true` | **Deny** (not fail-open) |
 | B-T4 | Hooks tab shows loaded hooks | pass |
 | B-T5 | Restart Cursor after save hooks.json | hooks reloaded |
+| B-T6 | `node .cursor/hooks/test-hooks.mjs` | pass; live `session-compliance.json` unchanged |
 
 ## Phase C tests (full compliance)
 
 | ID | Prompt | Mode | Complex | Must use | Must block without preflight |
 |----|--------|------|---------|----------|------------------------------|
-| AC-01 | «Где runGateG4?» | Ask | no | sequential-thinking | Read until ST done |
-| AC-02 | «Добавь validate в g4Design» | Agent | yes | gate skill, tests | Write until ST done |
-| AC-03 | «План: design assembly» | Plan | yes | premium-website-designer, planner subagent | Task until ST done |
+| AC-01 | «Где модуль SRC в AGENTS.md?» | Ask | no | sequential-thinking | Read until ST done |
+| AC-02 | «Обнови docs/engineering README link» | Agent | yes | agent-preflight / verify | Write until ST done |
+| AC-03 | «План: quality evidence checkpoint» | Plan | yes | plan/ralplan | Task until ST done |
 | AC-04 | «Объясни 00-project-overview» | Ask | no | ST only | — |
 | AC-05 | User reject test | Agent | yes | retry from ST | hook + user reject |
 
@@ -49,4 +54,5 @@ Do not accept diffs, plans, or answers without `### Pre-flight` in the first res
 - skills-used: [paths] | none
 - subagents-used: [ids] | none
 - hook-audit: pass|fail|not_run
+- evidence-claim: pass|fail|not_run
 ```

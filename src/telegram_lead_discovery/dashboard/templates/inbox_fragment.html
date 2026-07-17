@@ -1,27 +1,27 @@
 {% if leads %}
-<table>
+<table class="data-table">
   <thead>
     <tr><th>ID</th><th>Band</th><th>Категория</th><th>Статус</th><th>Активность</th></tr>
   </thead>
   <tbody>
   {% for lead in leads %}
     <tr>
-      <td><a href="/leads/{{ lead.id }}">{{ lead.id }}</a></td>
-      <td>{{ lead.band }}</td>
+      <td class="lead-id"><a href="/leads/{{ lead.id }}">{{ lead.id }}</a></td>
+      <td><span class="band-chip band-{{ lead.band }}">{{ lead.band }}</span></td>
       <td>{{ lead.category }}</td>
       <td>{{ lead.status }}</td>
-      <td>{{ lead.last_activity_at }}</td>
+      <td class="faint">{{ lead.last_activity_at }}</td>
     </tr>
   {% endfor %}
   </tbody>
 </table>
 {% if next_cursor %}
-<p>
+<p class="pager">
   <a href="/?cursor={{ next_cursor }}{% if band_filter %}&amp;band={{ band_filter }}{% endif %}&amp;limit={{ limit }}">
     Следующая страница
   </a>
 </p>
 {% endif %}
 {% else %}
-<p>Пока нет лидов.</p>
+<p class="empty-state">Пока нет лидов.</p>
 {% endif %}

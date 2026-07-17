@@ -1,0 +1,14 @@
+IBM Plex fonts — self-hosted for Telegram Lead Discovery UI
+
+Vendor: IBM/plex release v6.4.0
+Downloaded from:
+  https://cdn.jsdelivr.net/gh/IBM/plex@v6.4.0/IBM-Plex-Sans/fonts/complete/woff2/
+  https://cdn.jsdelivr.net/gh/IBM/plex@v6.4.0/IBM-Plex-Mono/fonts/complete/woff2/
+
+Files:
+  IBMPlexSans-Regular.woff2
+  IBMPlexSans-Medium.woff2
+  IBMPlexMono-Regular.woff2
+
+License: see OFL.txt (SIL Open Font License)
+Runtime: served only from /static/fonts/ (no CDN in HTML)

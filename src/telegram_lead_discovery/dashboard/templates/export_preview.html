@@ -1,18 +1,23 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Preview экспорта</h1>
-<p>Строк: <strong>{{ preview.row_count }}</strong></p>
-{% if preview.band_filter %}
-<p>Фильтр band: {{ preview.band_filter }}</p>
-{% endif %}
-<p>Колонки: {{ preview.columns | join(", ") }}</p>
-<form method="post" action="/exports/leads">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+<header class="page-header">
+  <h1>Preview экспорта</h1>
+  <p class="page-meta">Строк: <strong class="mono">{{ preview.row_count }}</strong></p>
+</header>
+
+<section class="panel stack">
   {% if preview.band_filter %}
-  <input type="hidden" name="band" value="{{ preview.band_filter }}" />
+  <p class="muted">Фильтр band: <span class="mono">{{ preview.band_filter }}</span></p>
   {% endif %}
-  <input type="hidden" name="confirm" value="ДА" />
-  <button type="submit">Подтвердить и сохранить CSV</button>
-</form>
-<p><a href="/">Назад в Inbox</a></p>
+  <p class="faint">Колонки: {{ preview.columns | join(", ") }}</p>
+  <form method="post" action="/exports/leads">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    {% if preview.band_filter %}
+    <input type="hidden" name="band" value="{{ preview.band_filter }}" />
+    {% endif %}
+    <input type="hidden" name="confirm" value="ДА" />
+    <button type="submit">Подтвердить и сохранить CSV</button>
+  </form>
+  <p><a class="btn-secondary" href="/">Назад в Inbox</a></p>
+</section>
 {% endblock %}

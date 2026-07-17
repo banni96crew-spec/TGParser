@@ -1,49 +1,75 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Лид #{{ lead.id }}</h1>
-<p>Band: <strong>{{ lead.band }}</strong> · Категория: {{ lead.category }} · Статус: {{ lead.status }}</p>
-{% if source %}
-<p>Источник: {{ source.username_normalized }} ({{ source.title }})</p>
-{% endif %}
-{% if message %}
-<p>Permalink: {% if message.permalink %}<a href="{{ message.permalink }}">{{ message.permalink }}</a>{% else %}—{% endif %}</p>
-<pre>{{ message.original_text }}</pre>
-{% endif %}
-{% if score %}
-<h2>Score {{ score.total }} ({{ score.band }})</h2>
-<p>raw={{ score.raw_total }} · soft_penalty={{ score.soft_penalty_total }} · version={{ score.score_version }}</p>
-<table>
-  <thead><tr><th>Rule</th><th>Dimension</th><th>Value</th><th>Reason</th></tr></thead>
-  <tbody>
-  {% for c in components %}
-    <tr>
-      <td>{{ c.rule_id or "—" }}</td>
-      <td>{{ c.dimension }}</td>
-      <td>{{ c.value }}</td>
-      <td>{{ c.reason_ru }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% endif %}
+<header class="page-header">
+  <h1><span class="lead-id">Лид #{{ lead.id }}</span></h1>
+  <p class="page-meta">
+    Band: <span class="band-chip band-{{ lead.band }}">{{ lead.band }}</span>
+    · Категория: {{ lead.category }}
+    · Статус: {{ lead.status }}
+  </p>
+</header>
 
-<section>
-  <h2>Смена статуса</h2>
-  <form method="post" action="/leads/{{ lead.id }}/status">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-    <label>
-      Статус
-      <select name="status">
-        {% for s in allowed_statuses %}
-        <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
-        {% endfor %}
-      </select>
-    </label>
-    <label>
-      Заметка
-      <input name="note" maxlength="2000" />
-    </label>
-    <button type="submit">Сохранить</button>
-  </form>
-</section>
+<div class="stack">
+  <section class="panel">
+    {% if source %}
+    <p class="muted">Источник: {{ source.username_normalized }} ({{ source.title }})</p>
+    {% endif %}
+    {% if message %}
+    <p class="muted">
+      Permalink:
+      {% if message.permalink %}
+      <a href="{{ message.permalink }}">{{ message.permalink }}</a>
+      {% else %}—{% endif %}
+    </p>
+    <pre class="message-body">{{ message.original_text }}</pre>
+    {% endif %}
+  </section>
+
+  {% if score %}
+  <section class="panel">
+    <h2 class="section-title">
+      Score <span class="score-value">{{ score.total }}</span>
+      (<span class="band-chip band-{{ score.band }}">{{ score.band }}</span>)
+    </h2>
+    <p class="faint mono">
+      raw={{ score.raw_total }} · soft_penalty={{ score.soft_penalty_total }} · version={{ score.score_version }}
+    </p>
+    <table class="data-table">
+      <thead><tr><th>Rule</th><th>Dimension</th><th>Value</th><th>Reason</th></tr></thead>
+      <tbody>
+      {% for c in components %}
+        <tr>
+          <td class="mono">{{ c.rule_id or "—" }}</td>
+          <td>{{ c.dimension }}</td>
+          <td class="mono">{{ c.value }}</td>
+          <td>{{ c.reason_ru }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2 class="section-title">Смена статуса</h2>
+    <form method="post" action="/leads/{{ lead.id }}/status">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <div class="form-row">
+        <label>
+          Статус
+          <select name="status">
+            {% for s in allowed_statuses %}
+            <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          Заметка
+          <input name="note" maxlength="2000" />
+        </label>
+        <button type="submit">Сохранить</button>
+      </div>
+    </form>
+  </section>
+</div>
 {% endblock %}

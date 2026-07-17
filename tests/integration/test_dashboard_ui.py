@@ -9,9 +9,14 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from telegram_lead_discovery.dashboard.app import create_app
+from telegram_lead_discovery.dashboard.app import STATIC_DIR, create_app
 from telegram_lead_discovery.detection.seed import seed_ruleset_ru_mvp_1
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
+from telegram_lead_discovery.observability.health import (
+    HealthState,
+    get_health_registry,
+    reset_health_registry,
+)
 from telegram_lead_discovery.settings.service import seed_defaults
 from telegram_lead_discovery.storage.db import dispose_engine, init_engine
 from telegram_lead_discovery.storage.migrate import upgrade_head
@@ -114,7 +119,58 @@ async def test_dashboard_pages_and_band_filter(ui_env) -> None:
 
         fragment = client.get("/inbox/fragment")
         assert fragment.status_code == 200
-        assert "<table>" in fragment.text
+        assert "<table" in fragment.text
+
+
+@pytest.mark.asyncio
+async def test_dashboard_visual_shell_and_static(ui_env) -> None:
+    _paths, lead_ids, app = ui_env
+    reset_health_registry()
+    assert STATIC_DIR.exists()
+    with TestClient(app) as client:
+        css = client.get("/static/css/app.css")
+        assert css.status_code == 200
+        assert "--accent: #9E1B2F" in css.text or "--accent: #9e1b2f" in css.text
+
+        font = client.get("/static/fonts/IBMPlexSans-Regular.woff2")
+        assert font.status_code == 200
+        assert len(font.content) > 1000
+
+        home = client.get("/")
+        assert home.status_code == 200
+        html = home.text
+        assert "fonts.googleapis.com" not in html
+        assert "fonts.gstatic.com" not in html
+        assert "unpkg.com" not in html
+        assert "cdn.jsdelivr.net" not in html
+        assert 'href="/static/css/app.css"' in html
+        assert 'class="sidebar"' in html
+        assert ">TLD<" in html
+        assert "band-hot" in html
+
+        irrelevant = client.get("/?band=irrelevant")
+        assert irrelevant.status_code == 200
+        assert "band-irrelevant" in irrelevant.text
+        assert f'/leads/{lead_ids["hot"]}' not in irrelevant.text
+
+        registry = get_health_registry()
+        registry.set_component("collector", HealthState.DEGRADED)
+        degraded = client.get("/health")
+        assert degraded.status_code == 200
+        assert 'class="status-warn">degraded</td>' in degraded.text
+        assert 'class="status-critical">degraded</td>' not in degraded.text
+        assert "band-hot" not in degraded.text
+
+        registry.set_component("collector", HealthState.STOPPED)
+        stopped = client.get("/health")
+        assert stopped.status_code == 200
+        assert 'class="status-warn">stopped</td>' in stopped.text
+        assert 'class="status-critical">stopped</td>' not in stopped.text
+
+        registry.set_component("collector", HealthState.UNHEALTHY)
+        unhealthy = client.get("/health")
+        assert unhealthy.status_code == 200
+        assert 'class="status-critical">unhealthy</td>' in unhealthy.text
 
 
 @pytest.mark.asyncio
@@ -174,6 +230,8 @@ async def test_status_triage_and_export(ui_env) -> None:
         preview = client.post("/exports/leads/preview", data={"csrf_token": token})
         assert preview.status_code == 200
         assert "Строк" in preview.text or "Preview" in preview.text
+        assert 'class="sidebar"' in preview.text
+        assert ">TLD<" in preview.text
         token2 = _csrf(preview.text)
         created = client.post(
             "/exports/leads",

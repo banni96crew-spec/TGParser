@@ -36,6 +36,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/telegram_lead_discovery"]
+force-include = { "src/telegram_lead_discovery/dashboard/templates" = "telegram_lead_discovery/dashboard/templates", "src/telegram_lead_discovery/dashboard/static" = "telegram_lead_discovery/dashboard/static" }
 
 [tool.hatch.build.targets.editable]
 packages = ["src/telegram_lead_discovery"]

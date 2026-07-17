@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import select
 from starlette.middleware.sessions import SessionMiddleware
@@ -39,7 +40,40 @@ from telegram_lead_discovery.storage.models import (
 )
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+
+
+def active_nav(path: str) -> str:
+    """Map request path to sidebar nav key (inbox|sources|health|settings)."""
+    if path.startswith("/sources"):
+        return "sources"
+    if path == "/health":
+        return "health"
+    if path.startswith("/settings"):
+        return "settings"
+    return "inbox"
+
+
+def health_status_class(state: str) -> str:
+    """Map component health state to CSS status token class."""
+    if state == "healthy":
+        return "status-ok"
+    if state in {"starting", "degraded", "stopped"}:
+        return "status-warn"
+    if state in {"blocked", "unhealthy"}:
+        return "status-critical"
+    return "status-warn"
+
+
+templates.env.globals["health_status_class"] = health_status_class
+
+
+def _template(
+    request: Request, name: str, context: dict[str, object]
+) -> HTMLResponse:
+    payload = {**context, "active_nav": active_nav(request.url.path)}
+    return templates.TemplateResponse(request, name, payload)
 
 
 def _lead_rows(leads: list[Lead]) -> list[dict]:
@@ -110,7 +144,7 @@ def create_app(*, gateway=None) -> FastAPI:
         limit: int | None = Query(default=None),
     ) -> HTMLResponse:
         ctx = await _inbox_context(request, band=band, cursor=cursor, limit=limit)
-        return templates.TemplateResponse(request, "home.html", ctx)
+        return _template(request, "home.html", ctx)
 
     @app.get("/inbox/fragment", response_class=HTMLResponse)
     async def inbox_fragment(
@@ -120,7 +154,7 @@ def create_app(*, gateway=None) -> FastAPI:
         limit: int | None = Query(default=None),
     ) -> HTMLResponse:
         ctx = await _inbox_context(request, band=band, cursor=cursor, limit=limit)
-        return templates.TemplateResponse(request, "inbox_fragment.html", ctx)
+        return _template(request, "inbox_fragment.html", ctx)
 
     @app.get("/leads/{lead_id}", response_class=HTMLResponse)
     async def lead_detail(request: Request, lead_id: int) -> HTMLResponse:
@@ -159,7 +193,7 @@ def create_app(*, gateway=None) -> FastAPI:
                 "category": lead.category,
                 "status": lead.status,
             }
-        return templates.TemplateResponse(
+        return _template(
             request,
             "lead_detail.html",
             {
@@ -238,7 +272,7 @@ def create_app(*, gateway=None) -> FastAPI:
         request.session["csrf_token"] = token
         request.session["export_preview_count"] = preview.row_count
         request.session["export_preview_band"] = band
-        return templates.TemplateResponse(
+        return _template(
             request,
             "export_preview.html",
             {
@@ -274,7 +308,7 @@ def create_app(*, gateway=None) -> FastAPI:
         request.session["csrf_token"] = token
         async with session_scope() as session:
             sources = await list_sources(session)
-        return templates.TemplateResponse(
+        return _template(
             request,
             "sources.html",
             {"title": "Источники", "sources": sources, "csrf_token": token},
@@ -307,7 +341,7 @@ def create_app(*, gateway=None) -> FastAPI:
             "outbox": "healthy",
             "jobs": "healthy",
         }
-        return templates.TemplateResponse(
+        return _template(
             request,
             "health.html",
             {"title": "Состояние системы", "components": components},
@@ -320,7 +354,7 @@ def create_app(*, gateway=None) -> FastAPI:
         async with session_scope() as session:
             snap = await snapshot(session)
         presence = read_secret_presence()
-        return templates.TemplateResponse(
+        return _template(
             request,
             "settings.html",
             {
@@ -371,4 +405,5 @@ def create_app(*, gateway=None) -> FastAPI:
             return HTMLResponse(str(exc), status_code=400)
         return await settings_page(request)
 
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app

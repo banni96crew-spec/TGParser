@@ -1,22 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Настройки</h1>
-<p>Версия конфигурации: {{ snapshot.settings_version }}</p>
-<form method="post" action="/settings">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
-  <input type="hidden" name="expected_settings_version" value="{{ snapshot.settings_version }}" />
-  <label>Ключ
-    <input name="key" value="notifications.delivery_mode" />
-  </label>
-  <label>Значение
-    <input name="value" value="{{ snapshot.values['notifications.delivery_mode'] }}" />
-  </label>
-  <button type="submit">Сохранить</button>
-</form>
-<h2>Секреты (наличие)</h2>
-<ul>
-  {% for name, state in secrets.items() %}
-  <li>{{ name }}: {{ state }}</li>
-  {% endfor %}
-</ul>
+<header class="page-header">
+  <h1>Настройки</h1>
+  <p class="page-meta">Версия конфигурации: <span class="mono">{{ snapshot.settings_version }}</span></p>
+</header>
+
+<section class="panel">
+  <form method="post" action="/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="expected_settings_version" value="{{ snapshot.settings_version }}" />
+    <div class="form-row">
+      <label>Ключ
+        <input name="key" value="notifications.delivery_mode" />
+      </label>
+      <label>Значение
+        <input name="value" value="{{ snapshot.values['notifications.delivery_mode'] }}" />
+      </label>
+      <button type="submit">Сохранить</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2 class="section-title">Секреты (наличие)</h2>
+  <ul class="meta-list">
+    {% for name, state in secrets.items() %}
+    <li><span class="mono">{{ name }}</span>: {{ state }}</li>
+    {% endfor %}
+  </ul>
+</section>
 {% endblock %}

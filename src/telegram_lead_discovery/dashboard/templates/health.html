@@ -1,10 +1,22 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Состояние системы</h1>
-<table>
-  <tr><th>Компонент</th><th>Статус</th></tr>
-  {% for name, state in components.items() %}
-  <tr><td>{{ name }}</td><td>{{ state }}</td></tr>
-  {% endfor %}
-</table>
+<header class="page-header">
+  <h1>Состояние системы</h1>
+</header>
+
+<div class="panel">
+  <table class="data-table">
+    <thead>
+      <tr><th>Компонент</th><th>Статус</th></tr>
+    </thead>
+    <tbody>
+      {% for name, state in components.items() %}
+      <tr>
+        <td>{{ name }}</td>
+        <td class="{{ health_status_class(state) }}">{{ state }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% endblock %}

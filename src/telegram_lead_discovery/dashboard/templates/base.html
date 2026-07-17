@@ -2,22 +2,32 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title }} — Telegram Lead Discovery</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 1.5rem; color: #111; }
-    nav a { margin-right: 1rem; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; text-align: left; }
-  </style>
+  <link rel="stylesheet" href="/static/css/app.css" />
 </head>
 <body>
-  <nav>
-    <a href="/">Inbox</a>
-    <a href="/sources">Источники</a>
-    <a href="/health">Состояние</a>
-    <a href="/settings">Настройки</a>
-  </nav>
-  <hr />
-  {% block content %}{% endblock %}
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Навигация">
+      <a class="brand" href="/">TLD</a>
+      <ul class="nav-list">
+        <li>
+          <a class="nav-link{% if active_nav == 'inbox' %} is-active{% endif %}" href="/">Inbox</a>
+        </li>
+        <li>
+          <a class="nav-link{% if active_nav == 'sources' %} is-active{% endif %}" href="/sources">Источники</a>
+        </li>
+        <li>
+          <a class="nav-link{% if active_nav == 'health' %} is-active{% endif %}" href="/health">Состояние</a>
+        </li>
+        <li>
+          <a class="nav-link{% if active_nav == 'settings' %} is-active{% endif %}" href="/settings">Настройки</a>
+        </li>
+      </ul>
+    </aside>
+    <main class="main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </body>
 </html>

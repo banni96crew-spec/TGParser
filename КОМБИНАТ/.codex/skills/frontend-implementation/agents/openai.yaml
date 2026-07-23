@@ -1,0 +1,35 @@
+interface:
+  display_name: Frontend Implementation
+  short_description: >-
+    Implement approved frontend scope after G3 design system and G4 plan are
+    accepted — mobile-first, motion-spec, Builder report, Critic handoff.
+  icon: code
+
+policy:
+  allow_implicit_invocation: true
+
+default_prompt: |
+  Follow `.agents/skills/frontend-implementation/SKILL.md`.
+
+  Gate: G4 accepted; G3 design system and motion spec frozen.
+  Inputs: filled `docs/templates/builder-task.md`, `design-system.md`, `motion-spec.md`.
+
+  Execute the skill algorithm in order. Write production code only under КОМБИНАТ.
+  Use `references/component-contract.md` and `references/implementation-checklist.md`
+  before handoff. Fill `docs/templates/builder-result.md`.
+
+  Do not duplicate P0–P3 or browser matrix — cite `docs/standards/` paths.
+
+outputs:
+  - src/
+  - public/
+  - docs/templates/builder-result.md
+  - qa/runs/
+
+references:
+  quality_gates: docs/standards/quality-gates.md
+  browser_matrix: docs/standards/browser-matrix.md
+  accessibility: docs/standards/accessibility-standard.md
+  performance: docs/standards/performance-budgets.md
+  component_contract: references/component-contract.md
+  implementation_checklist: references/implementation-checklist.md

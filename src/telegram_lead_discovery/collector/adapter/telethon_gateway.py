@@ -39,12 +39,12 @@ class TelethonTelegramGateway:
                 connected=False,
             )
         try:
-            import os
-
             from telethon import TelegramClient  # local import — Telethon boundary
 
-            api_id = int(os.environ["TG_API_ID"])
-            api_hash = os.environ["TG_API_HASH"]
+            from telegram_lead_discovery.security.secrets import require_env
+
+            api_id = int(require_env("TG_API_ID"))
+            api_hash = require_env("TG_API_HASH")
             path = session_path()
             path.parent.mkdir(parents=True, exist_ok=True)
             self._client = TelegramClient(str(path.with_suffix("")), api_id, api_hash)

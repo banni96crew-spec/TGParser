@@ -1,0 +1,4 @@
+# Codex project config for КОМБИНАТ commercial website pipeline
+
+[agents]
+max_depth = 1

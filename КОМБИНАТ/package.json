@@ -1,0 +1,38 @@
+{
+  "name": "kombinat-aegisops",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "validate:artifacts": "node scripts/validate-artifacts.mjs",
+    "qa:summarize": "node scripts/summarize-qa.mjs",
+    "lighthouse": "node scripts/run-lighthouse.mjs",
+    "check": "npm run validate:artifacts && npm run lint && npm run typecheck && npm run build",
+    "test": "echo \"No unit tests yet\" && exit 0",
+    "test:e2e": "echo \"No e2e runner pinned yet\" && exit 0",
+    "qa:visual": "node scripts/capture-browser-qa.mjs",
+    "qa:a11y": "node scripts/check-console-network.mjs"
+  },
+  "dependencies": {
+    "framer-motion": "12.42.2",
+    "next": "15.5.2",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "3.3.1",
+    "@tailwindcss/postcss": "4.1.12",
+    "@types/node": "22.17.2",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.7",
+    "eslint": "9.33.0",
+    "eslint-config-next": "15.5.2",
+    "postcss": "8.5.6",
+    "tailwindcss": "4.1.12",
+    "typescript": "5.9.2"
+  }
+}

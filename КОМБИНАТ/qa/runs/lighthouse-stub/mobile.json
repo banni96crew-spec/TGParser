@@ -1,0 +1,14 @@
+{
+  "policy": "Run against next start (production), median of 3",
+  "budgets": {
+    "performance": 90,
+    "accessibility": 95,
+    "bestPractices": 95,
+    "seo": 95,
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "tbtMs": 200
+  },
+  "status": "stub-recorded",
+  "note": "Install lighthouse CLI in a later dependency approval if CI should enforce numerically."
+}

@@ -1,0 +1,34 @@
+interface:
+  display_name: Visual QA
+  short_description: >-
+    Reproducible visual, responsive, and interaction QA with classified findings
+    and evidence for G5 gate — read-only for product code.
+  icon: search
+
+policy:
+  allow_implicit_invocation: true
+
+default_prompt: |
+  Follow `.agents/skills/visual-qa/SKILL.md`.
+
+  Gate: post-Builder; production-like build available.
+  Inputs: Builder task/result, baselines, frozen G1–G4 artifacts.
+
+  Execute the skill algorithm in order. Read-only for `src/` and `public/`.
+  Log findings per `references/finding-schema.md`; techniques in
+  `references/review-techniques.md`. Fill `docs/templates/critic-report.md`.
+
+  Do not duplicate P0–P3 definitions — cite `docs/standards/quality-gates.md`.
+  Viewport matrix: `docs/standards/browser-matrix.md`.
+
+outputs:
+  - qa/runs/
+  - docs/templates/critic-report.md
+
+references:
+  quality_gates: docs/standards/quality-gates.md
+  browser_matrix: docs/standards/browser-matrix.md
+  accessibility: docs/standards/accessibility-standard.md
+  performance: docs/standards/performance-budgets.md
+  finding_schema: references/finding-schema.md
+  review_techniques: references/review-techniques.md

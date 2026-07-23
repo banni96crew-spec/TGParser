@@ -1,0 +1,14 @@
+# Reference manifest
+
+```yaml
+version: 1
+project: AegisOps
+references:
+  - id: R-01
+    type: principle-seed
+    notes: editorial-tech from brief
+  - id: R-02
+    type: brand-cue
+    notes: graphite / off-white / signal accent
+baselines: []
+```

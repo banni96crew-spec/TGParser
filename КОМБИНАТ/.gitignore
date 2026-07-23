@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build
+.next
+out
+build
+dist
+
+# Debug / env
+npm-debug.log*
+.env*.local
+
+# QA artifacts (keep structure, ignore heavy runs optionally)
+qa/runs/**/screenshots
+qa/runs/**/lighthouse
+qa/runs/**/traces
+
+# OS
+.DS_Store
+Thumbs.db

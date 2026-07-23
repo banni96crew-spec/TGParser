@@ -45,9 +45,12 @@ async def run_command(
     port: int = 8765,
     backup_path: Path | None = None,
 ) -> int | str:
+    from telegram_lead_discovery.security.secrets import hydrate_environ_from_secret_files
+
     configure_logging()
     assert_loopback_bind(bind)
     ensure_directories()
+    hydrate_environ_from_secret_files()
 
     if command == "migrate":
         await run_migrations()

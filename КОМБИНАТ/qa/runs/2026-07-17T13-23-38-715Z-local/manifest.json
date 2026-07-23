@@ -1,0 +1,13 @@
+{
+    "commit":  "local",
+    "environment":  "pilot",
+    "browser":  "next-start",
+    "note":  "Production smoke via next start on 127.0.0.1:3010",
+    "viewports":  [
+                      "n/a-http-smoke"
+                  ],
+    "timestamp":  "2026-07-17T13:36:56.4402395Z",
+    "routes":  [
+                   "/"
+               ]
+}

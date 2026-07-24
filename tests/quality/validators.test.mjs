@@ -64,8 +64,8 @@ test("Python PRD validator is deterministic and green", async () => {
   assert.equal(first.stdout, second.stdout);
   const result = JSON.parse(first.stdout);
   assert.equal(result.status, "pass");
-  assert.equal(result.counts.requirements, 195);
-  assert.equal(result.counts.acceptance_tests, 195);
+  assert.equal(result.counts.requirements, 221);
+  assert.equal(result.counts.acceptance_tests, 221);
 });
 
 test("malformed and truncated journal validation is deterministic", async () => {

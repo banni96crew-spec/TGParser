@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h1>Разведка источников</h1>
+  <p class="page-meta zero-stars">{{ zero_stars_label }}</p>
+</header>
+
+<section class="panel discovery-panel">
+  <h2 class="section-title">Активный профиль</h2>
+  <ul class="meta-list">
+    <li>Имя: <span class="mono">{{ active_profile.name }}</span></li>
+    <li>Версия: <span class="mono">{{ active_version.version }}</span></li>
+    <li>Post queries: <span class="mono">{{ normalized.post_queries|length }}</span> / {{ limits.max_post_queries }}</li>
+    <li>Directory queries: <span class="mono">{{ normalized.directory_queries|length }}</span> / {{ limits.max_directory_queries }}</li>
+    <li>Source scope: <span class="mono">{{ normalized.source_scope }}</span></li>
+    <li>Окно: {{ limits.window_days }} дней</li>
+    <li>Лимиты: post ≤ {{ limits.max_post_queries }}, directory ≤ {{ limits.max_directory_queries }}</li>
+    <li>Telegram: <span class="mono">{{ telegram_connection_state }}</span></li>
+    <li>Бесплатная квота: {{ quota.label }}</li>
+    <li>Health discovery: <span class="mono">{{ discovery_health }}</span></li>
+  </ul>
+  <p class="zero-stars">{{ zero_stars_label }}</p>
+  <p class="discovery-actions">
+    <a href="/discovery/profiles/{{ active_profile.id }}">Открыть профиль</a>
+    · <a href="/discovery/profiles/new">Новый профиль</a>
+  </p>
+  <form method="post" action="/discovery/runs" class="discovery-run-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="profile_id" value="{{ active_profile.id }}" />
+    <button type="submit"{% if not credentials_present %} disabled{% endif %}>Запустить разведку</button>
+  </form>
+</section>
+
+<section class="panel discovery-panel">
+  <h2 class="section-title">Последние запуски</h2>
+  {% if runs %}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>State</th>
+          <th>Phase</th>
+          <th>Создан</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for run in runs %}
+        <tr>
+          <td class="mono"><a href="/discovery/runs/{{ run.id }}">{{ run.id }}</a></td>
+          <td>{{ run.state }}</td>
+          <td>{{ run.phase or "—" }}</td>
+          <td class="mono">{{ run.created_at }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">Запусков пока нет.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -70,3 +70,10 @@ _metrics = MetricsRegistry()
 
 def get_metrics() -> MetricsRegistry:
     return _metrics
+
+
+def reset_metrics() -> MetricsRegistry:
+    """Replace the process-wide registry (tests / startup isolation)."""
+    global _metrics
+    _metrics = MetricsRegistry()
+    return _metrics

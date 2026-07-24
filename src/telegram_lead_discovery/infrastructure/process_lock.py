@@ -51,20 +51,27 @@ def is_runtime_running(path: Path | None = None) -> bool:
 
 
 def _pid_alive(pid: int) -> bool:
+    """Return True when ``pid`` refers to a live process.
+
+    On Windows, do **not** use ``os.kill(pid, 0)`` for existence checks: calling
+    it on the current process poisons subsequent ``threading.Thread.start()``
+    (``_started.wait`` never completes), which breaks Starlette ``TestClient``
+    anyio portals and hangs the pytest suite after ``test_at_inf_010_process_lock``.
+    """
     if pid <= 0:
         return False
+    if os.name == "nt":
+        import ctypes
+
+        # PROCESS_QUERY_LIMITED_INFORMATION
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+        handle = kernel32.OpenProcess(0x1000, False, pid)
+        if not handle:
+            return False
+        kernel32.CloseHandle(handle)
+        return True
     try:
         os.kill(pid, 0)
     except OSError:
         return False
-    except AttributeError:
-        import ctypes
-
-        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
-        handle = kernel32.OpenProcess(0x1000, False, pid)
-        if handle:
-            kernel32.CloseHandle(handle)
-            return True
-        return False
-    else:
-        return True
+    return True

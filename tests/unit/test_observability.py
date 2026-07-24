@@ -52,23 +52,22 @@ def test_at_obs_004_structured_log_fields() -> None:
 def test_at_obs_015_live_vs_ready() -> None:
     registry = reset_health_registry()
     app = create_app()
-    client = TestClient(app)
+    with TestClient(app) as client:
+        live = client.get("/health/live")
+        assert live.status_code == 200
+        assert live.json()["status"] in {"live", "alive"}
 
-    live = client.get("/health/live")
-    assert live.status_code == 200
-    assert live.json()["status"] in {"live", "alive"}
+        ready_fail = client.get("/health/ready")
+        assert ready_fail.status_code == 503
+        assert ready_fail.json()["status"] == "not_ready"
 
-    ready_fail = client.get("/health/ready")
-    assert ready_fail.status_code == 503
-    assert ready_fail.json()["status"] == "not_ready"
+        registry.migration_ok = True
+        registry.integrity_ok = True
+        registry.database_ok = True
+        registry.mark_ready()
+        registry.set_component("runtime", HealthState.HEALTHY)
+        assert registry.readiness is ReadinessState.READY
 
-    registry.migration_ok = True
-    registry.integrity_ok = True
-    registry.database_ok = True
-    registry.mark_ready()
-    registry.set_component("runtime", HealthState.HEALTHY)
-    assert registry.readiness is ReadinessState.READY
-
-    ready_ok = client.get("/health/ready")
-    assert ready_ok.status_code == 200
-    assert ready_ok.json()["status"] == "ready"
+        ready_ok = client.get("/health/ready")
+        assert ready_ok.status_code == 200
+        assert ready_ok.json()["status"] == "ready"

@@ -38,7 +38,7 @@
 | ID | Требование |
 |---|---|
 | INF-001 | Проект MUST фиксировать Python `>=3.12,<3.13` и все runtime dependencies в `uv.lock`. |
-| INF-002 | Приложение MUST запускаться одним process entrypoint и создавать отдельные asyncio services для web, collector, jobs, outbox, reconciliation и maintenance. |
+| INF-002 | Приложение MUST запускаться одним process entrypoint и создавать отдельные asyncio services для web, collector, jobs, outbox, reconciliation, keyword discovery worker и maintenance. |
 | INF-003 | Startup order MUST быть: directories → logging → security preflight → SQLite pragmas → migrations → integrity check → settings → jobs recovery → web → TelegramGateway → workers. |
 | INF-004 | Ошибка migrations или integrity check MUST блокировать collector и workers и создавать critical system state. |
 | INF-005 | Uvicorn MUST слушать только `127.0.0.1:8765`, иметь один worker process и не включать reload в production profile. |
@@ -57,6 +57,7 @@
 | INF-018 | Migrations MUST выполняться только Alembic; прямое изменение схемы runtime-кодом запрещено. |
 | INF-019 | Release validation MUST включать clean install, upgrade migration, restart recovery, backup restore и SQLite integrity tests. |
 | INF-020 | Нормальный startup при исправных локальных зависимостях MUST достигать readiness не более чем за 5 минут. |
+| INF-021 | Runtime MUST запускать keyword discovery worker как отдельную asyncio task на том же shared `TelegramGateway`, что collector/dashboard; FastAPI `BackgroundTasks` для длинного поиска запрещены. Shutdown MUST остановить claim loop, дождаться текущей короткой операции, disconnect gateway и остановить Uvicorn. При отсутствии Telegram credentials web UI остаётся доступным, discovery health = `blocked`, запуск disabled с причиной `telegram_credentials_missing` (D-057). |
 
 ## 5. Acceptance criteria
 
@@ -82,6 +83,7 @@
 | AT-INF-018 | Upgrade изменяет схему только Alembic migration; runtime не выполняет прямой schema DDL. |
 | AT-INF-019 | Clean install, upgrade migration, restart recovery, backup restore и integrity test suites проходят без ошибок. |
 | AT-INF-020 | При исправных локальных зависимостях приложение достигает readiness не более чем за 5 минут. |
+| AT-INF-021 | Runtime стартует discovery worker task; без credentials UI доступен и discovery `blocked`; shutdown останавливает worker до disconnect gateway. |
 
 ## 6. Входные и выходные контракты
 
@@ -152,7 +154,7 @@
 ## 14. Acceptance test catalogue
 
 - `INF-INSTALL`: AT-INF-001, AT-INF-006.
-- `INF-STARTUP`: AT-INF-002, AT-INF-003, AT-INF-004, AT-INF-005, AT-INF-007, AT-INF-008, AT-INF-009, AT-INF-010, AT-INF-020.
+- `INF-STARTUP`: AT-INF-002, AT-INF-003, AT-INF-004, AT-INF-005, AT-INF-007, AT-INF-008, AT-INF-009, AT-INF-010, AT-INF-020, AT-INF-021.
 - `INF-BACKUP`: AT-INF-011, AT-INF-012, AT-INF-013, AT-INF-014.
 - `INF-RESTORE`: AT-INF-015, AT-INF-016.
 - `INF-MAINTENANCE`: AT-INF-017.

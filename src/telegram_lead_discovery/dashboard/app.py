@@ -45,9 +45,11 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 
 def active_nav(path: str) -> str:
-    """Map request path to sidebar nav key (inbox|sources|health|settings)."""
+    """Map request path to sidebar nav key (inbox|sources|discovery|health|settings)."""
     if path.startswith("/sources"):
         return "sources"
+    if path.startswith("/discovery"):
+        return "discovery"
     if path == "/health":
         return "health"
     if path.startswith("/settings"):
@@ -405,5 +407,8 @@ def create_app(*, gateway=None) -> FastAPI:
             return HTMLResponse(str(exc), status_code=400)
         return await settings_page(request)
 
+    from telegram_lead_discovery.dashboard.discovery_routes import create_discovery_router
+
+    app.include_router(create_discovery_router(templates))
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app

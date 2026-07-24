@@ -7,10 +7,12 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -199,19 +201,164 @@ class SourceApprovalEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class KeywordDiscoveryProfile(Base):
+    __tablename__ = "keyword_discovery_profiles"
+    __table_args__ = (UniqueConstraint("name", name="uq_keyword_discovery_profile_name"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class KeywordDiscoveryProfileVersion(Base):
+    __tablename__ = "keyword_discovery_profile_versions"
+    __table_args__ = (
+        UniqueConstraint("profile_id", "version", name="uq_keyword_profile_id_version"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("keyword_discovery_profiles.id"), nullable=False
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    post_queries_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    directory_queries_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    required_service_profiles_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]"
+    )
+    additional_exclusions_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    source_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="all")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class DiscoveryRun(Base):
     __tablename__ = "discovery_runs"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    root_source_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    run_type: Mapped[str] = mapped_column(String(32), nullable=False, default="graph")
+    root_source_ids_json: Mapped[str | None] = mapped_column(Text, default="[]")
+    profile_version_id: Mapped[int | None] = mapped_column(
+        ForeignKey("keyword_discovery_profile_versions.id")
+    )
+    search_mode: Mapped[str | None] = mapped_column(String(32))
+    rule_set_version_id: Mapped[int | None] = mapped_column(Integer)
+    rule_set_checksum: Mapped[str | None] = mapped_column(String(64))
     max_depth: Mapped[int] = mapped_column(Integer, nullable=False, default=2)
     expansion_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=25)
     candidate_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    phase: Mapped[str | None] = mapped_column(String(32))
+    quota_snapshot_json: Mapped[str | None] = mapped_column(Text)
+    cursor_json: Mapped[str | None] = mapped_column(Text)
+    last_error_code: Mapped[str | None] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     counters_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DiscoveryRunQuery(Base):
+    __tablename__ = "discovery_run_queries"
+    __table_args__ = (
+        UniqueConstraint("run_id", "ordinal", name="uq_discovery_run_query_ordinal"),
+        Index("ix_discovery_run_queries_run_state", "run_id", "state"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("discovery_runs.id"), nullable=False)
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    query_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    query_text: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    source_telegram_id: Mapped[int | None] = mapped_column(Integer)
+    scope: Mapped[str | None] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    cursor_json: Mapped[str | None] = mapped_column(Text)
+    request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    result_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_code: Mapped[str | None] = mapped_column(String(64))
+    available_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SourceDiscoveryEvidence(Base):
+    __tablename__ = "source_discovery_evidence"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "source_telegram_id",
+            "telegram_message_id",
+            name="uq_evidence_run_source_message",
+        ),
+        Index("ix_evidence_run_source_telegram_id", "run_id", "source_telegram_id"),
+        Index("ix_source_discovery_evidence_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("discovery_runs.id"), nullable=False)
+    source_telegram_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    source_username: Mapped[str | None] = mapped_column(String(64))
+    source_title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    telegram_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    permalink: Mapped[str | None] = mapped_column(String(512))
+    excerpt: Mapped[str] = mapped_column(String(240), nullable=False, default="")
+    normalized_hash: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    matched_query_ordinals_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    discovery_channels_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    detection_category: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    is_qualified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    hard_exclusion: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    hard_exclusion_rule_id: Mapped[str | None] = mapped_column(String(64))
+    service_profiles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    rule_set_checksum: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SourceOpportunitySnapshot(Base):
+    __tablename__ = "source_opportunity_snapshots"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "source_telegram_id",
+            name="uq_opportunity_run_source_telegram_id",
+        ),
+        CheckConstraint("score >= 0 AND score <= 100", name="ck_opportunity_score_0_100"),
+        Index("ix_opportunity_run_score_desc", "run_id", text("score DESC")),
+        Index("ix_source_opportunity_snapshots_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("discovery_runs.id"), nullable=False)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("telegram_sources.id"))
+    source_telegram_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    username: Mapped[str | None] = mapped_column(String(64))
+    title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
+    source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    public_url: Mapped[str | None] = mapped_column(String(512))
+    linked_parent_telegram_id: Mapped[int | None] = mapped_column(Integer)
+    qualified_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    excluded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active_week_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    ecommerce_qualified_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_qualified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sample_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sample_timestamps: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    band: Mapped[str] = mapped_column(String(16), nullable=False, default="weak")
+    score_components_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    discovery_channels_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    review_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unreviewed")
+    promoted_source_id: Mapped[int | None] = mapped_column(ForeignKey("telegram_sources.id"))
+    dismiss_reason: Mapped[str | None] = mapped_column(String(512))
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class SourceDiscoveryEvent(Base):

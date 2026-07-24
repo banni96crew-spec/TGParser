@@ -122,3 +122,49 @@ async def test_approve_enqueues_backfill_and_persists(db_env) -> None:
     refreshed = await run_write(_source)
     assert refreshed is not None
     assert refreshed.lifecycle_state == "monitoring"
+
+
+@pytest.mark.asyncio
+async def test_approve_commits_before_telegram_validate(db_env) -> None:
+    """SQLite write txn must not span gateway.validate_source (database is locked)."""
+    snap = SourceSnapshot(
+        schema_version=1,
+        telegram_id=2002,
+        username="lock_test",
+        title="Lock Test",
+        source_type="channel",
+        public_url="https://t.me/lock_test",
+        accessible=True,
+    )
+    gateway = FakeTelegramGateway(sources={"lock_test": snap})
+    order: list[str] = []
+
+    async def _add(session):
+        source, _run = await add_manual_candidate(
+            session, username_or_url="@lock_test", gateway=None
+        )
+        return source.id
+
+    source_id = await run_write(_add)
+
+    class OrderingGateway(FakeTelegramGateway):
+        async def validate_source(self, ref):  # noqa: ANN001
+            order.append("validate")
+            return await super().validate_source(ref)
+
+    gw = OrderingGateway(sources={"lock_test": snap})
+
+    async def _approve(session):
+        real_commit = session.commit
+
+        async def tracking_commit():
+            order.append("commit")
+            return await real_commit()
+
+        session.commit = tracking_commit  # type: ignore[method-assign]
+        return await approve_source(session, source_id=source_id, gateway=gw)
+
+    source = await run_write(_approve)
+    assert source.lifecycle_state == "monitoring"
+    assert "validate" in order
+    assert order.index("commit") < order.index("validate")

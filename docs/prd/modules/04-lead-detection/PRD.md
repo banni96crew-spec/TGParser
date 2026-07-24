@@ -147,25 +147,32 @@ Engine MUST публиковать boolean signals: `budget_present`, `deadline_
 
 Все matched signal rule IDs сохраняются, но каждое boolean signal устанавливается один раз. Повторение фразы не увеличивает score.
 
+### DET-015 — Reuse для keyword scouting
+
+Detection engine MUST предоставлять pure evaluation entrypoint (тот же алгоритм DET-004..DET-014), принимающий `analysis_text`, `rule_set_version_id` и checksum без обязательной `message_revision_id` pipeline binding. SRC keyword scouting MAY вызывать этот entrypoint для классификации evidence. Вызов MUST NOT создавать Lead pipeline side effects: не пишет `TelegramMessage`/`ProcessingResult` lead-path и не эмитит `LeadDetected` outbox для scouting (D-052). Результат для scouting сохраняется владельцем SRC в `SourceDiscoveryEvidence`.
+
 ## 7. Data ownership и contracts
 
-Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult.
+Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult; Source Discovery потребляет pure detect для scouting text.
 
 Команда:
 
 ```text
 DetectLead(message_revision_id, analysis_text, rule_set_version_id)
   -> DetectionResult
+
+DetectAnalysisText(analysis_text, rule_set_version_id)
+  -> DetectionEvaluation (category, hard_exclusion, matched_rules, service_profiles, explanation)
 ```
 
-Published events:
+Published events (только pipeline path с revision):
 
 - `LeadDetected`: result ID, revision ID, category, services, signals, version ID;
 - `MessageExcluded`: result ID, revision ID, negative category, version ID;
 - `DetectionRuleTimedOut`: result ID, rule ID, version ID, duration;
 - `DetectionCompleted`: result ID, outcome, duration.
 
-Все mutations processing result/outbox выполняются одной транзакцией владельца pipeline.
+Все mutations processing result/outbox выполняются одной транзакцией владельца pipeline. Scouting path не публикует эти events.
 
 ## 8. Errors, retry и recovery
 
@@ -198,6 +205,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 11. Dependencies
 
+- `01-source-discovery`: consumer pure detect для keyword scouting evidence.
 - `03-message-processing`: eligible revision и version binding.
 - `05-lead-scoring`: потребитель positive result/signals.
 - `06-lead-storage`: versioned rules/results.
@@ -207,7 +215,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 12. MVP и исключённые функции
 
-MVP включает DET-001—DET-014 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
+MVP включает DET-001—DET-015 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -227,6 +235,7 @@ MVP включает DET-001—DET-014 и приложение DET-A. Исклю
 | `AT-DET-012` | DET-012 | Повторить один fixture | Explanation byte-for-byte идентично |
 | `AT-DET-013` | DET-013 | Fixture содержит бюджет, срок, контакт | Три boolean signals true |
 | `AT-DET-014` | DET-014 | Бюджет указан дважды | Один boolean signal и два matched IDs без усиления |
+| `AT-DET-015` | DET-015 | Вызвать DetectAnalysisText из scouting fixture | Category совпадает с DetectLead на том же тексте; Lead/outbox не созданы |
 
 Golden classification fixtures:
 

@@ -49,6 +49,8 @@
 | SEC-013 | Application errors MUST возвращать безопасный публичный код и correlation ID без stack trace в UI. |
 | SEC-014 | Diagnostic export MUST проходить redaction scan; найденный secret pattern блокирует создание файла. |
 | SEC-015 | Restore MUST выполняться при остановленном приложении и MUST не изменять содержимое `secrets`. |
+| SEC-016 | Scouting evidence MUST соблюдать D-056: excerpt ≤240 code points; authors/media/full text запрещены в persistence, logs, metrics и exports; redactor MUST удалять excerpts из structured logs. |
+| SEC-017 | Runtime MUST enforce Zero Stars (D-050): запрещены UI/settings controls для Stars и любая передача `allow_paid_stars`; security review/scan MUST fail при `allow_paid_stars != None`. |
 
 ## 5. Acceptance criteria
 
@@ -69,6 +71,8 @@
 | AT-SEC-013 | Ошибка приложения показывает correlation ID, но не stack trace и не локальный абсолютный путь. |
 | AT-SEC-014 | Diagnostic export с тестовым secret pattern блокируется до создания итогового файла. |
 | AT-SEC-015 | Restore заменяет SQLite data, но оставляет исходный каталог `secrets` и session-файл byte-identical. |
+| AT-SEC-016 | Evidence fixture с author/full text отклоняется или redacted; logs не содержат excerpt/authors. |
+| AT-SEC-017 | Static/runtime scan находит `allow_paid_stars is None` и отсутствие Stars UI controls. |
 
 ## 6. Входные и выходные контракты
 
@@ -105,7 +109,7 @@ Secret presence: `missing ↔ configured`; значения никогда не 
 
 ## 10. Security requirements
 
-Требования SEC-001—SEC-015 обязательны для всех runtime-модулей. Любой новый adapter, export или log sink обязан использовать централизованные secret provider и redactor; собственное чтение secret files модулем запрещено.
+Требования SEC-001—SEC-017 обязательны для всех runtime-модулей. Любой новый adapter, export или log sink обязан использовать централизованные secret provider и redactor; собственное чтение secret files модулем запрещено.
 
 ## 11. Observability
 
@@ -135,8 +139,8 @@ Secret presence: `missing ↔ configured`; значения никогда не 
 ## 14. Acceptance test catalogue
 
 - `SEC-BOUNDARY`: AT-SEC-001, AT-SEC-010, AT-SEC-011, AT-SEC-012.
-- `SEC-SECRETS`: AT-SEC-002, AT-SEC-003, AT-SEC-004, AT-SEC-005, AT-SEC-006, AT-SEC-007, AT-SEC-008.
-- `SEC-OUTPUT`: AT-SEC-009, AT-SEC-013, AT-SEC-014.
+- `SEC-SECRETS`: AT-SEC-002, AT-SEC-003, AT-SEC-004, AT-SEC-005, AT-SEC-006, AT-SEC-007, AT-SEC-008, AT-SEC-017.
+- `SEC-OUTPUT`: AT-SEC-009, AT-SEC-013, AT-SEC-014, AT-SEC-016.
 - `SEC-RESTORE`: AT-SEC-015.
 
 ## 15. Decision log references

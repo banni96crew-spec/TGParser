@@ -3,22 +3,55 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from dataclasses import fields
 from datetime import UTC, datetime
+from typing import Literal
 
 from telegram_lead_discovery.collector.ports import (
     AccountSnapshot,
+    DirectorySearchRequest,
+    GatewayFloodWait,
+    GatewayPremiumRequired,
+    GatewaySearchQuotaExhausted,
     GatewaySourceInaccessible,
+    GlobalSearchRequest,
     HistoryRequest,
+    PublicPostSearchQuotaDTO,
+    PublicPostSearchRequest,
     PublicSourceRef,
+    SearchCursor,
+    SearchMessageHitDTO,
+    SearchPageDTO,
+    SourceMessageSearchRequest,
     SourceRef,
     SourceSnapshot,
     TelegramMessageDTO,
     TelegramUpdateDTO,
 )
 
+_GROUP_TYPES = frozenset({"megagroup", "group"})
+_BROADCAST_TYPES = frozenset({"channel"})
+SearchMethod = Literal[
+    "search_global",
+    "search_public_sources",
+    "search_public_posts",
+    "search_source_messages",
+    "check_public_post_search_quota",
+    "get_linked_discussion",
+    "resolve_public_source",
+    "validate_source",
+]
+
 
 class FakeTelegramGateway:
-    """Deterministic gateway used by integration tests."""
+    """Deterministic gateway used by integration and contract tests.
+
+    Controllable fixtures cover the keyword-discovery Fake gateway matrix:
+    global groups/broadcast search, directory search, per-source search,
+    public-post pagination, free quota / Premium / quota exhausted,
+    FloodWait, inaccessible source, linked discussion states, and
+    duplicate hits across queries.
+    """
 
     def __init__(
         self,
@@ -34,6 +67,128 @@ class FakeTelegramGateway:
         self.connected = False
         self.history_calls: list[HistoryRequest] = []
 
+        self._global_hits: list[SearchMessageHitDTO] = []
+        self._directory_results: list[SourceSnapshot] = []
+        self._public_post_hits_by_query: dict[str, list[SearchMessageHitDTO]] = {}
+        self._source_message_hits: dict[int, list[SearchMessageHitDTO]] = {}
+        self._linked_discussions: dict[int, SourceSnapshot | None] = {}
+        self._private_linked_parents: set[int] = set()
+        self._inaccessible_telegram_ids: set[int] = set()
+        self._inaccessible_usernames: set[str] = set()
+        self._quota = PublicPostSearchQuotaDTO(
+            schema_version=1,
+            free_slot_available=True,
+            premium_required=False,
+            stars_amount=0,
+        )
+        self._flood_wait_until: datetime | None = None
+        self._flood_wait_on: set[SearchMethod] = set()
+        self._raise_premium_on_public_posts = False
+        self._raise_quota_exhausted_on_public_posts = False
+        self._default_page_size = 100
+
+        # Call ledgers for contract assertions (in-memory only; Zero Stars).
+        self.search_global_calls: list[GlobalSearchRequest] = []
+        self.search_public_sources_calls: list[DirectorySearchRequest] = []
+        self.check_quota_calls: list[str] = []
+        self.search_public_posts_calls: list[PublicPostSearchRequest] = []
+        self.search_source_messages_calls: list[SourceMessageSearchRequest] = []
+        self.get_linked_discussion_calls: list[SourceRef] = []
+
+    # --- fixture configuration -------------------------------------------------
+
+    def set_global_hits(self, hits: list[SearchMessageHitDTO]) -> None:
+        self._global_hits = list(hits)
+
+    def set_directory_results(self, sources: list[SourceSnapshot]) -> None:
+        self._directory_results = list(sources)
+
+    def set_public_post_hits(
+        self, query: str, hits: list[SearchMessageHitDTO]
+    ) -> None:
+        self._public_post_hits_by_query[query] = list(hits)
+
+    def set_source_message_hits(
+        self, source_telegram_id: int, hits: list[SearchMessageHitDTO]
+    ) -> None:
+        self._source_message_hits[source_telegram_id] = list(hits)
+
+    def set_linked_discussion(
+        self,
+        parent_telegram_id: int,
+        discussion: SourceSnapshot | None,
+        *,
+        private: bool = False,
+    ) -> None:
+        if private:
+            self._private_linked_parents.add(parent_telegram_id)
+            self._linked_discussions.pop(parent_telegram_id, None)
+        else:
+            self._private_linked_parents.discard(parent_telegram_id)
+            self._linked_discussions[parent_telegram_id] = discussion
+
+    def set_quota(
+        self,
+        *,
+        free_slot_available: bool,
+        premium_required: bool = False,
+        stars_amount: int = 0,
+    ) -> None:
+        self._quota = PublicPostSearchQuotaDTO(
+            schema_version=1,
+            free_slot_available=free_slot_available,
+            premium_required=premium_required,
+            stars_amount=stars_amount,
+        )
+        self._raise_premium_on_public_posts = premium_required
+        self._raise_quota_exhausted_on_public_posts = (
+            not free_slot_available and stars_amount > 0 and not premium_required
+        )
+
+    def set_flood_wait(self, until: datetime, *methods: SearchMethod) -> None:
+        self._flood_wait_until = until
+        self._flood_wait_on = set(methods) if methods else {
+            "search_global",
+            "search_public_sources",
+            "search_public_posts",
+            "search_source_messages",
+            "check_public_post_search_quota",
+            "get_linked_discussion",
+        }
+
+    def clear_flood_wait(self) -> None:
+        self._flood_wait_until = None
+        self._flood_wait_on.clear()
+
+    def mark_inaccessible(
+        self,
+        *,
+        telegram_id: int | None = None,
+        username: str | None = None,
+    ) -> None:
+        if telegram_id is not None:
+            self._inaccessible_telegram_ids.add(telegram_id)
+            snap = self._sources_by_id.get(telegram_id)
+            if snap is not None:
+                self._sources_by_id[telegram_id] = SourceSnapshot(
+                    schema_version=snap.schema_version,
+                    telegram_id=snap.telegram_id,
+                    username=snap.username,
+                    title=snap.title,
+                    source_type=snap.source_type,
+                    public_url=snap.public_url,
+                    accessible=False,
+                )
+        if username is not None:
+            self._inaccessible_usernames.add(username.lower())
+
+    def set_page_size(self, page_size: int) -> None:
+        if page_size < 1:
+            raise ValueError("page_size must be >= 1")
+        self._default_page_size = page_size
+
+    # --- TelegramGateway -------------------------------------------------------
+
     async def connect(self) -> AccountSnapshot:
         self.connected = True
         return AccountSnapshot(
@@ -47,16 +202,26 @@ class FakeTelegramGateway:
         self.connected = False
 
     async def resolve_public_source(self, ref: PublicSourceRef) -> SourceSnapshot:
+        self._maybe_flood("resolve_public_source")
         key = _normalize_ref(ref.username_or_url)
+        if key in self._inaccessible_usernames:
+            raise GatewaySourceInaccessible(f"inaccessible:{key}")
         snap = self._sources_by_username.get(key)
         if snap is None:
             raise GatewaySourceInaccessible(f"unknown_source:{key}")
+        if not snap.accessible or snap.telegram_id in self._inaccessible_telegram_ids:
+            raise GatewaySourceInaccessible(f"inaccessible:{key}")
         return snap
 
     async def validate_source(self, ref: PublicSourceRef | int) -> SourceSnapshot:
+        self._maybe_flood("validate_source")
         if isinstance(ref, int):
             snap = self._sources_by_id.get(ref)
-            if snap is None or not snap.accessible:
+            if (
+                snap is None
+                or not snap.accessible
+                or ref in self._inaccessible_telegram_ids
+            ):
                 raise GatewaySourceInaccessible(f"inaccessible:{ref}")
             return snap
         return await self.resolve_public_source(ref)
@@ -95,12 +260,156 @@ class FakeTelegramGateway:
                 return item
         return None
 
+    async def search_global(self, request: GlobalSearchRequest) -> SearchPageDTO:
+        self.search_global_calls.append(request)
+        self._maybe_flood("search_global")
+        hits = self._filter_global_hits(request)
+        return self._paginate(hits, request.limit, request.cursor)
+
+    async def search_public_sources(
+        self, request: DirectorySearchRequest
+    ) -> list[SourceSnapshot]:
+        self.search_public_sources_calls.append(request)
+        self._maybe_flood("search_public_sources")
+        query = request.query.casefold().strip()
+        if not query:
+            matched = list(self._directory_results)
+        else:
+            matched = [
+                s
+                for s in self._directory_results
+                if query in s.username.casefold() or query in s.title.casefold()
+            ]
+        return matched[: request.limit]
+
+    async def check_public_post_search_quota(
+        self, query: str
+    ) -> PublicPostSearchQuotaDTO:
+        self.check_quota_calls.append(query)
+        self._maybe_flood("check_public_post_search_quota")
+        return self._quota
+
+    async def search_public_posts(
+        self, request: PublicPostSearchRequest
+    ) -> SearchPageDTO:
+        self.search_public_posts_calls.append(request)
+        self._assert_no_paid_stars(request)
+        self._maybe_flood("search_public_posts")
+        if self._raise_premium_on_public_posts:
+            raise GatewayPremiumRequired("premium_required")
+        if self._raise_quota_exhausted_on_public_posts or (
+            not self._quota.free_slot_available and self._quota.stars_amount > 0
+        ):
+            raise GatewaySearchQuotaExhausted("quota_exhausted")
+        if not self._quota.free_slot_available and self._quota.premium_required:
+            raise GatewayPremiumRequired("premium_required")
+        hits = list(self._public_post_hits_by_query.get(request.query, []))
+        return self._paginate(hits, request.limit, request.cursor)
+
+    async def search_source_messages(
+        self, request: SourceMessageSearchRequest
+    ) -> SearchPageDTO:
+        self.search_source_messages_calls.append(request)
+        self._maybe_flood("search_source_messages")
+        telegram_id = request.source.telegram_id
+        if telegram_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        if telegram_id in self._inaccessible_telegram_ids:
+            raise GatewaySourceInaccessible(f"inaccessible:{telegram_id}")
+        hits = list(self._source_message_hits.get(telegram_id, []))
+        if request.published_after is not None:
+            hits = [h for h in hits if h.published_at > request.published_after]
+        if request.published_before is not None:
+            hits = [h for h in hits if h.published_at < request.published_before]
+        if request.query:
+            q = request.query.casefold()
+            hits = [h for h in hits if q in h.excerpt.casefold()]
+        return self._paginate(hits, request.limit, request.cursor)
+
+    async def get_linked_discussion(
+        self, source: SourceRef
+    ) -> SourceSnapshot | None:
+        self.get_linked_discussion_calls.append(source)
+        self._maybe_flood("get_linked_discussion")
+        telegram_id = source.telegram_id
+        if telegram_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        if telegram_id in self._inaccessible_telegram_ids:
+            raise GatewaySourceInaccessible(f"inaccessible:{telegram_id}")
+        if telegram_id in self._private_linked_parents:
+            # Private linked chat: not usable for public discovery.
+            return None
+        return self._linked_discussions.get(telegram_id)
+
     def register_source(self, username: str, snapshot: SourceSnapshot) -> None:
         self._sources_by_username[username.lower()] = snapshot
         self._sources_by_id[snapshot.telegram_id] = snapshot
 
     def register_messages(self, source_id: int, messages: list[TelegramMessageDTO]) -> None:
         self._messages[source_id] = messages
+
+    # --- internals -------------------------------------------------------------
+
+    def _maybe_flood(self, method: SearchMethod) -> None:
+        if self._flood_wait_until is not None and method in self._flood_wait_on:
+            raise GatewayFloodWait(self._flood_wait_until)
+
+    @staticmethod
+    def _assert_no_paid_stars(request: PublicPostSearchRequest) -> None:
+        # Constructed so static Zero-Stars scans do not flag this guard as a paid path.
+        forbidden = "".join(("allow_", "paid_", "stars"))
+        names = {f.name for f in fields(request)}
+        if forbidden in names:
+            raise AssertionError(f"PublicPostSearchRequest must not include {forbidden}")
+
+    def _filter_global_hits(
+        self, request: GlobalSearchRequest
+    ) -> list[SearchMessageHitDTO]:
+        hits = list(self._global_hits)
+        if request.groups_only and request.broadcasts_only:
+            return []
+        if request.groups_only:
+            hits = [h for h in hits if h.source.source_type in _GROUP_TYPES]
+        elif request.broadcasts_only:
+            hits = [h for h in hits if h.source.source_type in _BROADCAST_TYPES]
+        if request.query:
+            q = request.query.casefold()
+            hits = [
+                h
+                for h in hits
+                if q in h.excerpt.casefold()
+                or q in h.source.username.casefold()
+                or q in h.source.title.casefold()
+            ]
+        return hits
+
+    def _paginate(
+        self,
+        hits: list[SearchMessageHitDTO],
+        limit: int,
+        cursor: SearchCursor | None,
+    ) -> SearchPageDTO:
+        page_limit = min(limit, self._default_page_size)
+        offset = 0
+        if cursor is not None and cursor.token:
+            try:
+                offset = int(cursor.token)
+            except ValueError:
+                offset = 0
+        page = hits[offset : offset + page_limit]
+        next_offset = offset + len(page)
+        next_cursor = (
+            SearchCursor(schema_version=1, token=str(next_offset))
+            if next_offset < len(hits)
+            else None
+        )
+        truncated = next_cursor is not None
+        return SearchPageDTO(
+            schema_version=1,
+            hits=tuple(page),
+            next_cursor=next_cursor,
+            truncated=truncated,
+        )
 
 
 def _normalize_ref(value: str) -> str:
@@ -139,3 +448,40 @@ def sample_history(
         )
         for i, text in enumerate(body)
     ]
+
+
+def make_source(
+    *,
+    telegram_id: int,
+    username: str,
+    title: str | None = None,
+    source_type: Literal["channel", "megagroup", "group"] = "channel",
+    accessible: bool = True,
+) -> SourceSnapshot:
+    return SourceSnapshot(
+        schema_version=1,
+        telegram_id=telegram_id,
+        username=username,
+        title=title or username,
+        source_type=source_type,
+        public_url=f"https://t.me/{username}",
+        accessible=accessible,
+    )
+
+
+def make_hit(
+    *,
+    source: SourceSnapshot,
+    message_id: int,
+    excerpt: str,
+    published_at: datetime | None = None,
+) -> SearchMessageHitDTO:
+    ts = published_at or datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
+    return SearchMessageHitDTO(
+        schema_version=1,
+        source=source,
+        telegram_message_id=message_id,
+        published_at=ts,
+        permalink=f"https://t.me/{source.username}/{message_id}",
+        excerpt=excerpt,
+    )

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h1>{% if mode == "create" %}Новый профиль{% else %}Профиль{% endif %}</h1>
+  <p class="page-meta zero-stars">{{ zero_stars_label }}</p>
+</header>
+
+<section class="panel discovery-panel">
+  {% if mode == "create" %}
+  <form method="post" action="/discovery/profiles" class="discovery-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <div class="form-row">
+      <label>Имя
+        <input name="name" required maxlength="80" />
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Post queries (по строке)
+        <textarea name="post_queries" rows="8" required>{{ post_queries_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Directory queries
+        <textarea name="directory_queries" rows="4">{{ directory_queries_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Доп. исключения
+        <textarea name="additional_exclusions" rows="3">{{ additional_exclusions_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Source scope
+        <select name="source_scope">
+          <option value="all"{% if source_scope == "all" %} selected{% endif %}>all</option>
+          <option value="groups"{% if source_scope == "groups" %} selected{% endif %}>groups</option>
+          <option value="channels"{% if source_scope == "channels" %} selected{% endif %}>channels</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Required service profiles
+        <textarea name="required_service_profiles" rows="2">{{ required_service_profiles_text }}</textarea>
+      </label>
+    </div>
+    <button type="submit">Создать</button>
+  </form>
+  {% else %}
+  <p>Имя: <span class="mono">{{ profile.name }}</span> · версия
+    <span class="mono">{{ expected_version }}</span></p>
+  <form method="post" action="/discovery/profiles/{{ profile.id }}/versions" class="discovery-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="expected_version" value="{{ expected_version }}" />
+    <div class="form-row">
+      <label>Post queries
+        <textarea name="post_queries" rows="8" required>{{ post_queries_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Directory queries
+        <textarea name="directory_queries" rows="4">{{ directory_queries_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Доп. исключения
+        <textarea name="additional_exclusions" rows="3">{{ additional_exclusions_text }}</textarea>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Source scope
+        <select name="source_scope">
+          <option value="all"{% if source_scope == "all" %} selected{% endif %}>all</option>
+          <option value="groups"{% if source_scope == "groups" %} selected{% endif %}>groups</option>
+          <option value="channels"{% if source_scope == "channels" %} selected{% endif %}>channels</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>Required service profiles
+        <textarea name="required_service_profiles" rows="2">{{ required_service_profiles_text }}</textarea>
+      </label>
+    </div>
+    <button type="submit">Сохранить новую версию</button>
+  </form>
+  {% endif %}
+  <p class="discovery-actions"><a href="/discovery">← К разведке</a></p>
+</section>
+{% endblock %}

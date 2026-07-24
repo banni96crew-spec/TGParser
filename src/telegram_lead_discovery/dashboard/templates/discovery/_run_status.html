@@ -1,0 +1,40 @@
+<section class="panel discovery-panel"
+         id="run-status"
+         {% if run.is_active %}
+         hx-get="/discovery/runs/{{ run.id }}/status-fragment"
+         hx-trigger="every 5s"
+         hx-swap="outerHTML"
+         {% endif %}>
+  <h2 class="section-title">Статус</h2>
+  <ul class="meta-list">
+    <li>State: <span class="mono">{{ run.state }}</span></li>
+    <li>Phase: <span class="mono">{{ run.phase or "—" }}</span></li>
+    <li>Version: <span class="mono">{{ run.version }}</span></li>
+    <li>Запросы: <span class="mono">{{ run.queries_done }}</span> / {{ run.queries_total }}</li>
+    <li>Seed hits: <span class="mono">{{ run.seed_hits }}</span></li>
+    <li>Уникальных sources: <span class="mono">{{ run.counters.get("unique_sources", 0) }}</span></li>
+    <li>Verified sources: <span class="mono">{{ run.verified_sources }}</span></li>
+    <li>Qualified evidence: <span class="mono">{{ run.counters.get("evidence_count", 0) }}</span></li>
+    <li>Quota-skipped: <span class="mono">{{ run.counters.get("quota_skipped_queries", 0) }}</span></li>
+    <li>FloodWait until:
+      <span class="mono">{% if run.flood_wait_until %}{{ run.flood_wait_until }}{% else %}—{% endif %}</span>
+    </li>
+    <li>Ошибка: <span class="mono">{{ run.last_error_code or "—" }}</span></li>
+  </ul>
+
+  <div class="progress-block" aria-label="Прогресс запросов">
+    <div class="progress-bar" role="progressbar"
+         aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ run.progress_pct }}">
+      <div class="progress-bar__fill" style="width: {{ run.progress_pct }}%"></div>
+    </div>
+    <p class="faint mono">{{ run.progress_pct }}%</p>
+  </div>
+
+  {% if run.state in ["queued", "running", "retry_wait_flood", "cancelling"] %}
+  <form method="post" action="/discovery/runs/{{ run.id }}/cancel" class="discovery-cancel-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="expected_version" value="{{ run.version }}" />
+    <button type="submit" class="btn-secondary">Отменить</button>
+  </form>
+  {% endif %}
+</section>

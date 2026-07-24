@@ -49,7 +49,7 @@ Collector публикует технические message envelopes и не а
 
 ### COL-002 — Gateway interface
 
-Gateway MUST предоставлять async-операции, совпадающие с shared `TelegramGateway` (D-039):
+Gateway MUST предоставлять async-операции, совпадающие с shared `TelegramGateway` baseline (D-039):
 
 ```text
 connect() -> AccountSnapshot
@@ -62,7 +62,7 @@ iter_updates() -> AsyncIterator[TelegramUpdateDTO]
 get_message(source, message_id) -> TelegramMessageDTO | None
 ```
 
-Методы `iter_messages` и `register_live_handler` запрещены. Live envelopes публикуются из `iter_updates`.
+Методы `iter_messages` и `register_live_handler` запрещены. Live envelopes публикуются из `iter_updates`. Keyword search methods добавляются COL-021.
 
 Gateway MUST преобразовывать library exceptions в `GatewayFloodWait(until)`, `GatewayUnauthorized`, `GatewayFrozen`, `GatewaySourceInaccessible`, `GatewayTransientError` и `GatewayPermanentError`.
 
@@ -168,6 +168,25 @@ Job имеет type `initial_backfill`, `startup_reconciliation`, `periodic_reco
 
 При disconnect Gateway переподключается через `1`, `5`, `30`, `120`, затем каждые `300` секунд без ограничения числа попыток. После reconnect снова запускается `iter_updates` и startup reconciliation.
 
+### COL-021 — Keyword search ports
+
+Gateway MUST дополнительно реализовать search methods и DTO из shared `INTEGRATION_CONTRACTS` для keyword scouting:
+
+```text
+search_global(request) -> SearchPageDTO
+search_public_sources(request) -> list[SourceSnapshot]
+check_public_post_search_quota(query) -> PublicPostSearchQuotaDTO
+search_public_posts(request) -> SearchPageDTO
+search_source_messages(request) -> SearchPageDTO
+get_linked_discussion(source) -> SourceSnapshot | None
+```
+
+`PublicPostSearchRequest` MUST NOT содержать поле `allow_paid_stars`. Search hits, возвращаемые SRC, MUST NOT автоматически публиковаться как `TelegramEventEnvelope` и MUST NOT изменять `CollectorCheckpoint` (D-052). Gateway MUST также маппить `GatewayPremiumRequired`, `GatewaySearchQuotaExhausted`, `GatewayInvalidSearchQuery`, `GatewaySearchUnavailable`.
+
+### COL-022 — Zero Stars invariant
+
+Adapter MUST всегда передавать `allow_paid_stars=None` в Telethon `channels.SearchPostsRequest` (D-050). При необходимости Stars без бесплатного слота запрос MUST NOT выполняться. Contract/adapter tests MUST перехватывать raw request и подтверждать `allow_paid_stars is None`.
+
 ## 8. Data ownership
 
 Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope` и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
@@ -212,7 +231,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-020. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources и automatic join.
+MVP включает COL-001—COL-022. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -238,6 +257,8 @@ MVP включает COL-001—COL-020. Исключены multiple sessions, ac
 | `AT-COL-018` | COL-018 | Пять transient failures | Delay sequence `1/5/30/120/600` точна; job `dead` после пятого retry |
 | `AT-COL-019` | COL-019 | Process crash после envelope commit до ack | Restart даёт ноль duplicate inbox rows |
 | `AT-COL-020` | COL-020 | Disconnect и reconnect | `iter_updates` восстановлен; startup reconciliation создан |
+| `AT-COL-021` | COL-021 | Fake gateway search contract suite | Search DTO/methods стабильны; hits не создают envelopes/checkpoint |
+| `AT-COL-022` | COL-022 | Mock SearchPosts raw request | `allow_paid_stars is None`; Stars-required path не вызывает request |
 
 ## 14. Принятые записи decision log
 
@@ -247,3 +268,4 @@ MVP включает COL-001—COL-020. Исключены multiple sessions, ac
 - `DEC-COL-004`: startup batch равен 5000, periodic batch равен 1000, период равен 15 минутам.
 - `DEC-COL-005`: checkpoint коммитится атомарно с envelope.
 - `DEC-COL-006`: live updates являются основным каналом; reconciliation восстанавливает пропуски.
+- `D-050`/`D-051`/`D-052`: Zero Stars, free `searchPosts` only, scouting isolation from collector pipeline.

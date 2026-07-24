@@ -50,7 +50,7 @@ async def test_at_sto_001_pragmas(db_env) -> None:
 @pytest.mark.asyncio
 async def test_at_sto_003_migration_head(db_env) -> None:
     rev = current_revision(db_env)
-    assert rev == "001_initial"
+    assert rev == "002_keyword_source_discovery"
 
 
 @pytest.mark.asyncio

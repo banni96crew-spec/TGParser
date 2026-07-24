@@ -10,18 +10,18 @@
 
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
-| Source Discovery | `SRC-001..016` | `AT-SRC-001..016` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources |
-| Telegram Collector | `COL-001..020` | `AT-COL-001..020` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes |
+| Source Discovery | `SRC-001..030` | `AT-SRC-001..030` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated |
+| Telegram Collector | `COL-001..022` | `AT-COL-001..022` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars |
 | Message Processing | `PROC-001..018` | `AT-PROC-001..018` | [PRD](modules/03-message-processing/PRD.md) | Detection получает одну eligible revision |
-| Lead Detection | `DET-001..014` | `AT-DET-001..014` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs |
+| Lead Detection | `DET-001..015` | `AT-DET-001..015` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
-| Lead Storage | `STO-001..014` | `AT-STO-001..014` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox и migrations integration suite |
-| Lead Dashboard | `UI-001..016` | `AT-UI-001..016` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys |
+| Lead Storage | `STO-001..016` | `AT-STO-001..016` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, keyword schema и migrations integration suite |
+| Lead Dashboard | `UI-001..018` | `AT-UI-001..018` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..015` | `AT-SET-001..015` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation и local-access suite |
-| Administration & Observability | `OBS-001..016` | `AT-OBS-001..016` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, logs и recovery suite |
-| Security | `SEC-001..015` | `AT-SEC-001..015` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, injection suite |
-| Deployment & Infrastructure | `INF-001..020` | `AT-INF-001..020` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, backup/restore suite |
+| Administration & Observability | `OBS-001..018` | `AT-OBS-001..018` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, logs, discovery component и recovery suite |
+| Security | `SEC-001..017` | `AT-SEC-001..017` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, injection suite |
+| Deployment & Infrastructure | `INF-001..021` | `AT-INF-001..021` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, discovery worker, backup/restore suite |
 
 ## 3. Shared quality requirements
 
@@ -77,11 +77,12 @@
 | Journey | Requirements | Gate |
 |---|---|---|
 | Add and approve source | `SRC-001`, `SRC-007..014`, `COL-004..005`, `UI-006` | Candidate не мониторится до approve; backfill создаётся один раз |
+| Keyword scouting → promote → approve | `SRC-017..030`, `COL-021..022`, `DET-015`, `STO-015..016`, `UI-017..018`, `OBS-017..018`, `SEC-016..017`, `INF-021` | Evidence ∉ Lead pipeline; Zero Stars; promote → candidate only; approve starts backfill |
 | Live lead | `COL-006`, `PROC-001..004`, `DET-004..014`, `SCR-001..013`, `STO-001..005`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s только при `delivery_mode=live`+secrets; в shadow Lead без outbox |
 | Disconnect recovery | `COL-007..010`, `COL-017..020`, `STO-010`, `OBS-001..016`, `INF-002..010` | Gap ≤20 min; duplicates `0` |
 | Edit/delete/repost | `COL-013..015`, `PROC-005..014`, `STO-003..007`, `UI-012..014`, `NOT-009..015` | Revision/tombstone/canonical behavior детерминировано |
 | Rule activation/re-score | `DET-001..006`, `DET-011..014`, `SCR-001..016`, `UI-007..011` | Immutable versions; historical score не перезаписан |
-| Backup/restore | `STO-010..014`, `SEC-001..015`, `INF-011..020` | Integrity `ok`; session отсутствует; runtime stopped; INF owns `BackupManifest` lifecycle |
+| Backup/restore | `STO-010..014`, `SEC-001..017`, `INF-011..020` | Integrity `ok`; session отсутствует; runtime stopped; INF owns `BackupManifest` lifecycle |
 
 ## 5. Release evidence
 
@@ -103,3 +104,12 @@ Release evidence включает:
 - `AT-COL-002/013/017` соответствуют shared `TelegramGateway` + `FloodWait(until)` + `message_*` event types.
 - Critical codes OBS-012 / NOT: `collector_stopped`, `telegram_session_unavailable`, `migration_failed`, `integrity_check_failed`.
 - Shadow (`notifications.delivery_mode`): см. [PHASE0_RESOLUTION_REGISTER.md](PHASE0_RESOLUTION_REGISTER.md) и D-047.
+
+## 7. Keyword source discovery contract freeze (D-048..D-058)
+
+- Decisions `D-048`–`D-058` accepted without gaps; см. [DECISION_LOG.md](DECISION_LOG.md).
+- New SRC requirements `SRC-017..030` ↔ `AT-SRC-017..030` 1:1.
+- Cross-module MUST: `COL-021..022`, `DET-015`, `STO-015..016`, `UI-017..018`, `OBS-017..018`, `SEC-016..017`, `INF-021`.
+- Shared domain entities: `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `DiscoveryRunQuery`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`; `DiscoveryRun` extended with `run_type=keyword_scouting`.
+- Gateway search ports and Zero Stars invariant documented in [INTEGRATION_CONTRACTS.md](shared/INTEGRATION_CONTRACTS.md).
+- Product code begins only after PRD validator PASS (plan Wave 1 / step-03).

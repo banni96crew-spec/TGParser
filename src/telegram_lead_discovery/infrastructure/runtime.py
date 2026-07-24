@@ -3,15 +3,24 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
+from telegram_lead_discovery.collector.ports import TelegramGateway
 from telegram_lead_discovery.infrastructure.paths import (
     database_path,
     ensure_directories,
     lock_path,
 )
 from telegram_lead_discovery.infrastructure.process_lock import ProcessLock
+from telegram_lead_discovery.observability.discovery import (
+    mark_discovery_blocked,
+    mark_discovery_healthy,
+    mark_discovery_stopped,
+)
 from telegram_lead_discovery.observability.health import (
+    HealthRegistry,
     HealthState,
     reset_health_registry,
 )
@@ -19,6 +28,7 @@ from telegram_lead_discovery.observability.logging import StructuredLogger, conf
 from telegram_lead_discovery.security.bind_guard import assert_loopback_bind
 from telegram_lead_discovery.security.preflight import run_security_preflight
 from telegram_lead_discovery.settings.service import seed_defaults
+from telegram_lead_discovery.source_discovery.worker import KeywordDiscoveryClaimLoop
 from telegram_lead_discovery.storage.db import (
     init_engine,
     integrity_check_ok,
@@ -29,6 +39,137 @@ from telegram_lead_discovery.storage.jobs import recover_stale_jobs
 from telegram_lead_discovery.storage.migrate import upgrade_head
 
 logger = StructuredLogger("INF")
+
+START_DISABLED_TELEGRAM_CREDENTIALS_MISSING = "telegram_credentials_missing"
+
+
+@dataclass
+class RuntimeCoordinator:
+    """Owns shared TelegramGateway + keyword discovery claim loop (INF-021).
+
+    One gateway instance is shared with discovery worker, dashboard approval
+    handlers, and (later) the collector worker. Long keyword search must not
+    use FastAPI BackgroundTasks.
+    """
+
+    gateway: TelegramGateway | None = None
+    credentials_present: bool = False
+    start_disabled_reason: str | None = None
+    discovery_loop: KeywordDiscoveryClaimLoop | None = field(default=None, repr=False)
+    _started: bool = field(default=False, repr=False)
+
+    @property
+    def worker_running(self) -> bool:
+        loop = self.discovery_loop
+        return loop is not None and loop.task is not None and not loop.task.done()
+
+    async def start(
+        self,
+        registry: HealthRegistry,
+        *,
+        gateway: TelegramGateway | None = None,
+    ) -> None:
+        """Connect gateway (when credentials present) and start discovery task.
+
+        When credentials are missing the web UI stays up; discovery health is
+        ``blocked`` with ``telegram_credentials_missing``.
+        """
+        from telegram_lead_discovery.security.secrets import load_secret_presence
+
+        if self._started:
+            return
+
+        presence = load_secret_presence()
+        if not presence.telegram_ready:
+            self.credentials_present = False
+            self.start_disabled_reason = START_DISABLED_TELEGRAM_CREDENTIALS_MISSING
+            self.gateway = None
+            mark_discovery_blocked(
+                reason_code=START_DISABLED_TELEGRAM_CREDENTIALS_MISSING,
+                registry=registry,
+            )
+            logger.emit(
+                level="warning",
+                event_code="discovery.blocked",
+                result="blocked",
+                fields={"reason_code": START_DISABLED_TELEGRAM_CREDENTIALS_MISSING},
+            )
+            self._started = True
+            return
+
+        self.credentials_present = True
+        self.start_disabled_reason = None
+
+        if gateway is not None:
+            self.gateway = gateway
+        else:
+            from telegram_lead_discovery.collector.adapter.telethon_gateway import (
+                TelethonTelegramGateway,
+            )
+
+            self.gateway = TelethonTelegramGateway()
+
+        try:
+            await self.gateway.connect()
+        except Exception as exc:  # noqa: BLE001 — UI must stay up
+            self.gateway = None
+            # OBS-018: discovery states are healthy|degraded|blocked|stopped.
+            mark_discovery_blocked(
+                reason_code="telegram_connect_failed",
+                registry=registry,
+            )
+            logger.emit(
+                level="error",
+                event_code="telegram_gateway.connect_failed",
+                result="failed",
+                fields={"error_type": type(exc).__name__},
+            )
+            self._started = True
+            return
+
+        self.discovery_loop = KeywordDiscoveryClaimLoop(self.gateway)
+        self.discovery_loop.start()
+        mark_discovery_healthy(registry=registry)
+        logger.emit(
+            level="info",
+            event_code="discovery.worker_started",
+            result="ok",
+        )
+        self._started = True
+
+    async def shutdown(self) -> None:
+        """Stop claim loop (await short op / leave lease), then disconnect gateway."""
+        loop = self.discovery_loop
+        if loop is not None:
+            logger.emit(
+                level="info",
+                event_code="discovery.worker_stopping",
+                result="ok",
+            )
+            await loop.stop()
+            self.discovery_loop = None
+
+        gateway = self.gateway
+        if gateway is not None:
+            disconnect = getattr(gateway, "disconnect", None)
+            if callable(disconnect):
+                try:
+                    await disconnect()
+                except Exception as exc:  # noqa: BLE001
+                    logger.emit(
+                        level="warning",
+                        event_code="telegram_gateway.disconnect_failed",
+                        result="failed",
+                        fields={"error_type": type(exc).__name__},
+                    )
+            self.gateway = None
+
+        mark_discovery_stopped(reason_code="worker_stopped")
+        logger.emit(
+            level="info",
+            event_code="runtime.coordinator_stopped",
+            result="ok",
+        )
 
 
 async def run_migrations() -> None:
@@ -117,8 +258,12 @@ async def run_command(
         async with session_scope() as session:
             await seed_defaults(session)
             from telegram_lead_discovery.detection.seed import seed_ruleset_ru_mvp_1
+            from telegram_lead_discovery.source_discovery.profile_service import (
+                ensure_seed_keyword_profile,
+            )
 
             await seed_ruleset_ru_mvp_1(session)
+            await ensure_seed_keyword_profile(session)
             recovered = await recover_stale_jobs(session)
         logger.emit(
             level="info",
@@ -128,12 +273,21 @@ async def run_command(
         )
         registry.set_component("settings", HealthState.HEALTHY)
         registry.mark_ready()
-        registry.set_component("runtime", HealthState.HEALTHY)
-        registry.set_component("web", HealthState.HEALTHY)
 
+        # INF-003: web -> TelegramGateway -> workers; runtime healthy after workers.
         from telegram_lead_discovery.dashboard.app import create_app
 
         app = create_app()
+        coordinator = RuntimeCoordinator()
+        await coordinator.start(registry)
+        app.state.gateway = coordinator.gateway
+        app.state.runtime_coordinator = coordinator
+        app.state.telegram_credentials_present = coordinator.credentials_present
+        app.state.discovery_start_disabled_reason = coordinator.start_disabled_reason
+
+        registry.set_component("web", HealthState.HEALTHY)
+        registry.set_component("runtime", HealthState.HEALTHY)
+
         import uvicorn
 
         config = uvicorn.Config(
@@ -150,6 +304,9 @@ async def run_command(
         try:
             await server.serve()
         finally:
+            # Shutdown: stop claim loop, await short op / leave lease,
+            # disconnect gateway, then release process lock (Uvicorn already exiting).
+            await coordinator.shutdown()
             lock.release()
         return 0
 
@@ -164,7 +321,7 @@ async def run_command(
         await run_migrations()
         paths = resolve_app_paths()
 
-        async def _backup(session):
+        async def _backup(session: Any) -> Any:
             return await create_online_backup(session, paths=paths)
 
         manifest = await run_write(_backup)
@@ -218,7 +375,7 @@ async def run_command(
         await run_migrations()
         paths = resolve_app_paths()
 
-        async def _purge(session):
+        async def _purge(session: Any) -> Any:
             return await run_daily_purge(session, paths=paths)
 
         result = await run_write(_purge)

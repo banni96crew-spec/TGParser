@@ -37,7 +37,7 @@ Telegram Lead Discovery — персональное локальное прил
 - AI/LLM, embeddings и semantic/vector search.
 - Fuzzy deduplication.
 - Automatic outreach, ответы авторам и CRM-автоматизация.
-- Общий бесконечный каталог Telegram и платный global post search.
+- Общий бесконечный каталог Telegram и платный global post search / Telegram Stars.
 - Mobile application и отдельный SPA frontend.
 - PostgreSQL, Redis, Celery и распределённые workers.
 
@@ -70,6 +70,15 @@ Telegram Lead Discovery — персональное локальное прил
 2. Система обходит рекомендации, публичные ссылки, упоминания и forward origins.
 3. Run ограничен depth `2`, `25` раскрываемыми источниками и `100` кандидатами.
 4. Результаты появляются как candidates и не включаются автоматически.
+
+### J-02a. Keyword source scouting
+
+1. Оператор открывает «Разведка источников» и выбирает keyword profile.
+2. Вручную запускает `free_only` run (не более одного active keyword run).
+3. Система ищет публичные hits, linked discussion, считает Source Opportunity Score.
+4. Оператор просматривает evidence и вручную продвигает результат в `candidate`.
+5. Отдельный `approve` запускает существующий Collector pipeline.
+6. Scouting-evidence не создаёт Lead/outbox/checkpoint.
 
 ### J-03. Обнаружение лида
 
@@ -147,7 +156,9 @@ flowchart LR
 ## 8. Сквозные инварианты
 
 - Source Registry в SQLite — единственный authoritative источник monitored sources.
-- Collector вызывает Telegram только для `monitoring` sources.
+- Collector вызывает Telegram только для `monitoring` sources (кроме read-only keyword search ports для SRC scouting).
+- Keyword scouting-evidence не входит в Collector/Processing/Lead pipeline (D-052).
+- Paid search / `allow_paid_stars` запрещены (D-050).
 - Только один process владеет user session.
 - `UNIQUE(source_id, telegram_message_id)` обеспечивает Telegram identity.
 - Checkpoint обновляется после commit message data.
@@ -188,7 +199,7 @@ new/reviewed/contacted → source_deleted
 
 | № | Модуль | Prefix | Владеет |
 |---:|---|---|---|
-| 1 | [Source Discovery](modules/01-source-discovery/PRD.md) | `SRC` | candidates, discovery, source lifecycle |
+| 1 | [Source Discovery](modules/01-source-discovery/PRD.md) | `SRC` | candidates, graph/keyword discovery, source lifecycle, opportunity score |
 | 2 | [Telegram Collector](modules/02-telegram-collector/PRD.md) | `COL` | gateway, backfill, live, reconciliation |
 | 3 | [Message Processing](modules/03-message-processing/PRD.md) | `PROC` | normalization, orchestration, dedupe behavior |
 | 4 | [Lead Detection](modules/04-lead-detection/PRD.md) | `DET` | rules, categories, patterns, explanation |
@@ -233,6 +244,8 @@ flowchart LR
 | Metrics | 90 дней |
 | Notification deliveries | 30 дней |
 | Temporary CSV | 1 час |
+| Scouting evidence excerpt | 30 дней |
+| Scouting evidence rows / unpromoted snapshots / keyword queries / terminal keyword runs | 90 дней |
 
 Scheduled purge запускается ежедневно в `04:00`. Daily online backup запускается в `03:00`; сохраняются `7` daily и `4` weekly copies.
 

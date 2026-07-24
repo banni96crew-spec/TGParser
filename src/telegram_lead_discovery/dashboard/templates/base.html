@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{{ title }} — Telegram Lead Discovery</title>
   <link rel="stylesheet" href="/static/css/app.css" />
+  <script src="/static/vendor/htmx-2.0.10.min.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -16,6 +17,9 @@
         </li>
         <li>
           <a class="nav-link{% if active_nav == 'sources' %} is-active{% endif %}" href="/sources">Источники</a>
+        </li>
+        <li>
+          <a class="nav-link{% if active_nav == 'discovery' %} is-active{% endif %}" href="/discovery">Разведка источников</a>
         </li>
         <li>
           <a class="nav-link{% if active_nav == 'health' %} is-active{% endif %}" href="/health">Состояние</a>

@@ -444,6 +444,104 @@ button.btn-secondary:hover {
   color: var(--text);
 }
 
+/* —— Discovery —— */
+
+.zero-stars {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.discovery-panel textarea {
+  min-width: min(100%, 36rem);
+  width: 100%;
+}
+
+.discovery-actions {
+  margin: 0.75rem 0 0;
+}
+
+.discovery-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.discovery-filters {
+  margin-bottom: 0.75rem;
+}
+
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem !important;
+  min-width: auto;
+}
+
+.checkbox-label input[type="checkbox"] {
+  min-width: 0;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.progress-block {
+  margin: 0.75rem 0;
+}
+
+.progress-bar {
+  height: 0.5rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--transition);
+}
+
+.evidence-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidence-item + .evidence-item {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.retention-message {
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  color: var(--warn);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.band-promising {
+  color: var(--accent-fg);
+  background: var(--band-hot);
+}
+
+.band-review {
+  color: var(--accent-fg);
+  background: var(--band-warm);
+}
+
+.band-weak {
+  color: var(--text);
+  background: var(--band-cold);
+}
+
 @media (max-width: 720px) {
   .app-shell {
     flex-direction: column;

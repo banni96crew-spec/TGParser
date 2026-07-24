@@ -1,0 +1,14 @@
+htmx 2.0.10 — self-hosted for Telegram Lead Discovery UI
+
+Vendor: bigskysoftware/htmx release 2.0.10
+Downloaded from:
+  https://unpkg.com/htmx.org@2.0.10/dist/htmx.min.js
+  https://unpkg.com/htmx.org@2.0.10/LICENSE
+
+Files:
+  htmx-2.0.10.min.js
+  htmx-2.0.10.LICENSE.txt
+
+License: see htmx-2.0.10.LICENSE.txt (BSD Zero Clause / 0BSD)
+Docs: https://htmx.org/docs/ (local copy install; no CDN in runtime HTML)
+Runtime: served only from /static/vendor/ (no CDN script tags)

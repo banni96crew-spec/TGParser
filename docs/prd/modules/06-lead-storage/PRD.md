@@ -189,6 +189,12 @@ Cleanup запускается ежедневно в `04:00` по timezone `Euro
 | Metric samples | 90 дней | Rows удаляются |
 | Notification deliveries/outbox terminal rows | 30 дней | Rows удаляются |
 | Временные CSV files | 1 час | Files удаляются |
+| `SourceDiscoveryEvidence.excerpt` | 30 дней | Excerpt очищается |
+| Evidence rows без текста | 90 дней | Rows удаляются |
+| Unpromoted `SourceOpportunitySnapshot` | 90 дней | Rows удаляются |
+| Keyword `DiscoveryRunQuery` rows | 90 дней | Rows удаляются |
+| Terminal keyword `DiscoveryRun` | 90 дней | Rows удаляются |
+| `KeywordDiscoveryProfileVersion` | без автоудаления | Сохраняются |
 
 `Lead.last_activity_at` обновляется при message edit, новом score, status transition, note и feedback. Чтение lead и отправка notification его не меняют.
 
@@ -246,6 +252,8 @@ Cleanup никогда не удаляет active jobs, non-terminal outbox even
 | STO-012 | Session отсутствует во всех backup artifacts | MUST | Artifact scan не находит session file |
 | STO-013 | Все timestamps сохраняются в UTC | MUST | Round-trip не меняет момент времени |
 | STO-014 | Exact duplicate window равен 30 дням | MUST | Сообщение за пределами окна не связывается |
+| STO-015 | Schema keyword discovery: tables profiles/versions/queries/evidence/snapshots и nullable extensions `discovery_runs` | MUST | Migration `002_keyword_source_discovery` up/down; constraints score `0–100`; unique keys из DOMAIN_MODEL |
+| STO-016 | Retention keyword artifacts по матрице §11 (SRC-030) | MUST | Boundary tests очищают excerpt 30d и rows 90d; profile versions сохраняются |
 
 ## 15. Observability
 
@@ -290,6 +298,8 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-012 | STO-012 | Scan backup artifacts | Session/credentials отсутствуют |
 | AT-STO-013 | STO-013 | Timestamp round-trip UTC | Момент времени не меняется |
 | AT-STO-014 | STO-014 | Cross-source exact repost в окне 30 дней | Один canonical lead и duplicate relation; вне окна — без связи |
+| AT-STO-015 | STO-015 | Apply/upgrade migration 002 на empty и existing DB | Tables/indexes/constraints созданы; downgrade удаляет только новые сущности |
+| AT-STO-016 | STO-016 | Fixture evidence/snapshots/queries/runs с age 31/91 дней | Excerpt/rows purged по матрице; profile versions intact |
 
 ## 18. DEFERRED
 

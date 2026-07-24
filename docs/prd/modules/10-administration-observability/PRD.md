@@ -51,6 +51,8 @@
 | OBS-014 | System readiness MUST вычисляться только при доступной БД, успешных migrations, успешном integrity check и загруженном settings snapshot. |
 | OBS-015 | Liveness endpoint `/health/live` MUST отвечать без обращения к Telegram; readiness endpoint `/health/ready` MUST проверять локальные обязательные зависимости. |
 | OBS-016 | Dashboard MUST показывать размер calibration corpus, число источников, precision `hot + warm`, recall `direct_order` и false positive rate для `vacancy/advertising/spam`. |
+| OBS-017 | Система MUST публиковать keyword discovery metrics: `discovery_runs_total{state}`, `discovery_queries_total{kind,outcome}`, `discovery_search_hits_total{kind}`, `discovery_unique_sources_total`, `discovery_verified_sources_total`, `discovery_qualified_evidence_total`, `discovery_promotions_total{result}`, `discovery_flood_wait_seconds`, `discovery_quota_skipped_total`, `discovery_run_duration_seconds`, `discovery_score_total{band}`. Labels MUST NOT включать query text, source title, username, run ID или Telegram ID. |
+| OBS-018 | Health MUST включать component `discovery` со состояниями `healthy`, `degraded` (длительный FloodWait / частые transient errors), `blocked` (нет credentials / unauthorized/frozen), `stopped` (worker не запущен). Исчерпание free quota само по себе MUST NOT делать приложение unhealthy. |
 
 ## 5. Acceptance criteria
 
@@ -72,6 +74,8 @@
 | AT-OBS-014 | После restart система достигает readiness не более чем за 5 минут при исправных зависимостях; каждая обязательная неисправность отдельно переводит её в not-ready. |
 | AT-OBS-015 | `/health/live` отвечает при недоступном Telegram; `/health/ready` возвращает failure при ошибке migration или integrity check. |
 | AT-OBS-016 | MVP quality gate проходит только при corpus не менее 500 сообщений из не менее 10 источников, precision `hot + warm` не ниже 80%, recall `direct_order` не ниже 70% и false positive rate для `vacancy/advertising/spam` не выше 5%. |
+| AT-OBS-017 | Keyword discovery metrics публикуются с утверждёнными именами; запрещённые labels отсутствуют. |
+| AT-OBS-018 | Component `discovery` отражает `healthy`/`degraded`/`blocked`/`stopped`; quota exhaustion alone не ставит app unhealthy. |
 
 ## 6. Входные и выходные контракты
 
@@ -146,11 +150,11 @@
 
 ## 14. Acceptance test catalogue
 
-- `OBS-HEALTH`: AT-OBS-001, AT-OBS-002, AT-OBS-003, AT-OBS-010, AT-OBS-011, AT-OBS-012, AT-OBS-014, AT-OBS-015.
+- `OBS-HEALTH`: AT-OBS-001, AT-OBS-002, AT-OBS-003, AT-OBS-010, AT-OBS-011, AT-OBS-012, AT-OBS-014, AT-OBS-015, AT-OBS-018.
 - `OBS-REDACTION`: AT-OBS-004, AT-OBS-005.
 - `OBS-ADMIN`: AT-OBS-008, AT-OBS-009.
 - `OBS-RETENTION`: AT-OBS-006, AT-OBS-007.
-- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016.
+- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016, AT-OBS-017.
 
 ## 15. Decision log references
 

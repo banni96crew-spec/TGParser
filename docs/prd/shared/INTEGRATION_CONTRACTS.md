@@ -24,9 +24,38 @@ class TelegramGateway(Protocol):
     async def iter_history(self, request: HistoryRequest) -> AsyncIterator[TelegramMessageDTO]: ...
     async def iter_updates(self) -> AsyncIterator[TelegramUpdateDTO]: ...
     async def get_message(self, source: SourceRef, message_id: int) -> TelegramMessageDTO | None: ...
+    async def search_global(self, request: GlobalSearchRequest) -> SearchPageDTO: ...
+    async def search_public_sources(self, request: DirectorySearchRequest) -> list[SourceSnapshot]: ...
+    async def check_public_post_search_quota(self, query: str) -> PublicPostSearchQuotaDTO: ...
+    async def search_public_posts(self, request: PublicPostSearchRequest) -> SearchPageDTO: ...
+    async def search_source_messages(self, request: SourceMessageSearchRequest) -> SearchPageDTO: ...
+    async def get_linked_discussion(self, source: SourceRef) -> SourceSnapshot | None: ...
 ```
 
 Методы `iter_messages` и `register_live_handler` отсутствуют. Live-канал — только `iter_updates`.
+
+Search DTO (schema_version=`1`):
+
+- `GlobalSearchRequest` — query, scope flags (`groups_only` / `broadcasts_only`), limit, cursor;
+- `DirectorySearchRequest` — query, limit;
+- `PublicPostSearchRequest` — query, limit, cursor; поле `allow_paid_stars` отсутствует и MUST NOT добавляться (D-050);
+- `SourceMessageSearchRequest` — source ref, query, limit, date window, cursor;
+- `SearchCursor` — opaque pagination token;
+- `SearchMessageHitDTO` — source snapshot fields, `telegram_message_id`, `published_at`, permalink, text excerpt cap для consumer;
+- `SearchPageDTO` — hits, next cursor, truncated flag;
+- `PublicPostSearchQuotaDTO` — free slot available, Premium required, stars required amount;
+- `LinkedDiscussionDTO` / return `SourceSnapshot | None` — public linked discussion only.
+
+Zero Stars invariant (D-050, D-051): adapter MUST всегда передавать `allow_paid_stars=None` в raw Telethon `channels.SearchPostsRequest`; при `stars_amount > 0` без бесплатного слота запрос не выполняется.
+
+Дополнительные Gateway errors:
+
+| Error | Поведение consumer |
+|---|---|
+| `GatewayPremiumRequired` | Extended search channel skipped; baseline free search продолжается |
+| `GatewaySearchQuotaExhausted` | Query / remaining extended queries → `quota_skipped` |
+| `GatewayInvalidSearchQuery` | Query → `failed` без retry |
+| `GatewaySearchUnavailable` | Query → `failed` или run `partial` по правилам SRC |
 
 `PublicSourceRef`
 
@@ -66,6 +95,33 @@ class SourceRegistry(Protocol):
 ```
 
 Collector обязан вызвать `list_monitoring`; произвольный source ID из job payload недостаточен для Telegram call.
+
+## 3a. Keyword discovery contracts
+
+Producer/owner: `SRC`; consumers: `UI`, `OBS`, `STO`; search I/O через `COL` `TelegramGateway`.
+
+Команды:
+
+| Команда | Обязательные поля | Результат |
+|---|---|---|
+| `CreateKeywordDiscoveryProfile` | `name`, queries, scope | `profile_id`, version `1` |
+| `CreateKeywordDiscoveryProfileVersion` | `profile_id`, queries, scope, optimistic `version` | новая immutable version |
+| `StartKeywordDiscoveryRun` | `profile_id`, CSRF, optimistic checks | `discovery_run_id`, Job `keyword_discovery` |
+| `CancelKeywordDiscoveryRun` | `run_id`, optimistic `version` | state `cancelling` → `cancelled` |
+| `PromoteOpportunityToCandidate` | `opportunity_id`, optimistic `version` | `TelegramSource(candidate)` или existing source link |
+| `DismissOpportunity` | `opportunity_id`, reason, optimistic `version` | `review_state=dismissed` |
+
+События / outcomes:
+
+| Событие | Обязательные поля |
+|---|---|
+| `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, counters, `occurred_at` |
+| `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method` (`keyword_search`\|`linked_discussion`), `occurred_at` |
+
+Isolation (D-052): keyword search hits записываются только в `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot`. Они MUST NOT публиковать `TelegramEventEnvelope`, MUST NOT создавать `TelegramMessage`/`Lead`/`LeadScore`/notification outbox и MUST NOT изменять `CollectorCheckpoint`.
+
+Detection reuse: SRC вызывает pure DET evaluation на normalized scouting text через shared detect function / port с `analysis_text` и зафиксированным `rule_set_version_id`; результат сохраняется в evidence fields, не как pipeline `DetectionResult` row lead-path (см. DET-015).
 
 ## 4. Telegram event envelope
 
@@ -230,6 +286,7 @@ Owner: соответствующий domain module, consumer: `UI`.
 - `LeadQueryService`: filters, pagination, detail, score history.
 - `LeadCommandService`: status transition, note, feedback.
 - `SourceQueryService` и `SourceCommandService`.
+- `KeywordDiscoveryQueryService` и `KeywordDiscoveryCommandService`.
 - `RuleQueryService` и `RuleCommandService`.
 - `JobQueryService` и `JobCommandService`.
 - `HealthQueryService`.

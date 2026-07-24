@@ -45,7 +45,8 @@ Uvicorn и UI работают в общем Python 3.12.x process с остал
 | Lead detail | `GET /leads/{lead_id}` | Текст, provenance, score и история |
 | Sources | `GET /sources` | Approved/monitoring/paused/inaccessible sources |
 | Source candidates | `GET /sources/candidates` | Ручное approve/reject |
-| Discovery runs | `GET /discovery-runs` | Результаты и counters discovery |
+| Разведка источников | `GET /discovery` | Keyword profiles, runs, results (`active_nav=discovery`) |
+| Discovery runs (graph) | `GET /discovery-runs` | Результаты и counters graph discovery |
 | Collector runs | `GET /collector-runs` | Backfill/reconciliation progress |
 | Service profiles | `GET /service-profiles` | Профили услуг |
 | Rule sets | `GET /rule-sets` | Draft validation и activation |
@@ -161,6 +162,30 @@ Dashboard предоставляет формы, но business transitions вы�
 - source detail показывает provenance, lifecycle, last checkpoint, collector lag и error state;
 - source quality изменяется integer input `0–5` с optimistic version.
 
+### 9.1a. Keyword discovery (Разведка источников)
+
+Навигация MUST размещать пункт «Разведка источников» между «Источники» и «Состояние».
+
+Маршруты:
+
+```text
+GET  /discovery
+GET  /discovery/profiles/new
+POST /discovery/profiles
+GET  /discovery/profiles/{id}
+POST /discovery/profiles/{id}/versions
+POST /discovery/runs
+GET  /discovery/runs/{id}
+GET  /discovery/runs/{id}/status-fragment
+GET  /discovery/runs/{id}/results-fragment
+POST /discovery/runs/{id}/cancel
+GET  /discovery/results/{id}
+POST /discovery/results/{id}/promote
+POST /discovery/results/{id}/dismiss
+```
+
+UI MUST показывать: активный профиль/version, лимиты, Telegram connection state, free quota summary, постоянный текст `Максимальная стоимость: 0 Stars`, кнопку запуска, последние 20 runs, progress (HTMX каждые 5 с), filters результатов и до 5 evidence excerpts. Поля Stars/paid consent отсутствуют. Approval monitoring на странице result отсутствует; promote создаёт только candidate. HTMX MUST быть локально vendored (`2.0.10`); CDN в runtime запрещён.
+
 ### 9.2. Rule sets
 
 - draft создаётся как новая version;
@@ -188,6 +213,12 @@ Dashboard предоставляет формы, но business transitions вы�
 | `POST /sources/{id}/approve` | Approve candidate |
 | `POST /sources/{id}/reject` | Reject candidate |
 | `POST /sources/{id}/state` | Pause/resume/disable |
+| `POST /discovery/profiles` | Создать keyword profile |
+| `POST /discovery/profiles/{id}/versions` | Создать profile version |
+| `POST /discovery/runs` | Запустить keyword discovery |
+| `POST /discovery/runs/{id}/cancel` | Отменить keyword run |
+| `POST /discovery/results/{id}/promote` | Promote opportunity → candidate |
+| `POST /discovery/results/{id}/dismiss` | Скрыть opportunity |
 | `POST /rule-sets/{id}/validate` | Запустить validation |
 | `POST /rule-sets/{id}/activate` | Активировать valid version |
 | `POST /rule-sets/{id}/rescore` | Создать bulk re-score job |
@@ -249,6 +280,8 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-014 | User content HTML-escaped | MUST | HTML/script отображается как текст |
 | UI-015 | UI обновляет Inbox каждые 5 секунд | MUST | Новый committed lead появляется без reload не позднее 10 секунд |
 | UI-016 | Automatic outreach отсутствует | MUST | В UI нет send-to-author action |
+| UI-017 | Keyword discovery surface доступен по `/discovery` | MUST | Profiles/runs/results routes работают; nav label «Разведка источников» |
+| UI-018 | Discovery UI соблюдает Zero Stars и CSRF | MUST | Текст `0 Stars` виден; paid controls отсутствуют; POST без CSRF отклонён; promote/cancel используют optimistic version и `303` |
 
 ## 15. Observability
 
@@ -291,6 +324,8 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-014 | Script находится в message text | Script отображается как текст и не исполняется |
 | AT-UI-015 | Новый committed lead | Inbox fragment показывает его не позднее 10 секунд |
 | AT-UI-016 | Просмотрены все lead actions | Send-to-author action отсутствует |
+| AT-UI-017 | Открыт `/discovery`, создан profile, запущен run | Страницы и fragments отображают run/results на русском |
+| AT-UI-018 | POST discovery без CSRF; UI без Stars controls | State не изменён; `0 Stars` текст присутствует; paid input отсутствует |
 
 ## 18. DEFERRED
 

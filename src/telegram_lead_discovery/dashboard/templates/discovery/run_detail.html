@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h1>Разведка #{{ run.id }}</h1>
+  <p class="page-meta zero-stars">{{ zero_stars_label }}</p>
+</header>
+
+{% include "discovery/_run_status.html" %}
+
+<section class="panel discovery-panel" id="run-results"
+         hx-get="/discovery/runs/{{ run.id }}/results-fragment"
+         hx-trigger="load, every 5s"
+         hx-swap="innerHTML">
+  {% include "discovery/_results.html" %}
+</section>
+
+<p class="discovery-actions"><a href="/discovery">← К разведке</a></p>
+{% endblock %}

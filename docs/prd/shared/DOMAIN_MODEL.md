@@ -14,7 +14,7 @@
 
 | Entity | Owner |
 |---|---|
-| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `SourceDiscoveryEvent` | `SRC` |
+| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot` | `SRC` |
 | `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope` | `COL` |
 | `TelegramMessage`, `TelegramMessageRevision`, `DuplicateGroup`, `MessageDuplicate`, `ProcessingJob`, `ProcessingRun`, `ProcessingResult`, `ProcessingLog` | `PROC` |
 | `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `MatchedRule`, `DetectionResult` | `DET` |
@@ -105,18 +105,108 @@ Constraints:
 - `created_at`;
 - append-only.
 
+`KeywordDiscoveryProfile`
+
+- `id`;
+- `name: str` length `1..80`, unique;
+- `state: enum(active, archived)`;
+- `current_version: int`;
+- `created_at`, `updated_at`.
+
+Редактирование профиля MUST создавать новую `KeywordDiscoveryProfileVersion`, не мутируя использованную версию.
+
+`KeywordDiscoveryProfileVersion`
+
+- `id`;
+- `profile_id`;
+- `version: int`;
+- `post_queries_json`;
+- `directory_queries_json`;
+- `required_service_profiles_json`;
+- `additional_exclusions_json`;
+- `source_scope: enum(groups, channels, all)`;
+- `created_at`;
+- unique `(profile_id, version)`.
+
+Ограничения queries:
+
+- `1..20` post queries;
+- `0..10` directory queries;
+- каждый query — `3..128` Unicode code points после trim + casefold;
+- дубликаты запрещены;
+- после использования в `DiscoveryRun` версия immutable (D-055).
+
+Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
+
 `DiscoveryRun`
 
 - `id`;
-- `root_source_ids_json`;
-- `max_depth=2`, `expansion_cap=25`, `candidate_cap=100`;
-- `state: enum(queued, running, succeeded, failed, cancelled)`;
+- `run_type: enum(graph, keyword_scouting)` — default/legacy graph runs = `graph`;
+- `root_source_ids_json` — для `graph`; nullable для keyword;
+- `profile_version_id: int | null` — обязателен для `keyword_scouting`;
+- `search_mode: enum(free_only)` — для keyword; paid modes отсутствуют (D-050);
+- `rule_set_version_id: int | null`, `rule_set_checksum: str | null` — для keyword (D-055);
+- `max_depth=2`, `expansion_cap=25`, `candidate_cap=100` — для `graph`;
+- `state` для `graph`: `enum(queued, running, succeeded, failed, cancelled)`;
+- `state` для `keyword_scouting`: `enum(queued, running, retry_wait_flood, cancelling, cancelled, succeeded, partial, failed)`;
+- `phase: str | null` — для keyword (A–I);
+- `quota_snapshot_json`, `cursor_json`, `last_error_code`;
+- `version: int` — optimistic concurrency;
 - counters и timestamps.
+
+`partial` означает, что часть queries пропущена из-за бесплатной квоты или permanent errors отдельных шагов.
+
+Concurrency (D-058): не более одного active `keyword_scouting` run в состояниях `queued|running|retry_wait_flood|cancelling`. Graph discovery сохраняет отдельный лимит «не более одного active `graph` run».
+
+`DiscoveryRunQuery`
+
+- `id`, `run_id`, `ordinal`;
+- `query_kind: enum(global_message, directory, public_posts, source_verification, linked_discussion)`;
+- `query_text`;
+- `source_telegram_id: int | null`;
+- `scope: str | null`;
+- `state: enum(queued, running, retry_wait, succeeded, failed, cancelled, quota_skipped, budget_skipped)`;
+- `cursor_json`;
+- `request_count`, `result_count`;
+- `error_code: str | null`;
+- `available_at`, `started_at`, `finished_at`.
+
+`SourceDiscoveryEvidence`
+
+- `id`, `run_id`;
+- `source_telegram_id`, `source_username`, `source_title`, `source_type`;
+- `telegram_message_id`, `published_at`, `permalink`;
+- `excerpt: str` — максимум `240` Unicode code points (D-056);
+- `normalized_hash`;
+- `matched_query_ordinals_json`, `discovery_channels_json`;
+- `detection_category`, `is_qualified`, `hard_exclusion`, `hard_exclusion_rule_id`;
+- `service_profiles_json`, `rule_set_checksum`;
+- `created_at`;
+- unique `(run_id, source_telegram_id, telegram_message_id)`.
+
+Запрещено хранить: author ID/username/display name, телефон, медиа, entities, полный текст сверх `excerpt` (D-056). Evidence MUST NOT становиться `TelegramMessage` / Lead (D-052).
+
+`SourceOpportunitySnapshot`
+
+- `id`, `run_id`;
+- `source_id: int | null` — если источник уже в registry;
+- `source_telegram_id`, `username`, `title`, `source_type`, `public_url`;
+- `linked_parent_telegram_id: int | null`;
+- `qualified_count`, `excluded_count`, `active_week_count`, `ecommerce_qualified_count`;
+- `last_qualified_at`, `sample_message_count`, `sample_truncated`;
+- `score: int 0..100`, `band: enum(promising, review, weak)`;
+- `score_components_json`, `discovery_channels_json`;
+- `review_state: enum(unreviewed, promoted, dismissed)`;
+- `promoted_source_id: int | null`, `dismiss_reason: str | null`;
+- `created_at`, `updated_at`, `version: int`;
+- unique `(run_id, source_telegram_id)`.
+
+Opportunity score принадлежит `SRC` (D-054) и MUST NOT копироваться в `TelegramSource.quality_score`.
 
 `SourceDiscoveryEvent`
 
 - `id`, `event_id: UUIDv7 unique`, `run_id`, `source_id: int | null`;
-- `method: enum(manual, seed_import, recommendation, public_link, mention, forward_origin)`;
+- `method: enum(manual, seed_import, recommendation, public_link, mention, forward_origin, keyword_search, linked_discussion)`;
 - `parent_source_id: int | null`;
 - `evidence_message_id: int | null`;
 - `evidence_url: str | null`;
@@ -124,6 +214,8 @@ Constraints:
 - `outcome: enum(created, merged, invalid_reference, unsupported_source, budget_skipped, depth_skipped, error)`;
 - `depth: int 0..2`;
 - `discovered_at`.
+
+Методы `keyword_search` и `linked_discussion` используются только при promotion scouting-результата в candidate (D-049, D-053).
 
 ### 3.4. Collector
 
@@ -352,7 +444,7 @@ Lead row создаётся только при первом committed score ban
 `Job`
 
 - `id`;
-- `job_type: enum(discovery, initial_backfill, startup_reconciliation, periodic_reconciliation, continuation, process_message, replay_message, rescore, purge, backup)`;
+- `job_type: enum(discovery, keyword_discovery, initial_backfill, startup_reconciliation, periodic_reconciliation, continuation, process_message, replay_message, rescore, purge, backup)`;
 - `dedupe_key: str unique`;
 - `state: enum(queued, running, retry_wait, succeeded, failed, dead, cancelled)`;
 - `payload_json`, `attempt`, `available_at`, `lease_until`;

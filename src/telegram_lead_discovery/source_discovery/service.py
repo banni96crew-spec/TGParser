@@ -82,6 +82,8 @@ async def add_manual_candidate(
         source_type = "channel"
         public_url = f"https://t.me/{username}"
         if gateway is not None:
+            # Do not hold a write transaction across Telegram resolve.
+            await session.commit()
             snap = await gateway.resolve_public_source(
                 PublicSourceRef(schema_version=1, username_or_url=username)
             )
@@ -205,10 +207,6 @@ async def approve_source(
         raise ValueError(f"invalid_transition:{source.lifecycle_state}")
 
     from_state = source.lifecycle_state
-    source.lifecycle_state = "approved"
-    source.approved_at = datetime.now(UTC)
-    await session.flush()
-
     ref: PublicSourceRef | int
     if source.telegram_id is not None:
         ref = source.telegram_id
@@ -217,16 +215,27 @@ async def approve_source(
             schema_version=1,
             username_or_url=source.username_normalized or "",
         )
+    # Release SQLite lock before Telethon I/O (one writer; busy_timeout=5000).
+    await session.commit()
+
     snap = await gateway.validate_source(ref)
+
+    source = await session.get(TelegramSource, source_id)
+    if source is None:
+        raise KeyError(source_id)
+    if source.lifecycle_state not in {"candidate", "approved"}:
+        raise ValueError(f"invalid_transition:{source.lifecycle_state}")
+
+    now = datetime.now(UTC)
     source.telegram_id = snap.telegram_id
     source.username_normalized = snap.username.lower()
     source.title = snap.title
     source.source_type = snap.source_type
     source.public_url = snap.public_url
     source.lifecycle_state = "monitoring"
-    source.monitoring_started_at = datetime.now(UTC)
+    source.approved_at = source.approved_at or now
+    source.monitoring_started_at = now
     source.access_error_code = None
-    await session.flush()
 
     session.add(
         SourceApprovalEvent(
@@ -245,7 +254,6 @@ async def approve_source(
     await enqueue_initial_backfill(session, source.id)
     await session.flush()
     return source
-
 
 async def list_sources(session: AsyncSession) -> list[TelegramSource]:
     result = await session.execute(select(TelegramSource).order_by(TelegramSource.id.asc()))

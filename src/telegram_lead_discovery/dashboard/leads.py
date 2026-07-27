@@ -9,7 +9,7 @@ from urllib.parse import quote, unquote
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from telegram_lead_discovery.storage.models import Lead, LeadStatusHistory
+from telegram_lead_discovery.storage.models import Lead, LeadStatusHistory, RuleSetVersion
 
 ALLOWED_STATUSES = frozenset(
     {
@@ -33,6 +33,15 @@ class InboxPage:
     limit: int
 
 
+@dataclass(frozen=True, slots=True)
+class ActiveRulePin:
+    """Pinned active rule-set version shown in Inbox / lead detail."""
+
+    version_id: int | None
+    version_label: str | None
+    checksum: str | None
+
+
 def encode_cursor(*, last_activity_at: datetime, lead_id: int) -> str:
     return quote(f"{last_activity_at.isoformat()}|{lead_id}", safe="")
 
@@ -50,6 +59,24 @@ def clamp_limit(limit: int | None) -> int:
     if limit is None:
         return DEFAULT_INBOX_LIMIT
     return max(1, min(int(limit), MAX_INBOX_LIMIT))
+
+
+async def get_active_rule_pin(session: AsyncSession) -> ActiveRulePin:
+    row = (
+        await session.execute(
+            select(RuleSetVersion)
+            .where(RuleSetVersion.state == "active")
+            .order_by(RuleSetVersion.version.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        return ActiveRulePin(version_id=None, version_label=None, checksum=None)
+    return ActiveRulePin(
+        version_id=row.id,
+        version_label=f"{row.slug}@v{row.version}",
+        checksum=row.checksum,
+    )
 
 
 async def list_inbox_leads(

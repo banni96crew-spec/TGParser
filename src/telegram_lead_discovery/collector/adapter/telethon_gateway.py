@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime, timedelta
 from typing import Any
+
+import regex
 
 from telegram_lead_discovery.collector.ports import (
     AccountSnapshot,
@@ -21,6 +24,8 @@ from telegram_lead_discovery.collector.ports import (
     GatewayTransientError,
     GatewayUnauthorized,
     GlobalSearchRequest,
+    GraphEdgeDTO,
+    GraphSampleRequest,
     HistoryRequest,
     PublicPostSearchQuotaDTO,
     PublicPostSearchRequest,
@@ -32,6 +37,7 @@ from telegram_lead_discovery.collector.ports import (
     SourceRef,
     SourceSnapshot,
     TelegramMessageDTO,
+    TelegramPeerRef,
     TelegramUpdateDTO,
 )
 from telegram_lead_discovery.security.secrets import load_secret_presence
@@ -109,63 +115,234 @@ class TelethonTelegramGateway:
     async def get_recommendations(
         self, source: SourceRef, limit: int
     ) -> list[SourceSnapshot]:
-        return []
+        """Public channel recommendations via GetChannelRecommendations (SRC-003).
+
+        Returns only public channel|megagroup|group with username. Never joins.
+        """
+        from telethon.tl.functions.channels import GetChannelRecommendationsRequest
+        from telethon.tl.types import InputChannel
+
+        peer_id = source.telegram_id
+        if peer_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        client = self._require_client()
+        try:
+            entity = await client.get_entity(peer_id)
+            input_channel = InputChannel(
+                channel_id=int(entity.id),
+                access_hash=int(getattr(entity, "access_hash", 0) or 0),
+            )
+            result = await self._invoke(
+                GetChannelRecommendationsRequest(channel=input_channel)
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
+
+        snapshots: list[SourceSnapshot] = []
+        for chat in getattr(result, "chats", None) or ():
+            snap = _try_public_chat_snapshot(chat)
+            if snap is None:
+                continue
+            snapshots.append(snap)
+            if len(snapshots) >= limit:
+                break
+        return snapshots
+
+    async def sample_public_graph_edges(
+        self, request: GraphSampleRequest
+    ) -> list[GraphEdgeDTO]:
+        """Sample recent messages for public mention / t.me link / forward origin.
+
+        Private invite links and peers without public username are skipped.
+        Never auto-joins.
+        """
+        peer_id = request.source.telegram_id
+        if peer_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        client = self._require_client()
+        limit = max(0, min(int(request.message_limit), 50))
+        if limit == 0:
+            return []
+        try:
+            messages = await client.get_messages(peer_id, limit=limit)
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
+
+        edges: list[GraphEdgeDTO] = []
+        seen: set[tuple[str, str]] = set()
+        for message in messages or ():
+            msg_id = int(getattr(message, "id", 0) or 0)
+            text = getattr(message, "message", None) or ""
+            text_cf = text.casefold()
+            for username in _usernames_from_message_text(text):
+                key = ("ref", username)
+                if key in seen:
+                    continue
+                seen.add(key)
+                edge_type = (
+                    "public_link" if f"t.me/{username}" in text_cf else "mention"
+                )
+                edges.append(
+                    GraphEdgeDTO(
+                        schema_version=1,
+                        edge_type=edge_type,  # type: ignore[arg-type]
+                        seed_telegram_id=peer_id,
+                        raw_reference=(
+                            f"https://t.me/{username}"
+                            if edge_type == "public_link"
+                            else f"@{username}"
+                        ),
+                        normalized_username=username,
+                        evidence_message_id=msg_id or None,
+                    )
+                )
+            fwd_edge = _forward_origin_edge(message, seed_telegram_id=peer_id)
+            if fwd_edge is not None:
+                key = (
+                    "forward_origin",
+                    fwd_edge.normalized_username or fwd_edge.raw_reference,
+                )
+                if key not in seen:
+                    seen.add(key)
+                    edges.append(fwd_edge)
+        return edges
 
     async def iter_history(
         self, request: HistoryRequest
     ) -> AsyncIterator[TelegramMessageDTO]:
-        if self._client is None:
-            return
-            yield  # pragma: no cover
-
-        entity = request.source_id
-        async for message in self._client.iter_messages(
-            entity,
-            limit=request.limit,
-            min_id=request.after_message_id or 0,
-        ):
-            yield TelegramMessageDTO(
-                schema_version=1,
-                source_id=request.source_id,
-                telegram_message_id=int(message.id),
-                published_at=message.date.replace(tzinfo=UTC)
-                if message.date.tzinfo is None
-                else message.date,
-                text=message.message or "",
-                edited_at=None,
-                author_peer_id=None,
-                permalink=None,
-            )
+        client = self._require_client()
+        # COL-023 / D-064: resolve via TelegramPeerRef only — never DB source_id.
+        entity = await self._resolve_peer_entity(request.peer)
+        offset_id = 0
+        if request.continuation_cursor:
+            try:
+                offset_id = int(request.continuation_cursor)
+            except ValueError:
+                offset_id = 0
+        min_id = request.after_message_id or 0
+        try:
+            async for message in client.iter_messages(
+                entity,
+                limit=request.limit,
+                min_id=min_id,
+                offset_id=offset_id,
+            ):
+                peer_id = request.peer.telegram_peer_id
+                if peer_id is None:
+                    peer_id = int(
+                        getattr(getattr(message, "peer_id", None), "channel_id", 0)
+                        or getattr(getattr(message, "peer_id", None), "chat_id", 0)
+                        or 0
+                    ) or None
+                published = message.date
+                if published is not None and published.tzinfo is None:
+                    published = published.replace(tzinfo=UTC)
+                elif published is None:
+                    published = datetime.now(UTC)
+                yield TelegramMessageDTO(
+                    schema_version=1,
+                    source_id=request.source_id,
+                    telegram_message_id=int(message.id),
+                    published_at=published,
+                    text=message.message or "",
+                    telegram_peer_id=peer_id,
+                    edited_at=None,
+                    author_peer_id=None,
+                    permalink=_permalink(
+                        request.peer.username_normalized or "", int(message.id)
+                    ),
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
 
     async def iter_updates(self) -> AsyncIterator[TelegramUpdateDTO]:
-        if False:  # pragma: no cover
-            yield TelegramUpdateDTO(
-                schema_version=1,
-                event_type="message_new",
-                message=None,
-                observed_at=datetime.now(UTC),
-            )
-        return
+        client = self._require_client()
+        queue: asyncio.Queue[TelegramUpdateDTO | None] = asyncio.Queue()
+
+        async def _handler(event: Any) -> None:
+            update = _event_to_update_dto(event)
+            if update is not None:
+                await queue.put(update)
+
+        try:
+            from telethon import events
+
+            client.add_event_handler(_handler, events.NewMessage)
+            client.add_event_handler(_handler, events.MessageEdited)
+            client.add_event_handler(_handler, events.MessageDeleted)
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
+
+        try:
+            while True:
+                item = await queue.get()
+                if item is None:
+                    return
+                yield item
+        finally:
+            try:
+                client.remove_event_handler(_handler)
+            except Exception:  # noqa: BLE001
+                pass
 
     async def get_message(
         self, source: SourceRef, message_id: int
     ) -> TelegramMessageDTO | None:
-        if self._client is None:
-            return None
-        message = await self._client.get_messages(
-            source.telegram_id or source.source_id, ids=message_id
-        )
+        client = self._require_client()
+        # Prefer telegram_id / username — never fall back to DB source_id (D-064).
+        if source.telegram_id is not None:
+            entity: Any = source.telegram_id
+        elif source.username:
+            entity = source.username
+        else:
+            raise GatewaySourceInaccessible("missing_peer_ref")
+        try:
+            message = await client.get_messages(entity, ids=message_id)
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
         if message is None:
             return None
+        published = message.date
+        if published is not None and published.tzinfo is None:
+            published = published.replace(tzinfo=UTC)
+        elif published is None:
+            published = datetime.now(UTC)
         return TelegramMessageDTO(
             schema_version=1,
             source_id=source.source_id,
             telegram_message_id=int(message.id),
-            published_at=message.date.replace(tzinfo=UTC)
-            if message.date.tzinfo is None
-            else message.date,
+            published_at=published,
             text=message.message or "",
+            telegram_peer_id=source.telegram_id,
         )
+
+    async def _resolve_peer_entity(self, peer: TelegramPeerRef) -> Any:
+        """Map TelegramPeerRef to a Telethon entity key (never DB source_id)."""
+        client = self._require_client()
+        if peer.telegram_peer_id is not None and peer.access_hash is not None:
+            from telethon.tl.types import InputPeerChannel
+
+            pid = int(peer.telegram_peer_id)
+            access = int(peer.access_hash)
+            # Channels use negative/marked ids in some APIs; prefer InputPeerChannel
+            # when access_hash is present (public channels/megagroups).
+            if pid < 0:
+                return InputPeerChannel(channel_id=abs(pid), access_hash=access)
+            try:
+                return await client.get_input_entity(pid)
+            except Exception:  # noqa: BLE001
+                return InputPeerChannel(channel_id=pid, access_hash=access)
+        if peer.username_normalized:
+            try:
+                return await client.get_entity(peer.username_normalized)
+            except Exception as exc:  # noqa: BLE001
+                raise _raise_mapped(exc) from exc
+        if peer.telegram_peer_id is not None:
+            try:
+                return await client.get_entity(peer.telegram_peer_id)
+            except Exception as exc:  # noqa: BLE001
+                raise _raise_mapped(exc) from exc
+        raise GatewayPermanentError("invalid_peer_ref")
 
     async def search_global(self, request: GlobalSearchRequest) -> SearchPageDTO:
         from telethon.tl.functions.messages import SearchGlobalRequest
@@ -530,6 +707,74 @@ def _excerpt(text: str, max_codepoints: int) -> str:
     return text[:max_codepoints]
 
 
+_USERNAME_TOKEN = regex.compile(r"[a-zA-Z0-9_]{5,32}")
+_MENTION_RE = regex.compile(r"(?<![a-zA-Z0-9_])@([a-zA-Z0-9_]{5,32})\b")
+_TME_RE = regex.compile(
+    r"(?:https?://)?t\.me/([a-zA-Z0-9_]{5,32})(?:/[0-9]+)?(?:\?[^\s]*)?",
+    flags=regex.IGNORECASE,
+)
+_PRIVATE_TME_PREFIXES = frozenset(
+    {"joinchat", "addstickers", "share", "proxy", "socks", "c", "s"}
+)
+_REGEX_TIMEOUT = 0.05
+
+
+def _usernames_from_message_text(text: str) -> list[str]:
+    """Extract public @username / t.me/<user> tokens; skip invite-only paths."""
+    if not text:
+        return []
+    found: list[str] = []
+    seen: set[str] = set()
+    try:
+        for match in _TME_RE.finditer(text, timeout=_REGEX_TIMEOUT):
+            token = match.group(1).lower()
+            if token in _PRIVATE_TME_PREFIXES or token.startswith("+"):
+                continue
+            if token not in seen:
+                seen.add(token)
+                found.append(token)
+        for match in _MENTION_RE.finditer(text, timeout=_REGEX_TIMEOUT):
+            token = match.group(1).lower()
+            if token not in seen:
+                seen.add(token)
+                found.append(token)
+    except TimeoutError:
+        return found
+    return found
+
+
+def _forward_origin_edge(message: Any, *, seed_telegram_id: int) -> GraphEdgeDTO | None:
+    """Return public forward_origin edge only when origin username is verifiable."""
+    fwd = getattr(message, "fwd_from", None)
+    if fwd is None:
+        return None
+    # Prefer channel username when Telethon exposes it on the forwarded header.
+    username = getattr(fwd, "from_name", None)
+    # Telethon may attach resolved chat on message; prefer explicit username attr.
+    from_id = getattr(fwd, "from_id", None)
+    channel_id = getattr(from_id, "channel_id", None) if from_id is not None else None
+    # Without a resolvable public username, skip (SRC-042 unconfirmed).
+    saved = getattr(message, "forward", None)
+    chat = getattr(saved, "chat", None) if saved is not None else None
+    chat_username = getattr(chat, "username", None) if chat is not None else None
+    public_username = (chat_username or "").lower() or None
+    if public_username and _USERNAME_TOKEN.fullmatch(public_username, timeout=_REGEX_TIMEOUT):
+        snap = _try_public_chat_snapshot(chat)
+        return GraphEdgeDTO(
+            schema_version=1,
+            edge_type="forward_origin",
+            seed_telegram_id=seed_telegram_id,
+            raw_reference=f"@{public_username}",
+            normalized_username=public_username,
+            target=snap,
+            evidence_message_id=int(getattr(message, "id", 0) or 0) or None,
+        )
+    # Display name alone is not a public identity — skip.
+    _ = username
+    _ = channel_id
+    return None
+
+
 def _permalink(username: str, message_id: int) -> str | None:
     if not username:
         return None
@@ -570,3 +815,83 @@ def _decode_cursor(cursor: SearchCursor | None) -> tuple[int, int, int]:
         return 0, int(token), 0
     except ValueError:
         return 0, 0, 0
+
+
+def _peer_id_from_telethon_peer(peer: Any) -> int | None:
+    if peer is None:
+        return None
+    for attr in ("channel_id", "chat_id", "user_id"):
+        value = getattr(peer, attr, None)
+        if value is not None:
+            return int(value)
+    return None
+
+
+def _event_to_update_dto(event: Any) -> TelegramUpdateDTO | None:
+    """Normalize Telethon NewMessage / MessageEdited / MessageDeleted to DTO."""
+    observed = datetime.now(UTC)
+    message = getattr(event, "message", None)
+    deleted_ids = getattr(event, "deleted_ids", None)
+
+    if deleted_ids:
+        peer_id = _peer_id_from_telethon_peer(getattr(event, "peer", None))
+        # Emit one update per deleted id (stable identity).
+        mid = int(deleted_ids[0])
+        return TelegramUpdateDTO(
+            schema_version=1,
+            event_type="message_deleted",
+            telegram_peer_id=peer_id,
+            observed_at=observed,
+            message=TelegramMessageDTO(
+                schema_version=1,
+                source_id=0,
+                telegram_message_id=mid,
+                published_at=observed,
+                text="",
+                telegram_peer_id=peer_id,
+                is_deleted=True,
+            ),
+        )
+
+    if message is None:
+        return None
+
+    msg_id = int(getattr(message, "id", 0) or 0)
+    if msg_id <= 0:
+        return None
+    peer_id = _peer_id_from_telethon_peer(getattr(message, "peer_id", None))
+    published = getattr(message, "date", None) or observed
+    if published.tzinfo is None:
+        published = published.replace(tzinfo=UTC)
+    edited = getattr(message, "edit_date", None)
+    if edited is not None and edited.tzinfo is None:
+        edited = edited.replace(tzinfo=UTC)
+    event_type = "message_edited" if edited is not None else "message_new"
+    # MessageEdited events always map to edited even without edit_date.
+    if type(event).__name__ in {"MessageEdited", "MessageEditedEvent"} or (
+        getattr(event, "original_update", None) is not None
+        and "Edit" in type(getattr(event, "original_update", object())).__name__
+    ):
+        event_type = "message_edited"
+
+    username = None
+    chat = getattr(event, "chat", None)
+    if chat is not None:
+        username = getattr(chat, "username", None)
+
+    return TelegramUpdateDTO(
+        schema_version=1,
+        event_type=event_type,  # type: ignore[arg-type]
+        telegram_peer_id=peer_id,
+        observed_at=observed,
+        message=TelegramMessageDTO(
+            schema_version=1,
+            source_id=0,
+            telegram_message_id=msg_id,
+            published_at=published,
+            text=getattr(message, "message", None) or "",
+            telegram_peer_id=peer_id,
+            edited_at=edited,
+            permalink=_permalink(username or "", msg_id),
+        ),
+    )

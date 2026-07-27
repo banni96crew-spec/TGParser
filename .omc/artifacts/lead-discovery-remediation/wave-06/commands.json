@@ -1,0 +1,17 @@
+{
+  "captured_at": "2026-07-27T17:46:30+03:00",
+  "wave": "06",
+  "gate": "PASS",
+  "commands": [
+    {
+      "cmd": "uv run ruff check src/telegram_lead_discovery/infrastructure/runtime.py src/telegram_lead_discovery/main.py src/telegram_lead_discovery/processing/pipeline.py src/telegram_lead_discovery/storage/jobs.py src/telegram_lead_discovery/storage/outbox.py src/telegram_lead_discovery/storage/session.py src/telegram_lead_discovery/notifications/worker.py src/telegram_lead_discovery/collector/service.py src/telegram_lead_discovery/source_discovery/worker.py tests/integration/test_runtime_wave06.py tests/integration/test_runtime_wave06_e2e.py tests/integration/test_runtime_discovery_coordinator.py",
+      "result": "pass",
+      "summary": "All checks passed!"
+    },
+    {
+      "cmd": "uv run pytest tests/integration/test_runtime_wave06.py tests/integration/test_runtime_wave06_e2e.py tests/integration/test_runtime_discovery_coordinator.py tests/integration/test_pipeline_lead.py tests/integration/test_notifications.py tests/integration/test_shadow_e2e.py tests/integration/test_collector_wave05.py tests/integration/test_outbox_idempotency.py -q --tb=line",
+      "result": "pass",
+      "summary": "32 passed in 18.73s"
+    }
+  ]
+}

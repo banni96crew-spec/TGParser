@@ -1,4 +1,4 @@
----
+﻿---
 name: Telegram Lead Discovery — remediation and production-readiness
 overview: >
   Исполнимый план исправления повторяющегося и низкокачественного source discovery,
@@ -21,22 +21,22 @@ todos:
     status: completed
   - id: wave-03
     content: "Исправить keyword discovery: novelty, replacement acquisition, profile semantics и quality eligibility"
-    status: pending
+    status: completed
   - id: wave-04
     content: "Реализовать bounded graph discovery публичных источников с provenance и suppress"
-    status: pending
+    status: completed
   - id: wave-05
     content: "Довести TelegramGateway, backfill и live updates до production contract"
-    status: pending
+    status: completed
   - id: wave-06
     content: "Запустить collector, processing, notification и reconciliation workers в едином runtime"
-    status: pending
+    status: completed
   - id: wave-07
     content: "Подключить version-pinned detection rules и воспроизводимую calibration"
-    status: pending
+    status: completed
   - id: wave-08
     content: "Доработать RU-first UI, lifecycle, health и продуктовые метрики"
-    status: pending
+    status: completed
   - id: wave-09
     content: "Доказать recovery, нагрузочную ёмкость 100 sources / 1000 messages/day и Windows pilot"
     status: pending

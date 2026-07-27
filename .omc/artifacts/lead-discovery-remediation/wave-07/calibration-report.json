@@ -1,0 +1,114 @@
+{
+  "category_metrics": {
+    "advertising": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 94,
+      "tp": 10
+    },
+    "contractor_search": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 98,
+      "tp": 6
+    },
+    "direct_order": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 61,
+      "tp": 43
+    },
+    "irrelevant": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 88,
+      "tp": 16
+    },
+    "potential_need": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 102,
+      "tp": 2
+    },
+    "recommendation_request": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 99,
+      "tp": 5
+    },
+    "spam": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 94,
+      "tp": 10
+    },
+    "vacancy": {
+      "fn": 0,
+      "fp": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "tn": 92,
+      "tp": 12
+    }
+  },
+  "confusion_table": {
+    "advertising": {
+      "advertising": 10
+    },
+    "contractor_search": {
+      "contractor_search": 6
+    },
+    "direct_order": {
+      "direct_order": 43
+    },
+    "irrelevant": {
+      "irrelevant": 16
+    },
+    "potential_need": {
+      "potential_need": 2
+    },
+    "recommendation_request": {
+      "recommendation_request": 5
+    },
+    "spam": {
+      "spam": 10
+    },
+    "vacancy": {
+      "vacancy": 12
+    }
+  },
+  "corpus_size": 520,
+  "gates": {
+    "corpus_size": true,
+    "hard_exclusion_fp_rate": true,
+    "hot_precision": true,
+    "hot_warm_precision": true,
+    "purchase_intent_recall": true,
+    "source_count": true
+  },
+  "gates_passed": true,
+  "generated_at": "2026-07-27T15:33:43.416762+00:00",
+  "hard_exclusion_fp_rate": 0.0,
+  "hot_precision": 1.0,
+  "hot_warm_precision": 1.0,
+  "purchase_intent_recall": 1.0,
+  "rule_set_checksum": "3f03d70f3577dd55c0df5da65eb877a518ef66e44344978766b2765f4aee7160",
+  "schema_version": "calibration_report.v1",
+  "source_count": 12,
+  "train_size": 416,
+  "val_size": 104
+}

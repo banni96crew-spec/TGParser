@@ -144,6 +144,86 @@ def record_score(*, band: str) -> None:
     observe_discovery("discovery_score_total", labels={"band": band})
 
 
+# --- OBS-019 novelty / suppress / exhaustion (SRC-037/038) ---
+
+NOVELTY_METRIC_NAMES: frozenset[str] = frozenset(
+    {
+        "discovery_novel_presented_total",
+        "discovery_registry_suppressed_total",
+        "discovery_dismissed_suppressed_total",
+        "discovery_cooldown_suppressed_total",
+        "discovery_pool_exhausted_total",
+        "discovery_novelty_ratio",
+    }
+)
+
+
+def record_novel_presented(count: int = 1) -> None:
+    if count <= 0:
+        return
+    observe_discovery("discovery_novel_presented_total", float(count))
+
+
+def record_registry_suppressed(count: int = 1) -> None:
+    if count <= 0:
+        return
+    observe_discovery("discovery_registry_suppressed_total", float(count))
+
+
+def record_dismissed_suppressed(count: int = 1) -> None:
+    if count <= 0:
+        return
+    observe_discovery("discovery_dismissed_suppressed_total", float(count))
+
+
+def record_cooldown_suppressed(count: int = 1) -> None:
+    if count <= 0:
+        return
+    observe_discovery("discovery_cooldown_suppressed_total", float(count))
+
+
+def record_pool_exhausted(*, reason: str) -> None:
+    """reason is a closed SRC-038 code — never query text or source identity."""
+    safe_reason = (reason or "unknown").strip()[:64] or "unknown"
+    observe_discovery(
+        "discovery_pool_exhausted_total",
+        labels={"reason": safe_reason},
+    )
+
+
+def record_novelty_ratio(ratio: float) -> None:
+    """Store novelty ratio as 0..1 float (UI may show bp/10000 from run counters)."""
+    observe_discovery("discovery_novelty_ratio", max(0.0, min(1.0, float(ratio))))
+
+
+def record_funnel_observability(counters: dict[str, Any]) -> None:
+    """Publish OBS-019 metrics from a run counters dict (idempotent per call)."""
+    novel = int(counters.get("novel_presented_total") or 0)
+    if novel:
+        record_novel_presented(novel)
+    reg = int(counters.get("registry_suppressed") or 0)
+    if reg:
+        record_registry_suppressed(reg)
+    dismissed = int(counters.get("dismissed_suppressed") or 0)
+    if dismissed:
+        record_dismissed_suppressed(dismissed)
+    cooldown = int(counters.get("cooldown_suppressed") or 0)
+    if cooldown:
+        record_cooldown_suppressed(cooldown)
+    if int(counters.get("pool_exhausted") or 0):
+        # Prefer string reason if present; else map numeric code.
+        reason = counters.get("pool_exhausted_reason")
+        if not isinstance(reason, str) or not reason:
+            code = counters.get("pool_exhausted_reason_code")
+            reason = f"code_{code}" if code is not None else "unknown"
+        record_pool_exhausted(reason=str(reason))
+    presented = int(counters.get("presented_total") or 0)
+    if presented > 0:
+        record_novelty_ratio(novel / presented)
+    elif "novelty_ratio_bp" in counters:
+        record_novelty_ratio(int(counters["novelty_ratio_bp"]) / 10000.0)
+
+
 def set_discovery_health(
     state: HealthState,
     *,
@@ -354,6 +434,7 @@ __all__ = [
     "ALLOWED_DISCOVERY_STATES",
     "COMPONENT",
     "FORBIDDEN_METRIC_LABEL_KEYS",
+    "NOVELTY_METRIC_NAMES",
     "ForbiddenMetricLabelError",
     "log_discovery",
     "log_query_progress",
@@ -368,10 +449,17 @@ __all__ = [
     "note_session_fatal",
     "note_transient_error",
     "observe_discovery",
+    "record_cooldown_suppressed",
+    "record_dismissed_suppressed",
     "record_flood_wait_seconds",
+    "record_funnel_observability",
+    "record_novel_presented",
+    "record_novelty_ratio",
+    "record_pool_exhausted",
     "record_promotion",
     "record_qualified_evidence",
     "record_query_total",
+    "record_registry_suppressed",
     "record_run_duration_seconds",
     "record_run_total",
     "record_score",

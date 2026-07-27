@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from telegram_lead_discovery.detection.engine import detect
+from telegram_lead_discovery.detection.engine import seed_catalog_detect
 from telegram_lead_discovery.detection.seed import SEED_RULES, catalog_checksum
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.scoring.engine import DIMENSION_CAPS, score_detection
@@ -30,13 +30,13 @@ def test_det_a_seed_rules_present() -> None:
 def test_golden_classification_fixtures() -> None:
     for text, expected in GOLDEN:
         analysis = normalize_message_text(text).analysis_text
-        result = detect(analysis)
+        result = seed_catalog_detect(analysis)
         assert result.category == expected, (text, result.category, result.matched_rules)
 
 
 def test_positive_requires_intent_and_service() -> None:
     analysis = normalize_message_text("Нужно сделать что-то срочно.").analysis_text
-    result = detect(analysis)
+    result = seed_catalog_detect(analysis)
     assert result.category == "irrelevant"
     assert result.is_lead is False
 
@@ -44,7 +44,7 @@ def test_positive_requires_intent_and_service() -> None:
 def test_scoring_caps_and_bands() -> None:
     text = "Нужно разработать интернет-магазин, бюджет 150 000 ₽. Срочно, готов оплатить."
     analysis = normalize_message_text(text).analysis_text
-    detection = detect(analysis)
+    detection = seed_catalog_detect(analysis)
     assert detection.is_lead
     published = datetime.now(UTC) - timedelta(minutes=10)
     score = score_detection(
@@ -71,7 +71,7 @@ def test_scoring_caps_and_bands() -> None:
 def test_hard_exclusion_scores_irrelevant() -> None:
     text = "Вакансия: Python-разработчик в штат, зарплата 200000."
     analysis = normalize_message_text(text).analysis_text
-    detection = detect(analysis)
+    detection = seed_catalog_detect(analysis)
     score = score_detection(
         detection,
         published_at=datetime.now(UTC),
@@ -87,6 +87,6 @@ def test_matched_excerpt_cap() -> None:
     analysis = normalize_message_text(
         "Нужно разработать интернет-магазин, бюджет 150 000 ₽."
     ).analysis_text
-    result = detect(analysis)
+    result = seed_catalog_detect(analysis)
     assert result.matched_rules
     assert all(len(m.matched_excerpt) <= 120 for m in result.matched_rules)

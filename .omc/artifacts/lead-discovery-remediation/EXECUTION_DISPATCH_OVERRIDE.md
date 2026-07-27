@@ -16,16 +16,20 @@
 | TDD внутри executor | Отдельный test-engineer почти всегда лишний |
 | Главный агент может писать простые волны | HC-0 сейчас artificially inflates cost |
 
-## Practical pattern
+## Practical pattern (updated owner 2026-07-27)
 
 ```text
-wave = todo → executor (tests + code) → verifier
+wave = ONE sub-agent (tests + code + gate evidence) → next wave immediately
 ```
 
-- Параллелить только **Wave 03 ∥ Wave 04** при чистом ownership (как в плане).
-- **Wave 10** оставить: `code-reviewer` + `security-reviewer` + `verifier` — там это оправдано.
-- При смене контракта/ADR: `architect` → `writer` (или executor docs) → `critic` → `verifier` (как Wave 01).
-- Security-reviewer: Waves **04, 05, 10** only.
+- **Без подтверждения пользователя** между волнами. Координатор сразу стартует следующую при PASS.
+- **1 суб-агент на волну** (обычно `executor`). Не кастить отдельный test-engineer/verifier/architect на каждую волну.
+- При FAIL/INCOMPLETE — стоп, не переходить к следующей.
+- Параллель 03∥04 **не использовать** в этом режиме (строго последовательно, 1 агент).
+- **Wave 10**: один агент с ролями code-review + security + release checks в одном dispatch (не 3 отдельных, если не требуется FAIL-retry).
+- Wave 09 Part B (live pilot) — по-прежнему только после явного operator approval (HC-6); Part A harness выполняется агентом.
+- После Wave 10 — стоп перед commit/push/merge.
+- При смене контракта/ADR mid-stream — допустим отдельный docs-агент, затем продолжение.
 
 ## Wave 02 status at override time
 

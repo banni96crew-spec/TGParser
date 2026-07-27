@@ -45,6 +45,7 @@ from telegram_lead_discovery.observability.discovery import (
     note_run_recovered,
     note_session_fatal,
     note_transient_error,
+    record_funnel_observability,
     record_qualified_evidence,
     record_query_total,
     record_run_duration_seconds,
@@ -54,6 +55,9 @@ from telegram_lead_discovery.observability.discovery import (
     record_unique_sources,
     record_verified_sources,
 )
+from telegram_lead_discovery.source_discovery.keyword_profiles import (
+    select_deep_verification_queries,
+)
 from telegram_lead_discovery.source_discovery.keyword_run import (
     JOB_TYPE_KEYWORD_DISCOVERY,
 )
@@ -61,18 +65,22 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     MAX_DEEP_VERIFICATION_SOURCES,
     MAX_EVIDENCE_PER_RUN,
     MAX_MESSAGES_PER_SOURCE,
+    PRESENTATION_COOLDOWN,
     AnnotatedSearchHit,
     DismissedKeywordSourceEntry,
     DismissedKeywordSourceIndex,
     EvidenceRecord,
     OpportunitySnapshotRecord,
+    PresentationCooldownIndex,
     RegistrySourceEntry,
     SourceRegistryIndex,
+    acquire_with_replacement,
     aggregate_search_hits,
     build_opportunity_from_evidence,
     build_preliminary_candidates,
     is_registry_suppressed,
     linked_discussion_opportunity,
+    merge_funnel_counters,
     registry_telegram_ids,
     resolve_dismissed_identity,
     resolve_source_identity,
@@ -136,6 +144,8 @@ class _WorkerContext:
     profile_version: KeywordDiscoveryProfileVersion
     post_queries: tuple[str, ...]
     directory_queries: tuple[str, ...]
+    additional_exclusions: tuple[str, ...]
+    required_service_profiles: tuple[str, ...]
     registry: SourceRegistryIndex
     dismissed: DismissedKeywordSourceIndex
     directory_sources: list[SourceSnapshot]
@@ -144,6 +154,10 @@ class _WorkerContext:
     public_posts_quota_exhausted: bool = False
     registry_suppressed_ids: set[int] = field(default_factory=set)
     dismissed_suppressed_ids: set[int] = field(default_factory=set)
+    cooldown_suppressed_ids: set[int] = field(default_factory=set)
+    presentation_cooldown: PresentationCooldownIndex = field(
+        default_factory=PresentationCooldownIndex
+    )
 
 
 def _utcnow() -> datetime:
@@ -231,6 +245,7 @@ async def process_keyword_discovery_job(
     normalized = version_as_normalized(version_row)
     registry = await _load_registry(session)
     dismissed = await _load_dismissed_sources(session)
+    cooldown = await _load_presentation_cooldown(session, now=_utcnow())
     now = _utcnow()
     if run.state in ("queued", "retry_wait_flood", "cancelling"):
         if run.state != "cancelling":
@@ -248,11 +263,14 @@ async def process_keyword_discovery_job(
         profile_version=version_row,
         post_queries=normalized.post_queries,
         directory_queries=normalized.directory_queries,
+        additional_exclusions=normalized.additional_exclusions,
+        required_service_profiles=normalized.required_service_profiles,
         registry=registry,
         dismissed=dismissed,
         directory_sources=[],
         linked_parents={},
         last_heartbeat_at=now,
+        presentation_cooldown=cooldown,
     )
 
     try:
@@ -393,6 +411,93 @@ class KeywordDiscoveryClaimLoop:
                 continue
 
 
+class GraphDiscoveryClaimLoop:
+    """Asyncio claim loop for ``graph_discovery`` jobs (INF-022 / D-066)."""
+
+    def __init__(
+        self,
+        gateway: TelegramGateway,
+        *,
+        idle_seconds: float = CLAIM_LOOP_IDLE_SECONDS,
+        owner: str = "graph-discovery-worker",
+        shutdown_timeout_seconds: float = CLAIM_LOOP_SHUTDOWN_TIMEOUT_SECONDS,
+    ) -> None:
+        self._gateway = gateway
+        self._idle_seconds = idle_seconds
+        self._owner = owner
+        self._shutdown_timeout_seconds = shutdown_timeout_seconds
+        self._stop = asyncio.Event()
+        self._task: asyncio.Task[None] | None = None
+
+    @property
+    def task(self) -> asyncio.Task[None] | None:
+        return self._task
+
+    @property
+    def stopped(self) -> bool:
+        return self._stop.is_set()
+
+    def start(self) -> asyncio.Task[None]:
+        if self._task is not None and not self._task.done():
+            return self._task
+        self._stop.clear()
+        self._task = asyncio.create_task(
+            self._run(),
+            name="graph-discovery-claim-loop",
+        )
+        return self._task
+
+    async def stop(self) -> None:
+        self._stop.set()
+        task = self._task
+        if task is None:
+            return
+        try:
+            await asyncio.wait_for(task, timeout=self._shutdown_timeout_seconds)
+        except TimeoutError:
+            _log.warning(
+                "graph discovery claim loop shutdown timed out; "
+                "leaving lease for recover_stale_jobs"
+            )
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        finally:
+            self._task = None
+
+    async def _run(self) -> None:
+        from telegram_lead_discovery.storage.db import session_scope
+
+        while not self._stop.is_set():
+            claimed = False
+            try:
+                async with session_scope() as session:
+                    outcome = await claim_and_process_graph_job(
+                        session,
+                        self._gateway,
+                        owner=self._owner,
+                    )
+                    claimed = outcome is not None
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — one job must not kill the loop
+                _log.exception("graph discovery claim/process failed")
+                claimed = True
+
+            if self._stop.is_set():
+                break
+            if claimed:
+                await asyncio.sleep(0)
+                continue
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=self._idle_seconds)
+                break
+            except TimeoutError:
+                continue
+
+
 async def _load_registry(session: AsyncSession) -> SourceRegistryIndex:
     sources = list((await session.execute(select(TelegramSource))).scalars().all())
     aliases = list((await session.execute(select(SourceAlias))).scalars().all())
@@ -429,6 +534,30 @@ async def _load_dismissed_sources(session: AsyncSession) -> DismissedKeywordSour
             )
         )
     return DismissedKeywordSourceIndex.from_entries(entries)
+
+
+async def _load_presentation_cooldown(
+    session: AsyncSession,
+    *,
+    now: datetime,
+) -> PresentationCooldownIndex:
+    """Load non-dismissed opportunities presented within the cooldown window."""
+    cutoff = now - PRESENTATION_COOLDOWN
+    rows = list(
+        (
+            await session.execute(
+                select(SourceOpportunitySnapshot).where(
+                    SourceOpportunitySnapshot.review_state != "dismissed",
+                    SourceOpportunitySnapshot.created_at >= cutoff,
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return PresentationCooldownIndex.from_entries(
+        [(row.source_telegram_id, row.created_at) for row in rows]
+    )
 
 
 def _dismissed_canonical_id(
@@ -899,15 +1028,58 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         is not None
     }
     await _note_dismissed_suppressed(ctx, dir_dismissed)
+    # Replacement after suppress: keep filling deep-verification quota from ranked pool.
+    ranked = sorted(candidates, key=lambda c: c.telegram_id)
+    pages = [
+        tuple(c.telegram_id for c in ranked[:40]),
+        tuple(c.telegram_id for c in ranked[40:80]),
+        tuple(c.telegram_id for c in ranked[80:]),
+    ]
+    suppressed_ids = set(ctx.registry_suppressed_ids) | set(ctx.dismissed_suppressed_ids)
+    now = _utcnow()
+    for tid in list(ctx.presentation_cooldown.presented_at_by_id):
+        if ctx.presentation_cooldown.is_cooled_down(tid, now=now):
+            suppressed_ids.add(tid)
+            ctx.cooldown_suppressed_ids.add(tid)
+    acquisition = acquire_with_replacement(
+        [p for p in pages if p],
+        is_suppressed=lambda tid, _s=suppressed_ids: tid in _s,
+        target_quota=MAX_DEEP_VERIFICATION_SOURCES,
+    )
+    if acquisition.replacement_fetches_total:
+        await _bump_counter(ctx, "replacement_fetches_total", acquisition.replacement_fetches_total)
+    if acquisition.pool_exhausted:
+        counters = _loads_counters(ctx.run.counters_json)
+        merged = merge_funnel_counters(
+            counters,
+            pool_exhausted=True,
+            pool_exhausted_reason=acquisition.pool_exhausted_reason,
+            acquired_total=acquisition.acquired_total,
+            suppressed_total=acquisition.suppressed_total,
+            replacement_fetches_total=acquisition.replacement_fetches_total,
+        )
+        ctx.run.counters_json = _dumps_counters(merged)
+    if ctx.cooldown_suppressed_ids:
+        counters = _loads_counters(ctx.run.counters_json)
+        counters["cooldown_suppressed"] = len(ctx.cooldown_suppressed_ids)
+        ctx.run.counters_json = _dumps_counters(counters)
+    allowed = set(acquisition.qualified_candidate_ids[:MAX_DEEP_VERIFICATION_SOURCES])
+    filtered = [c for c in candidates if c.telegram_id in allowed]
     selected = select_sources_for_deep_verification(
-        candidates,
+        filtered,
         limit=MAX_DEEP_VERIFICATION_SOURCES,
     )
     record_verified_sources(len(selected))
     ctx.run.phase = "H"
     await ctx.session.flush()
 
-    deep_queries = list(ctx.post_queries[:DEEP_QUERIES_PER_SOURCE])
+    deep_queries = list(
+        select_deep_verification_queries(
+            ctx.post_queries,
+            required_service_profiles=ctx.required_service_profiles,
+            limit=DEEP_QUERIES_PER_SOURCE,
+        )
+    )
     if not deep_queries:
         return
     done_keys = await _finished_verification_keys(ctx)
@@ -1031,7 +1203,15 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
 
     scored_at = _utcnow()
     qualified = 0
+    presented = 0
+    novel_presented = 0
+    qualified_total = 0
+    cooldown_skipped = 0
     for telegram_id, rows in by_source.items():
+        if ctx.presentation_cooldown.is_cooled_down(telegram_id, now=scored_at):
+            ctx.cooldown_suppressed_ids.add(telegram_id)
+            cooldown_skipped += 1
+            continue
         meta = rows[0]
         source = SourceSnapshot(
             schema_version=1,
@@ -1052,16 +1232,34 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
             scored_at=scored_at,
             registry_source_id=identity.source_id if identity else None,
             linked_parent_telegram_id=ctx.linked_parents.get(telegram_id),
+            required_service_profiles=ctx.required_service_profiles,
+            additional_exclusions=ctx.additional_exclusions,
         )
         await _upsert_opportunity(ctx, snap)
         record_score(band=snap.band)
-        qualified += sum(1 for row in rows if row.is_qualified)
+        q_count = sum(1 for row in rows if row.is_qualified)
+        qualified += q_count
+        if snap.band in ("review", "promising") or snap.qualified_count > 0:
+            qualified_total += 1
+        presented += 1
+        if telegram_id not in ctx.presentation_cooldown.presented_at_by_id:
+            novel_presented += 1
 
     record_qualified_evidence(qualified)
-    counters = _loads_counters(ctx.run.counters_json)
+    counters = merge_funnel_counters(
+        _loads_counters(ctx.run.counters_json),
+        canonicalized_total=len(by_source) + cooldown_skipped,
+        dismissed_suppressed=len(ctx.dismissed_suppressed_ids),
+        cooldown_suppressed=len(ctx.cooldown_suppressed_ids),
+        qualified_total=qualified_total,
+        presented_total=presented,
+        novel_presented_total=novel_presented,
+    )
     counters["evidence_count"] = len(evidence_rows)
     counters["unique_sources"] = await _opportunity_count(ctx)
+    counters["registry_suppressed"] = len(ctx.registry_suppressed_ids)
     ctx.run.counters_json = _dumps_counters(counters)
+    record_funnel_observability(counters)
 
 
 async def _note_registry_suppressed(
@@ -1652,6 +1850,8 @@ def _emit_run_observability(
     if evidence_count is not None:
         # Qualified count is emitted during finalize; keep total evidence in logs only.
         pass
+    counters = _loads_counters(run.counters_json)
+    record_funnel_observability(counters)
     log_run_finished(
         run_id=run.id,
         state=state,
@@ -1673,7 +1873,411 @@ __all__ = [
     "LEASE_SECONDS",
     "MAX_TRANSIENT_ATTEMPTS",
     "TRANSIENT_RETRY_DELAYS_S",
+    "GraphDiscoveryClaimLoop",
     "KeywordDiscoveryClaimLoop",
+    "claim_and_process_graph_job",
     "claim_and_process_keyword_job",
+    "process_graph_discovery_job",
     "process_keyword_discovery_job",
 ]
+
+
+# ---------------------------------------------------------------------------
+# Wave 04 — bounded graph discovery (run_type=graph). Keyword phases above
+# remain the Wave 03 surface; do not interleave graph into keyword stages.
+# ---------------------------------------------------------------------------
+
+TERMINAL_GRAPH_LIKE = frozenset({"succeeded", "failed", "cancelled"})
+
+
+@dataclass
+class _GraphWorkerContext:
+    session: AsyncSession
+    gateway: TelegramGateway
+    job: Job
+    run: DiscoveryRun
+    budget: Any  # GraphBudget — imported lazily below
+    registry: SourceRegistryIndex
+    dismissed: DismissedKeywordSourceIndex
+    cancel_requested: bool = False
+    last_heartbeat_at: datetime = field(default_factory=_utcnow)
+    queue: list[Any] = field(default_factory=list)
+    parent_by_telegram_id: dict[int, int] = field(default_factory=dict)
+
+
+async def process_graph_discovery_job(
+    session: AsyncSession,
+    job: Job,
+    gateway: TelegramGateway,
+    *,
+    cancel_requested: bool = False,
+) -> dict[str, Any]:
+    """Execute one claimed ``discovery`` (graph) job with public-only BFS."""
+    from telegram_lead_discovery.collector.ports import GraphEdgeDTO, PublicSourceRef
+    from telegram_lead_discovery.source_discovery.graph_discovery import (
+        JOB_TYPE_GRAPH_DISCOVERY,
+        MAX_GRAPH_DEPTH,
+        MAX_OUTGOING_EDGES_PER_SEED,
+        MAX_RESOLVE_OPS,
+        MAX_UNIQUE_GRAPH_CANDIDATES,
+        GraphBudget,
+        GraphCandidateResult,
+        GraphQueueItem,
+        collect_edges_for_seed,
+        load_graph_seeds,
+        load_registry_index,
+        persist_graph_candidate,
+        plan_edge_outcome,
+    )
+
+    if job.job_type != JOB_TYPE_GRAPH_DISCOVERY:
+        raise ValueError(f"unexpected_job_type:{job.job_type}")
+
+    payload = json.loads(job.payload_json or "{}")
+    run_id = int(payload["run_id"])
+    run = await session.get(DiscoveryRun, run_id)
+    if run is None or run.run_type != "graph":
+        job.state = "failed"
+        job.last_error_code = "run_not_found"
+        job.updated_at = _utcnow()
+        await session.flush()
+        return {"outcome": "failed", "error": "run_not_found"}
+
+    if run.state in TERMINAL_GRAPH_LIKE:
+        job.state = "cancelled" if run.state == "cancelled" else (
+            "failed" if run.state == "failed" else "succeeded"
+        )
+        job.updated_at = _utcnow()
+        await session.flush()
+        return {"outcome": "already_terminal", "run_state": run.state}
+
+    now = _utcnow()
+    if run.state == "queued":
+        run.state = "running"
+        run.started_at = run.started_at or now
+    run.phase = run.phase or "expand"
+    await session.flush()
+
+    registry = await load_registry_index(session)
+    dismissed = await _load_dismissed_sources(session)
+    counters = _loads_counters(run.counters_json)
+    budget = GraphBudget(
+        max_depth=int(run.max_depth or MAX_GRAPH_DEPTH),
+        max_outgoing_edges=int(run.expansion_cap or MAX_OUTGOING_EDGES_PER_SEED),
+        candidate_cap=int(run.candidate_cap or MAX_UNIQUE_GRAPH_CANDIDATES),
+        resolve_cap=MAX_RESOLVE_OPS,
+        resolves_used=int(counters.get("resolves", 0)),
+        candidates_created=int(counters.get("created_candidates", 0)),
+        merged_total=int(counters.get("merged_candidates", 0)),
+        depth_skipped_total=int(counters.get("depth_skipped_total", 0)),
+        budget_skipped_total=int(counters.get("budget_skipped_total", 0)),
+        unsupported_total=int(counters.get("unsupported_sources", 0)),
+        invalid_total=int(counters.get("invalid_references", 0)),
+        duplicate_in_run_total=int(counters.get("duplicate_in_run", 0)),
+        dismissed_suppressed_total=int(counters.get("dismissed_suppressed", 0)),
+    )
+    # Restore resolved keys / queue from prior FloodWait degraded progress.
+    raw_keys = json.loads(run.cursor_json or "{}")
+    if isinstance(raw_keys, dict):
+        for item in raw_keys.get("resolved_canonical_keys", []) or []:
+            budget.resolved_canonical_keys.add(str(item))
+        queue_payload = raw_keys.get("queue") or []
+    else:
+        queue_payload = []
+
+    seeds = await load_graph_seeds(session, run)
+    parent_map = {s.seed_telegram_id: s.seed_source_id or 0 for s in seeds}
+    if queue_payload:
+        queue = [
+            GraphQueueItem(
+                seed_telegram_id=int(q["seed_telegram_id"]),
+                seed_source_id=q.get("seed_source_id"),
+                depth=int(q["depth"]),
+                username=q.get("username"),
+            )
+            for q in queue_payload
+        ]
+    else:
+        queue = list(seeds)
+        for seed in seeds:
+            budget.resolved_canonical_keys.add(f"peer:{seed.seed_telegram_id}")
+
+    ctx = _GraphWorkerContext(
+        session=session,
+        gateway=gateway,
+        job=job,
+        run=run,
+        budget=budget,
+        registry=registry,
+        dismissed=dismissed,
+        cancel_requested=cancel_requested,
+        last_heartbeat_at=now,
+        queue=queue,
+        parent_by_telegram_id={k: v for k, v in parent_map.items() if v},
+    )
+
+    while ctx.queue:
+        if ctx.cancel_requested or run.state == "cancelled":
+            return await _finish_graph_cancelled(ctx)
+        await _graph_maybe_heartbeat(ctx)
+        node = ctx.queue.pop(0)
+        if node.depth >= budget.max_depth:
+            # Leaf: do not expand further (depth-2 findings are terminals).
+            continue
+        await session.commit()
+        try:
+            edges = await collect_edges_for_seed(
+                gateway,
+                seed=node,
+                outgoing_cap=budget.max_outgoing_edges,
+            )
+        except GatewayFloodWait as exc:
+            _save_graph_cursor(ctx)
+            return await _park_graph_flood(ctx, exc.until)
+        except GatewayUnauthorized:
+            return await _fail_run(session, job, run, "unauthorized")
+        except GatewayFrozen:
+            return await _fail_run(session, job, run, "frozen")
+        except GatewaySourceInaccessible:
+            continue
+        except GatewayTransientError:
+            _save_graph_cursor(ctx)
+            job.state = "retry_wait"
+            job.available_at = _utcnow() + timedelta(seconds=30)
+            job.last_error_code = "transient_error"
+            job.updated_at = _utcnow()
+            run.counters_json = _dumps_counters(budget.to_counters())
+            await session.flush()
+            return {"outcome": "retry_wait", "error": "transient_error"}
+
+        child_depth = node.depth + 1
+        for edge in edges:
+            if ctx.cancel_requested:
+                return await _finish_graph_cancelled(ctx)
+            planned = plan_edge_outcome(
+                edge,
+                child_depth=child_depth,
+                budget=budget,
+                registry=ctx.registry,
+                dismissed=ctx.dismissed,
+            )
+            snap = planned.snapshot
+            if planned.outcome == "candidate" and snap is None:
+                if budget.remaining_resolves() <= 0:
+                    budget.budget_skipped_total += 1
+                    planned = GraphCandidateResult(
+                        outcome="budget_skipped",
+                        method=planned.method,
+                        depth=planned.depth,
+                        raw_reference=planned.raw_reference,
+                        normalized_reference=planned.normalized_reference,
+                        parent_source_id=planned.parent_source_id,
+                        seed_telegram_id=planned.seed_telegram_id,
+                        snapshot=planned.snapshot,
+                        source_id=planned.source_id,
+                        evidence_message_id=planned.evidence_message_id,
+                    )
+                else:
+                    await session.commit()
+                    try:
+                        snap = await gateway.resolve_public_source(
+                            PublicSourceRef(
+                                schema_version=1,
+                                username_or_url=planned.normalized_reference
+                                or edge.raw_reference,
+                            )
+                        )
+                        budget.resolves_used += 1
+                    except GatewayFloodWait as exc:
+                        ctx.queue.insert(0, node)
+                        _save_graph_cursor(ctx)
+                        return await _park_graph_flood(ctx, exc.until)
+                    except GatewaySourceInaccessible:
+                        budget.unsupported_total += 1
+                        await persist_graph_candidate(
+                            session,
+                            run=run,
+                            result=GraphCandidateResult(
+                                outcome="unsupported_source",
+                                method=planned.method,
+                                depth=planned.depth,
+                                raw_reference=planned.raw_reference,
+                                normalized_reference=planned.normalized_reference,
+                                parent_source_id=planned.parent_source_id,
+                                seed_telegram_id=planned.seed_telegram_id,
+                                evidence_message_id=planned.evidence_message_id,
+                            ),
+                            parent_source_id=node.seed_source_id,
+                            budget=budget,
+                        )
+                        continue
+                    resolved_edge = GraphEdgeDTO(
+                        schema_version=1,
+                        edge_type=edge.edge_type,
+                        seed_telegram_id=edge.seed_telegram_id,
+                        raw_reference=edge.raw_reference,
+                        normalized_username=snap.username.lower(),
+                        target=snap,
+                        evidence_message_id=edge.evidence_message_id,
+                    )
+                    budget.resolved_canonical_keys.discard(
+                        f"username:{planned.normalized_reference}"
+                    )
+                    planned = plan_edge_outcome(
+                        resolved_edge,
+                        child_depth=child_depth,
+                        budget=budget,
+                        registry=ctx.registry,
+                        dismissed=ctx.dismissed,
+                    )
+                    snap = planned.snapshot
+
+            if planned.outcome in {
+                "depth_skipped",
+                "budget_skipped",
+                "duplicate_in_run",
+                "dismissed_suppressed",
+                "unsupported_source",
+                "invalid_reference",
+                "registry_suppressed",
+            }:
+                await persist_graph_candidate(
+                    session,
+                    run=run,
+                    result=planned,
+                    parent_source_id=node.seed_source_id,
+                    budget=budget,
+                    snapshot=snap,
+                )
+                continue
+
+            source = await persist_graph_candidate(
+                session,
+                run=run,
+                result=planned,
+                parent_source_id=node.seed_source_id,
+                budget=budget,
+                snapshot=snap,
+            )
+            if (
+                source is not None
+                and snap is not None
+                and child_depth < budget.max_depth
+                and planned.outcome in {"candidate", "merged"}
+            ):
+                already_queued = any(
+                    q.seed_telegram_id == snap.telegram_id for q in ctx.queue
+                )
+                if not already_queued:
+                    ctx.queue.append(
+                        GraphQueueItem(
+                            seed_telegram_id=snap.telegram_id,
+                            seed_source_id=source.id,
+                            depth=child_depth,
+                            username=snap.username.lower(),
+                        )
+                    )
+                    ctx.parent_by_telegram_id[snap.telegram_id] = source.id
+
+        _save_graph_cursor(ctx)
+        run.counters_json = _dumps_counters(budget.to_counters())
+        await session.flush()
+
+    return await _finish_graph_success(ctx)
+
+
+def _save_graph_cursor(ctx: _GraphWorkerContext) -> None:
+    payload = {
+        "resolved_canonical_keys": sorted(ctx.budget.resolved_canonical_keys),
+        "queue": [
+            {
+                "seed_telegram_id": q.seed_telegram_id,
+                "seed_source_id": q.seed_source_id,
+                "depth": q.depth,
+                "username": q.username,
+            }
+            for q in ctx.queue
+        ],
+    }
+    ctx.run.cursor_json = json.dumps(payload, ensure_ascii=False)
+    ctx.run.counters_json = _dumps_counters(ctx.budget.to_counters())
+
+
+async def _graph_maybe_heartbeat(ctx: _GraphWorkerContext) -> None:
+    now = _utcnow()
+    if (now - ctx.last_heartbeat_at).total_seconds() >= HEARTBEAT_SECONDS:
+        await heartbeat_job(ctx.session, ctx.job)
+        ctx.last_heartbeat_at = now
+
+
+async def _park_graph_flood(ctx: _GraphWorkerContext, until: datetime) -> dict[str, Any]:
+    note_flood_wait(until=until)
+    ctx.job.state = "retry_wait"
+    ctx.job.available_at = until
+    ctx.job.last_error_code = "flood_wait"
+    ctx.job.updated_at = _utcnow()
+    # Run stays running (degraded) with cursor preserved (SRC-042).
+    ctx.run.state = "running"
+    ctx.run.phase = "retry_wait"
+    ctx.run.last_error_code = "flood_wait"
+    await ctx.session.flush()
+    return {"outcome": "retry_wait", "until": until.isoformat(), "run_id": ctx.run.id}
+
+
+async def _finish_graph_success(ctx: _GraphWorkerContext) -> dict[str, Any]:
+    now = _utcnow()
+    ctx.run.state = "succeeded"
+    ctx.run.finished_at = now
+    ctx.run.phase = "done"
+    ctx.run.counters_json = _dumps_counters(ctx.budget.to_counters())
+    ctx.run.cursor_json = json.dumps(
+        {"resolved_canonical_keys": sorted(ctx.budget.resolved_canonical_keys)},
+        ensure_ascii=False,
+    )
+    ctx.job.state = "succeeded"
+    ctx.job.lease_until = None
+    ctx.job.updated_at = now
+    await ctx.session.flush()
+    return {
+        "outcome": "succeeded",
+        "run_id": ctx.run.id,
+        "counters": ctx.budget.to_counters(),
+    }
+
+
+async def _finish_graph_cancelled(ctx: _GraphWorkerContext) -> dict[str, Any]:
+    now = _utcnow()
+    _save_graph_cursor(ctx)
+    ctx.run.state = "cancelled"
+    ctx.run.finished_at = now
+    ctx.run.last_error_code = "cancel_requested"
+    ctx.job.state = "cancelled"
+    ctx.job.lease_until = None
+    ctx.job.updated_at = now
+    await ctx.session.flush()
+    return {"outcome": "cancelled", "run_id": ctx.run.id}
+
+
+async def claim_and_process_graph_job(
+    session: AsyncSession,
+    gateway: TelegramGateway,
+    *,
+    owner: str = "graph-discovery-worker",
+    cancel_requested: bool = False,
+) -> dict[str, Any] | None:
+    """Recover stale leases, claim one graph discovery job, process it."""
+    from telegram_lead_discovery.source_discovery.graph_discovery import (
+        JOB_TYPE_GRAPH_DISCOVERY,
+    )
+
+    await recover_stale_jobs(session)
+    job = await claim_job(
+        session,
+        job_types=[JOB_TYPE_GRAPH_DISCOVERY],
+        owner=owner,
+    )
+    if job is None:
+        return None
+    return await process_graph_discovery_job(
+        session, job, gateway, cancel_requested=cancel_requested
+    )

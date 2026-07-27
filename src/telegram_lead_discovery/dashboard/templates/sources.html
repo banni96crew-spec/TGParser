@@ -2,27 +2,73 @@
 {% block content %}
 <header class="page-header">
   <h1>Источники</h1>
+  <p class="page-meta"><a href="/sources/monitoring">Покрытие мониторинга</a></p>
 </header>
 
 {% if sources %}
 <div class="panel">
   <table class="data-table">
     <thead>
-      <tr><th>ID</th><th>Username</th><th>Title</th><th>State</th><th>Действие</th></tr>
+      <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Title</th>
+        <th>State</th>
+        <th>Действия</th>
+      </tr>
     </thead>
     <tbody>
       {% for source in sources %}
       <tr id="source-{{ source.id }}">
         <td class="mono">{{ source.id }}</td>
-        <td class="mono">{{ source.username_normalized }}</td>
+        <td class="mono">{{ source.username_normalized or "—" }}</td>
         <td>{{ source.title }}</td>
-        <td>{{ source.lifecycle_state }}</td>
-        <td>
+        <td class="mono">{{ source.lifecycle_state }}</td>
+        <td class="lifecycle-actions">
           {% if source.lifecycle_state == "candidate" %}
-          <form method="post" action="/sources/{{ source.id }}/approve">
+          <form method="post" action="/sources/{{ source.id }}/approve" class="inline-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
             <button type="submit">Одобрить</button>
           </form>
+          <form method="post" action="/sources/{{ source.id }}/reject" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <select name="reason_code" required>
+              {% for reason in reject_reasons %}
+              <option value="{{ reason }}">{{ reason }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn-secondary">Отклонить</button>
+          </form>
+          {% elif source.lifecycle_state == "rejected" %}
+          <form method="post" action="/sources/{{ source.id }}/reconsider" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit">ReconsiderSource</button>
+          </form>
+          {% elif source.lifecycle_state == "monitoring" %}
+          <form method="post" action="/sources/{{ source.id }}/pause" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="btn-secondary">Пауза</button>
+          </form>
+          <form method="post" action="/sources/{{ source.id }}/disable" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="btn-secondary">Отключить</button>
+          </form>
+          {% elif source.lifecycle_state == "paused" %}
+          <form method="post" action="/sources/{{ source.id }}/resume" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit">Возобновить</button>
+          </form>
+          <form method="post" action="/sources/{{ source.id }}/disable" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="btn-secondary">Отключить</button>
+          </form>
+          {% elif source.lifecycle_state == "inaccessible" %}
+          <form method="post" action="/sources/{{ source.id }}/disable" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <button type="submit" class="btn-secondary">Отключить</button>
+          </form>
+          {% else %}
+          <span class="faint">—</span>
           {% endif %}
         </td>
       </tr>
@@ -33,4 +79,42 @@
 {% else %}
 <p class="empty-state">Источников пока нет.</p>
 {% endif %}
+
+<section class="panel" id="monitoring-coverage">
+  <h2 class="section-title">Покрытие мониторинга (до {{ monitoring_limit }})</h2>
+  {% if monitoring_coverage %}
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>State</th>
+          <th>Checkpoint msg</th>
+          <th>Checkpoint at</th>
+          <th>Backlog</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in monitoring_coverage %}
+        <tr>
+          <td class="mono">{{ row.id }}</td>
+          <td class="mono">{{ row.username or "—" }}</td>
+          <td class="mono">{{ row.lifecycle_state }}</td>
+          <td class="mono">{{ row.checkpoint_message_id if row.checkpoint_message_id is not none else "—" }}</td>
+          <td class="mono">{{ row.checkpoint_published_at or "—" }}</td>
+          <td class="mono">{{ row.backlog_jobs }}</td>
+          <td class="{% if row.has_error %}status-critical{% else %}faint{% endif %}">
+            {{ row.job_error_code or "—" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">Нет источников в monitoring/paused.</p>
+  {% endif %}
+</section>
 {% endblock %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,9 @@ from telegram_lead_discovery.security.secrets import load_secret_presence, read_
 from telegram_lead_discovery.security.types import SecretPresenceSnapshot
 from telegram_lead_discovery.settings.service import get_setting
 from telegram_lead_discovery.storage.models import NotificationOutbox
+
+# While state=delivering, available_at holds the lease deadline (STO-018 / D-066).
+OUTBOX_DELIVERING_LEASE_SECONDS = 300
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,3 +129,45 @@ async def enqueue_critical(
         incident_id=incident_id,
     )
     return result.row if result.inserted or result.row is not None else None
+
+
+async def recover_stale_outbox(
+    session: AsyncSession,
+    *,
+    now: datetime | None = None,
+    lease_seconds: int = OUTBOX_DELIVERING_LEASE_SECONDS,
+) -> int:
+    """Return expired delivering leases to queued (kill mid-delivery recovery)."""
+    del lease_seconds  # deadline stored on available_at while delivering
+    clock = now or datetime.now(UTC)
+    result = await session.execute(
+        select(NotificationOutbox).where(NotificationOutbox.state == "delivering")
+    )
+    count = 0
+    for row in result.scalars():
+        deadline = row.available_at
+        if deadline is None:
+            # Legacy/stuck delivering without lease — treat as expired.
+            row.state = "queued"
+            row.available_at = None
+            count += 1
+            continue
+        aware = deadline if deadline.tzinfo is not None else deadline.replace(tzinfo=UTC)
+        if aware < clock:
+            row.state = "queued"
+            row.available_at = None
+            count += 1
+    if count:
+        await session.flush()
+    return count
+
+
+def mark_outbox_delivering_lease(
+    row: NotificationOutbox,
+    *,
+    now: datetime | None = None,
+    lease_seconds: int = OUTBOX_DELIVERING_LEASE_SECONDS,
+) -> None:
+    clock = now or datetime.now(UTC)
+    row.state = "delivering"
+    row.available_at = clock + timedelta(seconds=lease_seconds)

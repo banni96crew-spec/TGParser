@@ -1,16 +1,18 @@
-"""Rule-based lead detection engine (DET-007..DET-013)."""
+"""Rule-based lead detection engine (DET-007..DET-016)."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from time import perf_counter
 
 import regex
 
-from telegram_lead_discovery.detection.seed import SEED_RULES, SeedRule, catalog_checksum
+from telegram_lead_discovery.detection.errors import RuleSetInvalidError
+from telegram_lead_discovery.detection.seed import SeedRule, catalog_checksum
 
 REGEX_TIMEOUT = 0.05
 MATCHED_EXCERPT_MAX = 120
+ANALYSIS_TEXT_CAP = 4096
 REGEX_FLAGS = regex.IGNORECASE | regex.FULLCASE | regex.VERSION1
 
 HARD_EXCLUSION_PRECEDENCE = ("spam", "advertising", "vacancy")
@@ -29,6 +31,9 @@ SIGNAL_TARGETS = {
     "contact_present",
     "task_specificity",
 }
+
+# Compile cache key = catalog checksum (DET-016).
+_COMPILE_CACHE: dict[str, dict[str, regex.Pattern[str]]] = {}
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,16 +59,24 @@ class DetectionResult:
     signals: dict[str, bool]
     explanation_codes: tuple[str, ...]
     duration_ms: int
-    rule_set_checksum: str = field(default_factory=catalog_checksum)
+    rule_set_checksum: str
+
+
+def clear_compile_cache() -> None:
+    _COMPILE_CACHE.clear()
 
 
 def _compile(rule: SeedRule) -> regex.Pattern[str]:
     return regex.compile(rule.pattern, flags=REGEX_FLAGS)
 
 
-_COMPILED: dict[str, regex.Pattern[str]] = {
-    rule.stable_rule_id: _compile(rule) for rule in SEED_RULES
-}
+def _compiled_for(checksum: str, rules: tuple[SeedRule, ...]) -> dict[str, regex.Pattern[str]]:
+    cached = _COMPILE_CACHE.get(checksum)
+    if cached is not None:
+        return cached
+    compiled = {rule.stable_rule_id: _compile(rule) for rule in rules}
+    _COMPILE_CACHE[checksum] = compiled
+    return compiled
 
 
 def _excerpt(match: regex.Match[str]) -> str:
@@ -73,8 +86,18 @@ def _excerpt(match: regex.Match[str]) -> str:
     return text[:MATCHED_EXCERPT_MAX]
 
 
-def _search(rule: SeedRule, text: str) -> tuple[MatchedRule | None, bool]:
-    pattern = _COMPILED[rule.stable_rule_id]
+def _cap_analysis_text(analysis_text: str) -> str:
+    if len(analysis_text) <= ANALYSIS_TEXT_CAP:
+        return analysis_text
+    return analysis_text[:ANALYSIS_TEXT_CAP]
+
+
+def _search(
+    rule: SeedRule,
+    text: str,
+    compiled: dict[str, regex.Pattern[str]],
+) -> tuple[MatchedRule | None, bool]:
+    pattern = compiled[rule.stable_rule_id]
     try:
         match = pattern.search(text, timeout=REGEX_TIMEOUT)
     except TimeoutError:
@@ -95,10 +118,31 @@ def _search(rule: SeedRule, text: str) -> tuple[MatchedRule | None, bool]:
     )
 
 
-def detect(analysis_text: str, *, rules: tuple[SeedRule, ...] | None = None) -> DetectionResult:
+def detect(
+    analysis_text: str,
+    *,
+    rules: tuple[SeedRule, ...],
+    rule_set_checksum: str,
+) -> DetectionResult:
+    """Evaluate analysis text against an explicitly pinned rule catalog.
+
+    Runtime MUST pass rules loaded by version+checksum. Missing/mismatched
+    catalogs are rejected by the loader before this call — never silently
+    substitute SEED_RULES (DET-016 / D-065).
+    """
+    if not rule_set_checksum:
+        raise RuleSetInvalidError("missing_checksum")
+    if not rules:
+        raise RuleSetInvalidError("empty_rule_catalog")
+
+    content_checksum = catalog_checksum(rules)
+    if content_checksum != rule_set_checksum:
+        raise RuleSetInvalidError("checksum_mismatch")
+
+    text = _cap_analysis_text(analysis_text)
     started = perf_counter()
-    catalog = rules if rules is not None else SEED_RULES
-    ordered = sorted(catalog, key=lambda r: (r.priority, r.stable_rule_id))
+    compiled = _compiled_for(rule_set_checksum, rules)
+    ordered = sorted(rules, key=lambda r: (r.priority, r.stable_rule_id))
 
     matched: list[MatchedRule] = []
     timed_out: list[str] = []
@@ -108,7 +152,7 @@ def detect(analysis_text: str, *, rules: tuple[SeedRule, ...] | None = None) -> 
     signal_hits: list[MatchedRule] = []
 
     for rule in ordered:
-        hit, timed = _search(rule, analysis_text)
+        hit, timed = _search(rule, text, compiled)
         if timed:
             timed_out.append(rule.stable_rule_id)
             continue
@@ -167,4 +211,43 @@ def detect(analysis_text: str, *, rules: tuple[SeedRule, ...] | None = None) -> 
         signals=signals,
         explanation_codes=tuple(m.explanation_code for m in matched),
         duration_ms=duration_ms,
+        rule_set_checksum=rule_set_checksum,
+    )
+
+
+def stable_detection_payload(result: DetectionResult) -> dict[str, object]:
+    """Byte-stable structured view (excludes wall-clock duration_ms)."""
+    return {
+        "category": result.category,
+        "is_lead": result.is_lead,
+        "hard_exclusion": result.hard_exclusion,
+        "hard_exclusion_rule_id": result.hard_exclusion_rule_id,
+        "matched_rules": [
+            {
+                "stable_rule_id": m.stable_rule_id,
+                "rule_type": m.rule_type,
+                "dimension": m.dimension,
+                "weight": m.weight,
+                "matched_excerpt": m.matched_excerpt,
+                "target": m.target,
+                "explanation_code": m.explanation_code,
+            }
+            for m in result.matched_rules
+        ],
+        "service_profiles": list(result.service_profiles),
+        "timed_out_rule_ids": list(result.timed_out_rule_ids),
+        "signals": dict(sorted(result.signals.items())),
+        "explanation_codes": list(result.explanation_codes),
+        "rule_set_checksum": result.rule_set_checksum,
+    }
+
+
+def seed_catalog_detect(analysis_text: str) -> DetectionResult:
+    """Explicit SEED catalog detect for unit/scouting fixtures (not a runtime fallback)."""
+    from telegram_lead_discovery.detection.seed import SEED_RULES
+
+    return detect(
+        analysis_text,
+        rules=SEED_RULES,
+        rule_set_checksum=catalog_checksum(SEED_RULES),
     )

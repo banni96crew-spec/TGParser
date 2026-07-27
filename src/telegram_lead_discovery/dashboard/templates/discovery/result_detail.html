@@ -5,30 +5,51 @@
   <p class="page-meta zero-stars">{{ zero_stars_label }}</p>
 </header>
 
-<section class="panel discovery-panel">
-  <h2 class="section-title">Метаданные</h2>
+<section class="panel discovery-panel opportunity-card">
+  <h2 class="section-title">Идентичность</h2>
   <ul class="meta-list">
     <li>Title: {{ result.title }}</li>
     <li>Username: <span class="mono">{{ result.username or "—" }}</span></li>
     <li>Type: {{ result.source_type }}</li>
     <li>Telegram ID: <span class="mono">{{ result.source_telegram_id }}</span></li>
+    <li>Canonical key:
+      <span class="mono">{{ result.identity.canonical_key or "—" }}</span>
+    </li>
+    <li>Aliases:
+      {% if result.aliases %}
+        <span class="mono">{{ result.aliases|join(", ") }}</span>
+      {% else %}
+        —
+      {% endif %}
+    </li>
+    {% if result.public_url %}
+    <li>URL:
+      <a href="{{ result.public_url }}" rel="noopener noreferrer" target="_blank">{{ result.public_url }}</a>
+    </li>
+    {% endif %}
+  </ul>
+
+  <h2 class="section-title">Provenance / evidence</h2>
+  <ul class="meta-list">
     <li>Score: <span class="mono">{{ result.score }}</span>
       (<span class="band-chip band-{{ result.band }}">{{ result.band }}</span>)</li>
     <li>Review: {{ result.review_state }}</li>
     <li>Version: <span class="mono">{{ result.version }}</span></li>
     <li>Lifecycle: <span class="mono">{{ result.lifecycle_state }}</span></li>
     <li>Sampling: {{ result.sampling_label }}</li>
-    {% if result.public_url %}
-    <li>URL:
-      <a href="{{ result.public_url }}" rel="noopener noreferrer" target="_blank">{{ result.public_url }}</a>
+    <li>Evidence counts:
+      qualified=<span class="mono">{{ result.evidence_counts.qualified }}</span>,
+      excluded=<span class="mono">{{ result.evidence_counts.excluded }}</span>,
+      sample=<span class="mono">{{ result.evidence_counts.sample }}</span>,
+      weeks=<span class="mono">{{ result.evidence_counts.active_weeks }}</span>,
+      ecom=<span class="mono">{{ result.evidence_counts.ecommerce_qualified }}</span>
     </li>
-    {% endif %}
     {% if result.linked_parent_telegram_id %}
     <li>Linked parent: <span class="mono">{{ result.linked_parent_telegram_id }}</span></li>
     {% endif %}
-    <li>Discovery channels:
-      {% if result.discovery_channels %}
-        <span class="mono">{{ result.discovery_channels|join(", ") }}</span>
+    <li>Provenance / discovery channels:
+      {% if result.provenance %}
+        <span class="mono">{{ result.provenance|join(", ") }}</span>
       {% else %}
         —
       {% endif %}
@@ -55,6 +76,14 @@
       {% endif %}
     </li>
     <li>Почему выше других: {{ result.rank_reason }}</li>
+    {% if result.eligibility_reasons %}
+    <li>Eligibility reasons:
+      <span class="mono">{{ result.eligibility_reasons|join(", ") }}</span>
+    </li>
+    {% endif %}
+    {% if result.dismiss_reason %}
+    <li>Dismiss reason: <span class="mono">{{ result.dismiss_reason }}</span></li>
+    {% endif %}
   </ul>
 
   <h2 class="section-title">Компоненты score</h2>
@@ -120,6 +149,36 @@
     <a class="btn btn-secondary" href="/sources#source-{{ result.source_id }}">Открыть источник #{{ result.source_id }}</a>
     {% endif %}
   </div>
+
+  {% if result.suppress %}
+  <section class="panel discovery-panel" id="reconsider-suppress">
+    <h2 class="section-title">ReconsiderDismissSuppress</h2>
+    <p class="muted">
+      Отдельно от ReconsiderSource. Снимает suppress membership только после явного подтверждения.
+    </p>
+    <ul class="meta-list">
+      <li>suppress_id: <span class="mono">{{ result.suppress.id }}</span></li>
+      <li>canonical_key: <span class="mono">{{ result.suppress.canonical_key }}</span></li>
+      <li>version: <span class="mono">{{ result.suppress.version }}</span></li>
+    </ul>
+    <form method="post" action="/discovery/results/{{ result.id }}/reconsider-suppress">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+      <input type="hidden" name="suppress_id" value="{{ result.suppress.id }}" />
+      <input type="hidden" name="expected_version" value="{{ result.suppress.version }}" />
+      <div class="form-row">
+        <label>
+          Подтверждение (введите <span class="mono">{{ confirm_reconsider_suppress }}</span>)
+          <input name="confirm" required autocomplete="off" />
+        </label>
+        <label>
+          Заметка
+          <input name="note" maxlength="1000" />
+        </label>
+        <button type="submit" class="btn-secondary">Снять suppress</button>
+      </div>
+    </form>
+  </section>
+  {% endif %}
 </section>
 
 <p class="discovery-actions"><a href="/discovery/runs/{{ result.run_id }}">← К запуску</a></p>

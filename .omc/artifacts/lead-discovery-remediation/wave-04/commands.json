@@ -1,0 +1,30 @@
+{
+  "wave": "04",
+  "role": "executor",
+  "captured_at": "2026-07-27T17:16:48+03:00",
+  "live_db_touched": false,
+  "dispatch": "EXECUTION_DISPATCH_OVERRIDE (1 agent: tests + code + security + gate evidence)",
+  "commands": [
+    {
+      "id": "focused_pytest_wave04",
+      "command": "uv run pytest tests/unit/test_graph_discovery_wave04.py tests/integration/test_graph_discovery_wave04.py tests/unit/test_keyword_discovery_wave03.py tests/contract/test_fake_telegram_gateway.py tests/adapter/test_telethon_search_zero_stars.py -q --tb=line",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "66 passed in 3.61s"
+    },
+    {
+      "id": "ruff_touched_paths",
+      "command": "uv run ruff check src/telegram_lead_discovery/collector/ports.py src/telegram_lead_discovery/collector/fake.py src/telegram_lead_discovery/collector/adapter/telethon_gateway.py src/telegram_lead_discovery/source_discovery/graph_discovery.py src/telegram_lead_discovery/source_discovery/worker.py tests/unit/test_graph_discovery_wave04.py tests/integration/test_graph_discovery_wave04.py tests/adapter/test_telethon_search_zero_stars.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "All checks passed!"
+    },
+    {
+      "id": "security_static_scan_join_stars",
+      "command": "python scan JoinChannel/ImportChatInvite/allow_paid_stars in collector + graph_discovery",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "No JoinChannel/ImportChatInvite; allow_paid_stars only Zero-Stars defense (None) in existing search path"
+    }
+  ]
+}

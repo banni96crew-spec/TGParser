@@ -8,20 +8,22 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from telegram_lead_discovery.collector.ports import SearchMessageHitDTO, SourceSnapshot
-from telegram_lead_discovery.detection.engine import DetectionResult, detect
+from telegram_lead_discovery.detection.engine import DetectionResult, seed_catalog_detect
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
+    match_additional_exclusion,
     truncate_evidence_excerpt,
 )
 from telegram_lead_discovery.source_discovery.opportunity_score import (
     OpportunityBand,
     OpportunityRankKey,
     OpportunityScoreResult,
+    apply_opportunity_eligibility,
     opportunity_sort_key,
     score_opportunity,
     sort_opportunities,
@@ -41,6 +43,16 @@ MAX_DEEP_VERIFICATION_SOURCES = 25
 MAX_MESSAGES_PER_SOURCE = 20
 EVIDENCE_WINDOW_DAYS = 30
 ECOMMERCE_SERVICE_CODE = "ecommerce"
+PRESENTATION_COOLDOWN = timedelta(hours=24)
+
+POOL_EXHAUSTED_REASON_CODES: dict[str, int] = {
+    "provider_empty": 0,
+    "budget_cap_reached": 1,
+    "quota_skipped_remaining": 2,
+    "flood_wait_deferred": 3,
+    "cancel_requested": 4,
+    "no_unseen_after_suppress": 5,
+}
 
 DetectFn = Callable[[str], DetectionResult]
 
@@ -261,7 +273,7 @@ class OpportunitySnapshotRecord:
     sample_timestamps: tuple[datetime, ...]
     score: int
     band: OpportunityBand
-    score_components: dict[str, int]
+    score_components: dict[str, object]
     discovery_channels: tuple[DiscoveryChannel, ...]
     review_state: Literal["unreviewed", "promoted", "dismissed"] = "unreviewed"
     promoted_source_id: int | None = None
@@ -391,7 +403,7 @@ def is_within_evidence_window(
 def qualify_excerpt_text(
     raw_excerpt: str,
     *,
-    detect_fn: DetectFn = detect,
+    detect_fn: DetectFn = seed_catalog_detect,
 ) -> tuple[str, str, DetectionResult]:
     """Normalize text, cap excerpt ≤240, run pure DET detect() (SRC-024)."""
     norms = normalize_message_text(raw_excerpt)
@@ -406,7 +418,7 @@ def evidence_from_hit(
     *,
     run_id: int,
     identity: ResolvedSourceIdentity,
-    detect_fn: DetectFn = detect,
+    detect_fn: DetectFn = seed_catalog_detect,
 ) -> EvidenceRecord:
     """Build one evidence draft from a search hit (no pipeline side effects)."""
     hit = annotated.hit
@@ -492,11 +504,22 @@ def build_opportunity_from_evidence(
     registry_source_id: int | None = None,
     linked_parent_telegram_id: int | None = None,
     extra_discovery_channels: Sequence[DiscoveryChannel] = (),
+    required_service_profiles: Sequence[str] = (),
+    additional_exclusions: Sequence[str] = (),
 ) -> OpportunitySnapshotRecord:
     """Score unique evidence into one SourceOpportunitySnapshot draft (phase I)."""
     unique = merge_evidence_duplicates(evidence)
     qualified = [e for e in unique if e.is_qualified]
     excluded = [e for e in unique if e.hard_exclusion]
+    # Profile additional exclusions count as soft exclusions with explainable reasons.
+    exclusion_reasons: list[str] = []
+    if additional_exclusions:
+        for row in unique:
+            reason = match_additional_exclusion(row.excerpt, additional_exclusions)
+            if reason is not None:
+                exclusion_reasons.append(reason)
+                if row not in excluded:
+                    excluded.append(row)
     ecommerce_qualified = [e for e in qualified if ECOMMERCE_SERVICE_CODE in e.service_profiles]
     qualified_timestamps = tuple(e.published_at for e in qualified)
     last_qualified_at = max(qualified_timestamps) if qualified_timestamps else None
@@ -516,6 +539,27 @@ def build_opportunity_from_evidence(
         channels.update(row.discovery_channels)
     ordered_channels = tuple(sorted(channels, key=_channel_sort_key))
 
+    matched_services = tuple(sorted({s for e in unique for s in e.service_profiles}))
+    has_message = len(unique) > 0
+    has_verification = "source_verification" in ordered_channels or any(
+        c in ordered_channels for c in ("global_message", "public_posts")
+    )
+    gated = apply_opportunity_eligibility(
+        score_result=score_result,
+        discovery_channels=ordered_channels,
+        has_message_evidence=has_message,
+        has_verification_evidence=has_verification,
+        is_linked_discussion=linked_parent_telegram_id is not None,
+        matched_service_profiles=matched_services,
+        required_service_profiles=required_service_profiles,
+    )
+    components: dict[str, object] = dict(score_result.components_dict())
+    reason_codes = list(gated.reason_codes)
+    reason_codes.extend(exclusion_reasons)
+    if reason_codes:
+        components["eligibility_reasons"] = reason_codes
+        components["reason_codes"] = reason_codes
+
     return OpportunitySnapshotRecord(
         run_id=run_id,
         source_id=registry_source_id,
@@ -532,9 +576,9 @@ def build_opportunity_from_evidence(
         last_qualified_at=last_qualified_at,
         sample_message_count=len(unique),
         sample_timestamps=sample_timestamps,
-        score=score_result.total,
-        band=score_result.band,
-        score_components=score_result.components_dict(),
+        score=gated.score,
+        band=gated.band,
+        score_components=components,
         discovery_channels=ordered_channels,
     )
 
@@ -573,6 +617,8 @@ def linked_discussion_opportunity(
             "ecommerce": 0,
             "recency": 0,
             "noise_penalty": 0,
+            "eligibility_reasons": ["needs_verification"],
+            "reason_codes": ["needs_verification"],
         },
         discovery_channels=("linked_discussion",),
     )
@@ -689,7 +735,7 @@ def aggregate_search_hits(
     scored_at: datetime,
     registry: SourceRegistryIndex | None = None,
     dismissed: DismissedKeywordSourceIndex | None = None,
-    detect_fn: DetectFn = detect,
+    detect_fn: DetectFn = seed_catalog_detect,
     evidence_cap: int = MAX_EVIDENCE_PER_RUN,
     existing_evidence_count: int = 0,
     linked_parents: Mapping[int, int] | None = None,
@@ -802,6 +848,193 @@ def sort_opportunity_snapshots(
     return [by_id[k.telegram_id] for k in ordered_keys]
 
 
+@dataclass(frozen=True, slots=True)
+class ReplacementAcquisitionResult:
+    """Result of cursor/replacement acquisition after suppress (SRC-040)."""
+
+    acquired_total: int
+    suppressed_total: int
+    qualified_candidate_ids: list[int]
+    replacement_fetches_total: int
+    pool_exhausted: bool
+    pool_exhausted_reason: str | None = None
+    canonicalized_total: int = 0
+
+
+def acquire_with_replacement(
+    pages: Sequence[Sequence[int]],
+    *,
+    is_suppressed: Callable[[int], bool],
+    target_quota: int,
+) -> ReplacementAcquisitionResult:
+    """Consume provider pages, skip suppressed ids, fill quota or mark exhaustion."""
+    acquired = 0
+    suppressed = 0
+    qualified: list[int] = []
+    seen: set[int] = set()
+    for page in pages:
+        for tid in page:
+            if tid in seen:
+                continue
+            seen.add(tid)
+            acquired += 1
+            if is_suppressed(tid):
+                suppressed += 1
+                continue
+            qualified.append(tid)
+    first_page_kept = 0
+    if pages:
+        for tid in pages[0]:
+            if tid not in seen:
+                continue
+            if not is_suppressed(tid):
+                first_page_kept += 1
+        # Recount unique non-suppressed from first page only.
+        first_seen: set[int] = set()
+        first_page_kept = 0
+        for tid in pages[0]:
+            if tid in first_seen:
+                continue
+            first_seen.add(tid)
+            if not is_suppressed(tid):
+                first_page_kept += 1
+    replacement_fetches = 0
+    if len(pages) > 1 and first_page_kept < target_quota:
+        replacement_fetches = len(pages) - 1
+    pool_exhausted = len(qualified) < target_quota
+    reason: str | None = None
+    if pool_exhausted:
+        if acquired == 0:
+            reason = "provider_empty"
+        else:
+            reason = "no_unseen_after_suppress"
+    return ReplacementAcquisitionResult(
+        acquired_total=acquired,
+        suppressed_total=suppressed,
+        qualified_candidate_ids=qualified,
+        replacement_fetches_total=replacement_fetches,
+        pool_exhausted=pool_exhausted,
+        pool_exhausted_reason=reason,
+        canonicalized_total=acquired,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class PresentationCooldownIndex:
+    """Cross-run 24h cooldown for already-presented non-dismissed peers (SRC-041)."""
+
+    presented_at_by_id: Mapping[int, datetime] = field(default_factory=dict)
+
+    @classmethod
+    def from_entries(
+        cls, entries: Sequence[tuple[int, datetime]]
+    ) -> PresentationCooldownIndex:
+        mapping: dict[int, datetime] = {}
+        for telegram_id, presented_at in entries:
+            mapping[telegram_id] = _ensure_utc(presented_at)
+        return cls(presented_at_by_id=mapping)
+
+    def is_cooled_down(
+        self,
+        telegram_id: int,
+        *,
+        now: datetime,
+        window: timedelta = PRESENTATION_COOLDOWN,
+    ) -> bool:
+        presented_at = self.presented_at_by_id.get(telegram_id)
+        if presented_at is None:
+            return False
+        return (_ensure_utc(now) - _ensure_utc(presented_at)) < window
+
+
+def apply_neutral_noise_sample(
+    base: OpportunitySnapshotRecord,
+    *,
+    neutral_excluded_count: int,
+    neutral_sample_count: int,
+    scored_at: datetime | None = None,
+) -> OpportunitySnapshotRecord:
+    """Re-score opportunity after bounded neutral (non-query-hit) noise sample."""
+    _ = neutral_sample_count  # sample size is observational; exclusions drive penalty
+    new_excluded = base.excluded_count + max(0, neutral_excluded_count)
+    when = scored_at or (
+        base.last_qualified_at if base.last_qualified_at is not None else datetime.now(UTC)
+    )
+    score_result = score_opportunity(
+        qualified_count=base.qualified_count,
+        excluded_count=new_excluded,
+        ecommerce_qualified_count=base.ecommerce_qualified_count,
+        last_qualified_at=base.last_qualified_at,
+        scored_at=when,
+        active_week_count=base.active_week_count,
+    )
+    components: dict[str, object] = dict(score_result.components_dict())
+    prior_reasons = base.score_components.get("eligibility_reasons") or base.score_components.get(
+        "reason_codes"
+    )
+    reasons: list[str] = []
+    if isinstance(prior_reasons, list):
+        reasons.extend(str(r) for r in prior_reasons)
+    reasons.append("neutral_noise_sample")
+    components["eligibility_reasons"] = reasons
+    components["reason_codes"] = reasons
+    return replace(
+        base,
+        excluded_count=new_excluded,
+        sample_message_count=base.sample_message_count + max(0, neutral_sample_count),
+        score=score_result.total,
+        band=score_result.band,
+        score_components=components,
+    )
+
+
+def merge_funnel_counters(
+    base: Mapping[str, int] | None = None,
+    *,
+    acquired_total: int | None = None,
+    canonicalized_total: int | None = None,
+    registry_suppressed: int | None = None,
+    dismissed_suppressed: int | None = None,
+    duplicate_in_run: int | None = None,
+    cooldown_suppressed: int | None = None,
+    suppressed_total: int | None = None,
+    qualified_total: int | None = None,
+    presented_total: int | None = None,
+    novel_presented_total: int | None = None,
+    replacement_fetches_total: int | None = None,
+    pool_exhausted: bool | None = None,
+    pool_exhausted_reason: str | None = None,
+) -> dict[str, int]:
+    """Merge SRC-037 funnel counters; novelty in basis points (×10000)."""
+    out: dict[str, int] = {str(k): int(v) for k, v in (base or {}).items()}
+    updates = {
+        "acquired_total": acquired_total,
+        "canonicalized_total": canonicalized_total,
+        "registry_suppressed": registry_suppressed,
+        "dismissed_suppressed": dismissed_suppressed,
+        "duplicate_in_run": duplicate_in_run,
+        "cooldown_suppressed": cooldown_suppressed,
+        "suppressed_total": suppressed_total,
+        "qualified_total": qualified_total,
+        "presented_total": presented_total,
+        "novel_presented_total": novel_presented_total,
+        "replacement_fetches_total": replacement_fetches_total,
+    }
+    for key, value in updates.items():
+        if value is not None:
+            out[key] = int(value)
+    if pool_exhausted is not None:
+        out["pool_exhausted"] = 1 if pool_exhausted else 0
+    if pool_exhausted_reason is not None:
+        out["pool_exhausted_reason_code"] = POOL_EXHAUSTED_REASON_CODES.get(
+            pool_exhausted_reason, -1
+        )
+    presented = out.get("presented_total", 0)
+    novel = out.get("novel_presented_total", 0)
+    out["novelty_ratio_bp"] = int(10000 * novel / max(1, presented))
+    return out
+
+
 def _directory_title_match(title: str, queries_folded: Sequence[str]) -> bool:
     folded = title.casefold()
     return any(q and q in folded for q in queries_folded)
@@ -843,11 +1076,17 @@ __all__ = [
     "MAX_EVIDENCE_PER_RUN",
     "MAX_MESSAGES_PER_SOURCE",
     "OpportunitySnapshotRecord",
+    "POOL_EXHAUSTED_REASON_CODES",
+    "PRESENTATION_COOLDOWN",
     "PreliminarySourceCandidate",
+    "PresentationCooldownIndex",
     "RegistrySourceEntry",
+    "ReplacementAcquisitionResult",
     "ResolvedSourceIdentity",
     "SourceRegistryIndex",
+    "acquire_with_replacement",
     "aggregate_search_hits",
+    "apply_neutral_noise_sample",
     "build_opportunity_from_evidence",
     "build_preliminary_candidates",
     "evidence_from_hit",
@@ -856,6 +1095,7 @@ __all__ = [
     "is_within_evidence_window",
     "linked_discussion_opportunity",
     "merge_evidence_duplicates",
+    "merge_funnel_counters",
     "preliminary_rank_key",
     "qualify_excerpt_text",
     "registry_telegram_ids",

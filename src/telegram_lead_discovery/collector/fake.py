@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import fields
 from datetime import UTC, datetime
@@ -15,6 +16,8 @@ from telegram_lead_discovery.collector.ports import (
     GatewaySearchQuotaExhausted,
     GatewaySourceInaccessible,
     GlobalSearchRequest,
+    GraphEdgeDTO,
+    GraphSampleRequest,
     HistoryRequest,
     PublicPostSearchQuotaDTO,
     PublicPostSearchRequest,
@@ -26,6 +29,7 @@ from telegram_lead_discovery.collector.ports import (
     SourceRef,
     SourceSnapshot,
     TelegramMessageDTO,
+    TelegramPeerRef,
     TelegramUpdateDTO,
 )
 
@@ -38,6 +42,8 @@ SearchMethod = Literal[
     "search_source_messages",
     "check_public_post_search_quota",
     "get_linked_discussion",
+    "get_recommendations",
+    "sample_public_graph_edges",
     "resolve_public_source",
     "validate_source",
 ]
@@ -64,8 +70,12 @@ class FakeTelegramGateway:
             v.telegram_id: v for v in self._sources_by_username.values()
         }
         self._messages = messages or {}
+        self._messages_by_peer: dict[int, list[TelegramMessageDTO]] = {}
         self.connected = False
         self.history_calls: list[HistoryRequest] = []
+        self.resolved_entities: list[object] = []  # ledger: never DB source_id
+        self._update_queue: asyncio.Queue[TelegramUpdateDTO | None] = asyncio.Queue()
+        self._history_flood = False
 
         self._global_hits: list[SearchMessageHitDTO] = []
         self._directory_results: list[SourceSnapshot] = []
@@ -73,6 +83,8 @@ class FakeTelegramGateway:
         self._source_message_hits: dict[int, list[SearchMessageHitDTO]] = {}
         self._linked_discussions: dict[int, SourceSnapshot | None] = {}
         self._private_linked_parents: set[int] = set()
+        self._recommendations: dict[int, list[SourceSnapshot]] = {}
+        self._graph_sample_edges: dict[int, list[GraphEdgeDTO]] = {}
         self._inaccessible_telegram_ids: set[int] = set()
         self._inaccessible_usernames: set[str] = set()
         self._quota = PublicPostSearchQuotaDTO(
@@ -94,7 +106,9 @@ class FakeTelegramGateway:
         self.search_public_posts_calls: list[PublicPostSearchRequest] = []
         self.search_source_messages_calls: list[SourceMessageSearchRequest] = []
         self.get_linked_discussion_calls: list[SourceRef] = []
-
+        self.get_recommendations_calls: list[tuple[SourceRef, int]] = []
+        self.sample_public_graph_edges_calls: list[GraphSampleRequest] = []
+        self.join_calls: list[object] = []  # must stay empty — no private auto-join
     # --- fixture configuration -------------------------------------------------
 
     def set_global_hits(self, hits: list[SearchMessageHitDTO]) -> None:
@@ -127,6 +141,16 @@ class FakeTelegramGateway:
             self._private_linked_parents.discard(parent_telegram_id)
             self._linked_discussions[parent_telegram_id] = discussion
 
+    def set_recommendations(
+        self, seed_telegram_id: int, sources: list[SourceSnapshot]
+    ) -> None:
+        self._recommendations[seed_telegram_id] = list(sources)
+
+    def set_graph_sample_edges(
+        self, seed_telegram_id: int, edges: list[GraphEdgeDTO]
+    ) -> None:
+        self._graph_sample_edges[seed_telegram_id] = list(edges)
+
     def set_quota(
         self,
         *,
@@ -145,20 +169,33 @@ class FakeTelegramGateway:
             not free_slot_available and stars_amount > 0 and not premium_required
         )
 
-    def set_flood_wait(self, until: datetime, *methods: SearchMethod) -> None:
+    def set_flood_wait(
+        self, until: datetime, *methods: SearchMethod | Literal["iter_history"]
+    ) -> None:
         self._flood_wait_until = until
-        self._flood_wait_on = set(methods) if methods else {
+        if methods == ("iter_history",) or (len(methods) == 1 and methods[0] == "iter_history"):
+            self._history_flood = True
+            self._flood_wait_on = set()
+            return
+        self._history_flood = "iter_history" in methods
+        search_methods = [m for m in methods if m != "iter_history"]
+        self._flood_wait_on = set(search_methods) if search_methods else {  # type: ignore[arg-type]
             "search_global",
             "search_public_sources",
             "search_public_posts",
             "search_source_messages",
             "check_public_post_search_quota",
             "get_linked_discussion",
+            "get_recommendations",
+            "sample_public_graph_edges",
         }
+        if not methods:
+            self._history_flood = True
 
     def clear_flood_wait(self) -> None:
         self._flood_wait_until = None
         self._flood_wait_on.clear()
+        self._history_flood = False
 
     def mark_inaccessible(
         self,
@@ -229,36 +266,137 @@ class FakeTelegramGateway:
     async def get_recommendations(
         self, source: SourceRef, limit: int
     ) -> list[SourceSnapshot]:
-        return list(self._sources_by_username.values())[:limit]
+        self.get_recommendations_calls.append((source, limit))
+        self._maybe_flood("get_recommendations")
+        telegram_id = source.telegram_id
+        if telegram_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        if telegram_id in self._inaccessible_telegram_ids:
+            raise GatewaySourceInaccessible(f"inaccessible:{telegram_id}")
+        configured = self._recommendations.get(telegram_id)
+        if configured is None:
+            return []
+        public: list[SourceSnapshot] = []
+        for snap in configured:
+            if not snap.accessible or not snap.username:
+                continue
+            if snap.telegram_id in self._inaccessible_telegram_ids:
+                continue
+            if snap.source_type not in {"channel", "megagroup", "group"}:
+                continue
+            public.append(snap)
+            if len(public) >= limit:
+                break
+        return public
+
+    async def sample_public_graph_edges(
+        self, request: GraphSampleRequest
+    ) -> list[GraphEdgeDTO]:
+        self.sample_public_graph_edges_calls.append(request)
+        self._maybe_flood("sample_public_graph_edges")
+        telegram_id = request.source.telegram_id
+        if telegram_id is None:
+            raise GatewaySourceInaccessible("missing_telegram_id")
+        if telegram_id in self._inaccessible_telegram_ids:
+            raise GatewaySourceInaccessible(f"inaccessible:{telegram_id}")
+        edges = list(self._graph_sample_edges.get(telegram_id, []))
+        # Enforce sample bound; never surface private/inaccessible targets.
+        bounded: list[GraphEdgeDTO] = []
+        for edge in edges[: max(0, request.message_limit)]:
+            target = edge.target
+            if target is not None:
+                if (
+                    not target.accessible
+                    or not target.username
+                    or target.telegram_id in self._inaccessible_telegram_ids
+                ):
+                    continue
+            bounded.append(edge)
+        return bounded
 
     async def iter_history(
         self, request: HistoryRequest
     ) -> AsyncIterator[TelegramMessageDTO]:
         self.history_calls.append(request)
-        items = list(self._messages.get(request.source_id, []))
+        entity = _entity_from_peer(request.peer)
+        # D-064: ledger records peer entity only — never DB source_id.
+        self.resolved_entities.append(entity)
+        if self._history_flood and self._flood_wait_until is not None:
+            raise GatewayFloodWait(self._flood_wait_until)
+
+        items = self._history_items_for_request(request)
+        if request.continuation_cursor is not None:
+            try:
+                older_than = int(request.continuation_cursor)
+            except ValueError:
+                older_than = None
+            if older_than is not None:
+                items = [m for m in items if m.telegram_message_id < older_than]
         if request.after_message_id is not None:
             items = [m for m in items if m.telegram_message_id > request.after_message_id]
-        items.sort(key=lambda m: m.telegram_message_id)
+        if request.before_published_at is not None:
+            items = [m for m in items if m.published_at < request.before_published_at]
+        if request.after_published_at is not None:
+            items = [m for m in items if m.published_at > request.after_published_at]
+
+        # Newest-first page (Telethon-like), collector reorders for persist.
+        items.sort(key=lambda m: m.telegram_message_id, reverse=True)
         for item in items[: request.limit]:
-            yield item
+            peer_id = request.peer.telegram_peer_id
+            if item.telegram_peer_id is None and peer_id is not None:
+                yield TelegramMessageDTO(
+                    schema_version=item.schema_version,
+                    source_id=request.source_id,
+                    telegram_message_id=item.telegram_message_id,
+                    published_at=item.published_at,
+                    text=item.text,
+                    telegram_peer_id=peer_id,
+                    edited_at=item.edited_at,
+                    author_peer_id=item.author_peer_id,
+                    author_username=item.author_username,
+                    author_display_name=item.author_display_name,
+                    permalink=item.permalink,
+                    is_deleted=item.is_deleted,
+                )
+            else:
+                yield item
 
     async def iter_updates(self) -> AsyncIterator[TelegramUpdateDTO]:
-        if False:  # pragma: no cover
-            yield TelegramUpdateDTO(
-                schema_version=1,
-                event_type="message_new",
-                message=None,
-                observed_at=datetime.now(UTC),
-            )
-        return
+        while True:
+            item = await self._update_queue.get()
+            if item is None:
+                return
+            yield item
+
+    async def push_update(self, update: TelegramUpdateDTO) -> None:
+        await self._update_queue.put(update)
+
+    async def close_updates(self) -> None:
+        await self._update_queue.put(None)
 
     async def get_message(
         self, source: SourceRef, message_id: int
     ) -> TelegramMessageDTO | None:
+        peer_id = source.telegram_id
+        if peer_id is not None:
+            for item in self._messages_by_peer.get(peer_id, []):
+                if item.telegram_message_id == message_id:
+                    return item
         for item in self._messages.get(source.source_id, []):
             if item.telegram_message_id == message_id:
                 return item
         return None
+
+    def _history_items_for_request(
+        self, request: HistoryRequest
+    ) -> list[TelegramMessageDTO]:
+        peer = request.peer
+        if peer.telegram_peer_id is not None:
+            by_peer = self._messages_by_peer.get(peer.telegram_peer_id)
+            if by_peer is not None:
+                return list(by_peer)
+        # Fixture convenience: tests may still register by DB source_id key.
+        return list(self._messages.get(request.source_id, []))
 
     async def search_global(self, request: GlobalSearchRequest) -> SearchPageDTO:
         self.search_global_calls.append(request)
@@ -348,6 +486,11 @@ class FakeTelegramGateway:
     def register_messages(self, source_id: int, messages: list[TelegramMessageDTO]) -> None:
         self._messages[source_id] = messages
 
+    def register_messages_for_peer(
+        self, telegram_peer_id: int, messages: list[TelegramMessageDTO]
+    ) -> None:
+        self._messages_by_peer[telegram_peer_id] = messages
+
     # --- internals -------------------------------------------------------------
 
     def _maybe_flood(self, method: SearchMethod) -> None:
@@ -412,6 +555,15 @@ class FakeTelegramGateway:
         )
 
 
+def _entity_from_peer(peer: TelegramPeerRef) -> int | str:
+    """Resolve Telethon-like entity from peer — never DB source_id."""
+    if peer.telegram_peer_id is not None:
+        return peer.telegram_peer_id
+    if peer.username_normalized:
+        return peer.username_normalized
+    raise GatewaySourceInaccessible("invalid_peer_ref")
+
+
 def _normalize_ref(value: str) -> str:
     text = value.strip()
     lower = text.lower()
@@ -442,6 +594,7 @@ def sample_history(
             telegram_message_id=i + 1,
             text=text,
             published_at=now,
+            telegram_peer_id=None,
             edited_at=None,
             author_peer_id=None,
             permalink=None,

@@ -1,0 +1,28 @@
+{
+  "wave": 7,
+  "captured_at": "2026-07-27T17:55:00+03:00",
+  "commands": [
+    {
+      "cmd": ".venv\\Scripts\\python.exe tools\\generate_calibration_corpus.py",
+      "result": "pass",
+      "notes": "520 samples / 12 sources; val gates passed"
+    },
+    {
+      "cmd": ".venv\\Scripts\\python.exe -m pytest tests/unit/test_detection_wave07.py tests/unit/test_detection_scoring.py tests/integration/test_pipeline_lead.py -q --tb=short",
+      "result": "pass",
+      "notes": "18 passed"
+    },
+    {
+      "cmd": ".venv\\Scripts\\python.exe -m pytest tests/unit/test_keyword_search_aggregation.py tests/unit/test_keyword_discovery_wave03.py tests/integration/test_keyword_discovery_e2e.py tests/integration/test_shadow_e2e.py tests/integration/test_runtime_wave06_e2e.py -q --tb=line",
+      "result": "pass",
+      "notes": "40 passed regression"
+    },
+    {
+      "cmd": ".venv\\Scripts\\python.exe -m ruff check src/telegram_lead_discovery/detection src/telegram_lead_discovery/processing/pipeline.py src/telegram_lead_discovery/scoring/calibration.py src/telegram_lead_discovery/source_discovery/keyword_search.py tests/unit/test_detection_wave07.py tests/unit/test_detection_scoring.py tools/generate_calibration_corpus.py",
+      "result": "pass",
+      "notes": "All checks passed"
+    }
+  ],
+  "wave07_gate": "PASS",
+  "ready_for_wave_08": true
+}

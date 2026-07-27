@@ -12,7 +12,7 @@ def main() -> None:
         "command",
         nargs="?",
         default="start",
-        choices=["start", "migrate", "integrity-check", "backup", "restore", "purge"],
+        choices=["start", "run", "migrate", "integrity-check", "backup", "restore", "purge"],
     )
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)

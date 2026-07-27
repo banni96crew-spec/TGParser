@@ -110,7 +110,8 @@ SEED_RULES: tuple[SeedRule, ...] = (
 )
 
 
-def catalog_canonical_json() -> str:
+def catalog_canonical_json(rules: tuple[SeedRule, ...] | None = None) -> str:
+    catalog = rules if rules is not None else SEED_RULES
     payload = [
         {
             "stable_rule_id": r.stable_rule_id,
@@ -124,13 +125,13 @@ def catalog_canonical_json() -> str:
             "flags": RULE_FLAGS,
             "enabled": True,
         }
-        for r in SEED_RULES
+        for r in catalog
     ]
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-def catalog_checksum() -> str:
-    return hashlib.sha256(catalog_canonical_json().encode("utf-8")).hexdigest()
+def catalog_checksum(rules: tuple[SeedRule, ...] | None = None) -> str:
+    return hashlib.sha256(catalog_canonical_json(rules).encode("utf-8")).hexdigest()
 
 
 async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:

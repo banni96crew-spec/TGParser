@@ -2,9 +2,37 @@
 {% block content %}
 <header class="page-header">
   <h1>Состояние системы</h1>
+  <p class="page-meta">
+    Readiness: <span class="mono">{{ readiness }}</span>
+    {% if is_degraded %}<span class="status-warn"> · degraded</span>{% endif %}
+  </p>
 </header>
 
-<div class="panel">
+<section class="panel">
+  <h2 class="section-title">Named runtime loops</h2>
+  {% if named_loops %}
+  <table class="data-table">
+    <thead>
+      <tr><th>Loop</th><th>Статус</th><th>Reason</th><th>Heartbeat</th></tr>
+    </thead>
+    <tbody>
+      {% for item in named_loops %}
+      <tr>
+        <td class="mono">{{ item.name }}</td>
+        <td class="{{ health_status_class(item.state) }}">{{ item.state }}</td>
+        <td class="mono">{{ item.reason_code or "—" }}</td>
+        <td class="mono">{{ item.heartbeat_at or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-state">Loops не зарегистрированы.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <h2 class="section-title">Компоненты</h2>
   <table class="data-table">
     <thead>
       <tr><th>Компонент</th><th>Статус</th></tr>
@@ -12,11 +40,11 @@
     <tbody>
       {% for name, state in components.items() %}
       <tr>
-        <td>{{ name }}</td>
+        <td class="mono">{{ name }}</td>
         <td class="{{ health_status_class(state) }}">{{ state }}</td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
-</div>
+</section>
 {% endblock %}

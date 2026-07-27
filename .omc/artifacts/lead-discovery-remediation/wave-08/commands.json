@@ -1,0 +1,18 @@
+{
+  "wave": "08",
+  "captured_at": "2026-07-27T18:20:00+03:00",
+  "commands": [
+    {
+      "name": "pytest-wave08",
+      "cmd": ".venv/Scripts/python.exe -m pytest tests/unit/test_observability_wave08.py tests/integration/test_wave08_ui.py tests/integration/test_discovery_routes.py tests/integration/test_dashboard_ui.py tests/unit/test_discovery_observability.py tests/unit/test_observability.py -q --tb=line",
+      "result": "28 passed",
+      "exit_code": 0
+    },
+    {
+      "name": "ruff-wave08",
+      "cmd": ".venv/Scripts/ruff.exe check src/telegram_lead_discovery/observability src/telegram_lead_discovery/dashboard src/telegram_lead_discovery/source_discovery/service.py src/telegram_lead_discovery/source_discovery/worker.py src/telegram_lead_discovery/infrastructure/runtime.py tests/unit/test_observability_wave08.py tests/integration/test_wave08_ui.py",
+      "result": "All checks passed!",
+      "exit_code": 0
+    }
+  ]
+}

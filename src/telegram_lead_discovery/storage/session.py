@@ -18,8 +18,15 @@ T = TypeVar("T")
 _write_lock = asyncio.Lock()
 
 
+def reset_write_lock() -> None:
+    """Recreate the write lock for a new event loop (tests / process restart)."""
+    global _write_lock
+    _write_lock = asyncio.Lock()
+
+
 def configure_session_factory(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
     """Bind the process-wide session factory to an engine."""
+    reset_write_lock()
     factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
     storage_db._SESSION_FACTORY = factory  # noqa: SLF001
     storage_db._ENGINE = engine  # noqa: SLF001

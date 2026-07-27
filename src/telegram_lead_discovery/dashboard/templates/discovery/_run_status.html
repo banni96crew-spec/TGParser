@@ -6,6 +6,16 @@
          hx-swap="outerHTML"
          {% endif %}>
   <h2 class="section-title">Статус</h2>
+  {% if run.is_loading %}
+  <p class="status-warn" role="status">Загрузка / выполнение в процессе…</p>
+  {% elif run.is_error %}
+  <p class="status-critical" role="alert">Ошибка запуска: {{ run.last_error_code or "failed" }}</p>
+  {% elif run.is_degraded %}
+  <p class="status-warn" role="status">Состояние degraded (FloodWait / ошибка).</p>
+  {% elif run.is_empty %}
+  <p class="empty-state">Воронка пуста — результатов пока нет.</p>
+  {% endif %}
+
   <ul class="meta-list">
     <li>State: <span class="mono">{{ run.state }}</span></li>
     <li>Phase: <span class="mono">{{ run.phase or "—" }}</span></li>
@@ -22,6 +32,31 @@
       <span class="mono">{% if run.flood_wait_until %}{{ run.flood_wait_until }}{% else %}—{% endif %}</span>
     </li>
     <li>Ошибка: <span class="mono">{{ run.last_error_code or "—" }}</span></li>
+  </ul>
+
+  <h2 class="section-title">Воронка (funnel)</h2>
+  <ul class="meta-list funnel-counters">
+    <li>Acquired: <span class="mono">{{ run.funnel.acquired_total }}</span></li>
+    <li>Canonicalized: <span class="mono">{{ run.funnel.canonicalized_total }}</span></li>
+    <li>Suppressed: <span class="mono">{{ run.funnel.suppressed_total }}</span>
+      <span class="faint">(registry {{ run.funnel.registry_suppressed }},
+        dismissed {{ run.funnel.dismissed_suppressed }},
+        cooldown {{ run.funnel.cooldown_suppressed }},
+        dup {{ run.funnel.duplicate_in_run }})</span>
+    </li>
+    <li>Qualified: <span class="mono">{{ run.funnel.qualified_total }}</span></li>
+    <li>Presented: <span class="mono">{{ run.funnel.presented_total }}</span></li>
+    <li>Novel: <span class="mono">{{ run.funnel.novel_presented_total }}</span></li>
+    <li>pool_exhausted:
+      <span class="mono">{% if run.pool_exhausted %}да{% else %}нет{% endif %}</span>
+      {% if run.pool_exhausted_reason %}
+      · reason: <span class="mono">{{ run.pool_exhausted_reason }}</span>
+      {% endif %}
+    </li>
+    <li>novelty_ratio:
+      <span class="mono">{{ run.novelty_ratio_pct }}</span>
+      (<span class="mono">{{ run.novelty_ratio_bp }}</span> bp)
+    </li>
   </ul>
 
   <div class="progress-block" aria-label="Прогресс запросов">

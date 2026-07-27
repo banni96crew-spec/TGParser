@@ -21,6 +21,7 @@ from telegram_lead_discovery.observability.health import (
 from telegram_lead_discovery.source_discovery.worker import KeywordDiscoveryClaimLoop
 from telegram_lead_discovery.storage.db import dispose_engine, init_engine
 from telegram_lead_discovery.storage.migrate import upgrade_head
+from telegram_lead_discovery.storage.session import reset_write_lock
 
 
 @pytest.fixture
@@ -33,8 +34,10 @@ async def db_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     db_path = database_path()
     upgrade_head(db_path)
     await init_engine(db_path)
+    reset_write_lock()
     yield db_path
     await dispose_engine()
+    reset_write_lock()
 
 
 @pytest.mark.asyncio

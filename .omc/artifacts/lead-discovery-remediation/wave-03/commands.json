@@ -1,0 +1,30 @@
+{
+  "wave": "03",
+  "role": "executor",
+  "captured_at": "2026-07-27T17:00:23+03:00",
+  "live_db_touched": false,
+  "dispatch": "EXECUTION_DISPATCH_OVERRIDE (1 agent: tests + code + gate evidence)",
+  "commands": [
+    {
+      "id": "focused_pytest_wave03",
+      "command": "uv run pytest tests/unit/test_keyword_discovery_wave03.py tests/unit/test_keyword_search_aggregation.py tests/unit/test_keyword_opportunity_score.py tests/integration/test_discovery_routes.py tests/integration/test_keyword_discovery_worker.py -q --tb=line",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "71 passed in 9.88s"
+    },
+    {
+      "id": "ruff_touched_paths",
+      "command": "uv run ruff check src/telegram_lead_discovery/source_discovery/keyword_profiles.py src/telegram_lead_discovery/source_discovery/keyword_search.py src/telegram_lead_discovery/source_discovery/opportunity_score.py src/telegram_lead_discovery/source_discovery/worker.py src/telegram_lead_discovery/dashboard/discovery_routes.py tests/unit/test_keyword_discovery_wave03.py tests/integration/test_discovery_routes.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "All checks passed!"
+    },
+    {
+      "id": "wave03_unit_only",
+      "command": "uv run pytest tests/unit/test_keyword_discovery_wave03.py -q --tb=short",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "14 passed (novelty, replacement, eligibility, profile, cooldown, funnel)"
+    }
+  ]
+}

@@ -7,6 +7,18 @@
     · Категория: {{ lead.category }}
     · Статус: {{ lead.status }}
   </p>
+  {% if rule_pin and rule_pin.version_label %}
+  <p class="page-meta mono">
+    Active rules: {{ rule_pin.version_label }}
+    · checksum={{ rule_pin.checksum }}
+  </p>
+  {% endif %}
+  {% if lead.rule_set_version_id %}
+  <p class="page-meta mono">
+    Lead rule_set_version_id={{ lead.rule_set_version_id }}
+    {% if lead.rule_set_checksum %}· checksum={{ lead.rule_set_checksum }}{% endif %}
+  </p>
+  {% endif %}
 </header>
 
 <div class="stack">
@@ -33,6 +45,7 @@
     </h2>
     <p class="faint mono">
       raw={{ score.raw_total }} · soft_penalty={{ score.soft_penalty_total }} · version={{ score.score_version }}
+      · rule_set_version_id={{ score.rule_set_version_id }}
     </p>
     <table class="data-table">
       <thead><tr><th>Rule</th><th>Dimension</th><th>Value</th><th>Reason</th></tr></thead>

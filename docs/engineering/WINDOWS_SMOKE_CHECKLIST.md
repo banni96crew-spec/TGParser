@@ -56,6 +56,8 @@ uv run tld backup
 uv run pytest tests -q
 ```
 
+> Wave 10 capture (2026-07-27): this command exited **2** (`ModuleNotFoundError: No module named 'tests'` during collection of `test_wave09_capacity_recovery.py`). Do not mark product smoke PASS until a fresh green run is recorded. See `docs/engineering/MVP_RELEASE_EVIDENCE.md` and `.omc/artifacts/lead-discovery-remediation/wave-10/`.
+
 5. (Опционально) регистрация Task Scheduler:
 
 ```powershell
@@ -75,5 +77,5 @@ uv run tld restore --backup "$env:LOCALAPPDATA\TelegramLeadDiscovery\backups\dai
 | migrate | exit `0`, schema head применена |
 | integrity-check | exit `0` |
 | backup | файл в каталоге `backups`, exit `0` |
-| pytest | все тесты зелёные |
+| pytest | все тесты зелёные (Wave 10: **fail** / not green — fix import+ruff before claiming) |
 | restore при running | отказ `restore_requires_stopped_runtime` |

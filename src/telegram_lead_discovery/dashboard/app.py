@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Query, Request
@@ -17,10 +18,16 @@ from telegram_lead_discovery.dashboard.export_csv import (
 )
 from telegram_lead_discovery.dashboard.leads import (
     ALLOWED_STATUSES,
+    get_active_rule_pin,
     list_inbox_leads,
     update_lead_status,
 )
 from telegram_lead_discovery.observability.health import get_health_registry
+from telegram_lead_discovery.observability.loops import (
+    NAMED_RUNTIME_LOOPS,
+    ensure_named_loop_components,
+    named_loop_views,
+)
 from telegram_lead_discovery.security.csrf import generate_csrf_token, validate_csrf_token
 from telegram_lead_discovery.security.secrets import read_secret_presence
 from telegram_lead_discovery.settings.service import (
@@ -29,12 +36,25 @@ from telegram_lead_discovery.settings.service import (
     snapshot,
     update_setting,
 )
-from telegram_lead_discovery.source_discovery.service import approve_source, list_sources
+from telegram_lead_discovery.source_discovery.service import (
+    REJECT_REASON_CODES,
+    SourceLifecycleError,
+    approve_source,
+    disable_source,
+    list_sources,
+    pause_source,
+    reconsider_source,
+    reject_source,
+    resume_source,
+)
 from telegram_lead_discovery.storage.db import session_scope
 from telegram_lead_discovery.storage.models import (
+    CollectorCheckpoint,
+    Job,
     Lead,
     LeadScore,
     LeadScoreComponent,
+    RuleSetVersion,
     TelegramMessage,
     TelegramSource,
 )
@@ -70,6 +90,11 @@ def health_status_class(state: str) -> str:
 
 templates.env.globals["health_status_class"] = health_status_class
 
+MONITORING_COVERAGE_LIMIT = 100
+_BACKLOG_JOB_TYPES = frozenset(
+    {"initial_backfill", "collector_backfill", "reconciliation"}
+)
+
 
 def _template(
     request: Request, name: str, context: dict[str, object]
@@ -98,6 +123,90 @@ def _csrf_or_403(request: Request, csrf_token: str) -> HTMLResponse | None:
     if not validate_csrf_token(expected, csrf_token):
         return HTMLResponse("CSRF отклонён", status_code=403)
     return None
+
+
+def _rule_pin_dict(pin) -> dict[str, object]:
+    return {
+        "version_id": pin.version_id,
+        "version_label": pin.version_label,
+        "checksum": pin.checksum,
+    }
+
+
+async def _monitoring_coverage_rows(session) -> list[dict[str, object]]:
+    sources = (
+        await session.execute(
+            select(TelegramSource)
+            .where(TelegramSource.lifecycle_state.in_(("monitoring", "paused")))
+            .order_by(TelegramSource.id.asc())
+            .limit(MONITORING_COVERAGE_LIMIT)
+        )
+    ).scalars().all()
+    if not sources:
+        return []
+    source_ids = [s.id for s in sources]
+    checkpoints = {
+        c.source_id: c
+        for c in (
+            await session.execute(
+                select(CollectorCheckpoint).where(
+                    CollectorCheckpoint.source_id.in_(source_ids)
+                )
+            )
+        ).scalars().all()
+    }
+    jobs = (
+        await session.execute(
+            select(Job).where(
+                Job.job_type.in_(tuple(_BACKLOG_JOB_TYPES)),
+                Job.state.in_(("queued", "running", "lease_expired", "retry_wait")),
+            )
+        )
+    ).scalars().all()
+    backlog_by_source: dict[int, int] = {}
+    error_by_source: dict[int, str | None] = {}
+    for job in jobs:
+        try:
+            payload = json.loads(job.payload_json or "{}")
+        except Exception:  # noqa: BLE001
+            payload = {}
+        sid = payload.get("source_id")
+        if sid is None:
+            continue
+        try:
+            sid_i = int(sid)
+        except (TypeError, ValueError):
+            continue
+        backlog_by_source[sid_i] = backlog_by_source.get(sid_i, 0) + 1
+        if job.last_error_code:
+            error_by_source[sid_i] = job.last_error_code
+    rows: list[dict[str, object]] = []
+    for source in sources:
+        cp = checkpoints.get(source.id)
+        rows.append(
+            {
+                "id": source.id,
+                "username": source.username_normalized,
+                "title": source.title,
+                "lifecycle_state": source.lifecycle_state,
+                "access_error_code": source.access_error_code,
+                "last_checked_at": source.last_checked_at,
+                "checkpoint_message_id": (
+                    cp.last_committed_message_id if cp is not None else None
+                ),
+                "checkpoint_published_at": (
+                    cp.last_committed_published_at if cp is not None else None
+                ),
+                "last_reconciled_at": cp.last_reconciled_at if cp is not None else None,
+                "backlog_jobs": backlog_by_source.get(source.id, 0),
+                "job_error_code": error_by_source.get(source.id)
+                or source.access_error_code,
+                "has_error": bool(
+                    source.access_error_code or error_by_source.get(source.id)
+                ),
+            }
+        )
+    return rows
 
 
 def create_app(*, gateway=None) -> FastAPI:
@@ -129,6 +238,7 @@ def create_app(*, gateway=None) -> FastAPI:
             page = await list_inbox_leads(
                 session, band=band, cursor=cursor, limit=limit
             )
+            rule_pin = await get_active_rule_pin(session)
         return {
             "title": "Inbox",
             "leads": _lead_rows(page.leads),
@@ -136,6 +246,8 @@ def create_app(*, gateway=None) -> FastAPI:
             "next_cursor": page.next_cursor,
             "limit": page.limit,
             "csrf_token": token,
+            "rule_pin": _rule_pin_dict(rule_pin),
+            "is_empty": len(page.leads) == 0,
         }
 
     @app.get("/", response_class=HTMLResponse)
@@ -169,6 +281,9 @@ def create_app(*, gateway=None) -> FastAPI:
             message = await session.get(TelegramMessage, lead.canonical_message_id)
             score = None
             components: list[dict] = []
+            rule_pin = await get_active_rule_pin(session)
+            score_rule_version = None
+            score_rule_checksum = None
             if lead.current_score_id is not None:
                 score = await session.get(LeadScore, lead.current_score_id)
                 if score is not None:
@@ -186,6 +301,10 @@ def create_app(*, gateway=None) -> FastAPI:
                         }
                         for c in comp_result.scalars()
                     ]
+                    score_rule_version = score.rule_set_version_id
+                    ruleset = await session.get(RuleSetVersion, score.rule_set_version_id)
+                    if ruleset is not None:
+                        score_rule_checksum = ruleset.checksum
             source = None
             if message is not None:
                 source = await session.get(TelegramSource, message.source_id)
@@ -194,6 +313,8 @@ def create_app(*, gateway=None) -> FastAPI:
                 "band": lead.band,
                 "category": lead.category,
                 "status": lead.status,
+                "rule_set_version_id": score_rule_version,
+                "rule_set_checksum": score_rule_checksum,
             }
         return _template(
             request,
@@ -207,6 +328,7 @@ def create_app(*, gateway=None) -> FastAPI:
                 "source": source,
                 "csrf_token": token,
                 "allowed_statuses": sorted(ALLOWED_STATUSES),
+                "rule_pin": _rule_pin_dict(rule_pin),
             },
         )
 
@@ -310,10 +432,37 @@ def create_app(*, gateway=None) -> FastAPI:
         request.session["csrf_token"] = token
         async with session_scope() as session:
             sources = await list_sources(session)
+            coverage = await _monitoring_coverage_rows(session)
         return _template(
             request,
             "sources.html",
-            {"title": "Источники", "sources": sources, "csrf_token": token},
+            {
+                "title": "Источники",
+                "sources": sources,
+                "csrf_token": token,
+                "reject_reasons": sorted(REJECT_REASON_CODES),
+                "monitoring_coverage": coverage,
+                "monitoring_limit": MONITORING_COVERAGE_LIMIT,
+                "is_empty": len(sources) == 0,
+            },
+        )
+
+    @app.get("/sources/monitoring", response_class=HTMLResponse)
+    async def sources_monitoring_page(request: Request) -> HTMLResponse:
+        token = generate_csrf_token()
+        request.session["csrf_token"] = token
+        async with session_scope() as session:
+            coverage = await _monitoring_coverage_rows(session)
+        return _template(
+            request,
+            "monitoring.html",
+            {
+                "title": "Покрытие мониторинга",
+                "csrf_token": token,
+                "monitoring_coverage": coverage,
+                "monitoring_limit": MONITORING_COVERAGE_LIMIT,
+                "is_empty": len(coverage) == 0,
+            },
         )
 
     @app.post("/sources/{source_id}/approve")
@@ -328,25 +477,141 @@ def create_app(*, gateway=None) -> FastAPI:
         gateway = getattr(request.app.state, "gateway", None)
         if gateway is None:
             return HTMLResponse("Gateway не настроен", status_code=503)
-        async with session_scope() as session:
-            await approve_source(session, source_id=source_id, gateway=gateway)
+        try:
+            async with session_scope() as session:
+                await approve_source(session, source_id=source_id, gateway=gateway)
+        except (KeyError, ValueError) as exc:
+            return HTMLResponse(str(exc), status_code=422)
         return RedirectResponse(url="/sources", status_code=303)
+
+    async def _lifecycle_post(
+        request: Request,
+        *,
+        source_id: int,
+        csrf_token: str,
+        action,
+        **kwargs,
+    ) -> HTMLResponse:
+        rejected = _csrf_or_403(request, csrf_token)
+        if rejected is not None:
+            return rejected
+        try:
+            async with session_scope() as session:
+                await action(session, source_id=source_id, **kwargs)
+        except KeyError:
+            return HTMLResponse("Источник не найден", status_code=404)
+        except SourceLifecycleError as exc:
+            return HTMLResponse(str(exc), status_code=422)
+        except ValueError as exc:
+            return HTMLResponse(str(exc), status_code=422)
+        return RedirectResponse(url="/sources", status_code=303)
+
+    @app.post("/sources/{source_id}/reject")
+    async def sources_reject(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        reason_code: str = Form(...),
+        note: str | None = Form(default=None),
+    ) -> HTMLResponse:
+        return await _lifecycle_post(
+            request,
+            source_id=source_id,
+            csrf_token=csrf_token,
+            action=reject_source,
+            reason_code=reason_code,
+            note=note,
+        )
+
+    @app.post("/sources/{source_id}/reconsider")
+    async def sources_reconsider(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        note: str | None = Form(default=None),
+    ) -> HTMLResponse:
+        return await _lifecycle_post(
+            request,
+            source_id=source_id,
+            csrf_token=csrf_token,
+            action=reconsider_source,
+            note=note,
+        )
+
+    @app.post("/sources/{source_id}/pause")
+    async def sources_pause(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        note: str | None = Form(default=None),
+    ) -> HTMLResponse:
+        return await _lifecycle_post(
+            request,
+            source_id=source_id,
+            csrf_token=csrf_token,
+            action=pause_source,
+            note=note,
+        )
+
+    @app.post("/sources/{source_id}/resume")
+    async def sources_resume(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        note: str | None = Form(default=None),
+    ) -> HTMLResponse:
+        return await _lifecycle_post(
+            request,
+            source_id=source_id,
+            csrf_token=csrf_token,
+            action=resume_source,
+            note=note,
+        )
+
+    @app.post("/sources/{source_id}/disable")
+    async def sources_disable(
+        request: Request,
+        source_id: int,
+        csrf_token: str = Form(...),
+        note: str | None = Form(default=None),
+    ) -> HTMLResponse:
+        return await _lifecycle_post(
+            request,
+            source_id=source_id,
+            csrf_token=csrf_token,
+            action=disable_source,
+            note=note,
+        )
 
     @app.get("/health", response_class=HTMLResponse)
     async def health_page(request: Request) -> HTMLResponse:
-        registry = get_health_registry()
+        registry = ensure_named_loop_components(get_health_registry())
         components = {
             name: status.state.value for name, status in registry.components.items()
-        } or {
-            "database": "healthy",
-            "collector": "starting",
-            "outbox": "healthy",
-            "jobs": "healthy",
         }
+        # Always expose named loops even if other components dominate.
+        for loop_name in NAMED_RUNTIME_LOOPS:
+            components.setdefault(loop_name, "starting")
+        loops = [
+            {
+                "name": v.name,
+                "state": v.state,
+                "reason_code": v.reason_code,
+                "heartbeat_at": v.heartbeat_at,
+            }
+            for v in named_loop_views(registry)
+        ]
+        degraded = any(v["state"] in {"degraded", "blocked", "unhealthy"} for v in loops)
         return _template(
             request,
             "health.html",
-            {"title": "Состояние системы", "components": components},
+            {
+                "title": "Состояние системы",
+                "components": components,
+                "named_loops": loops,
+                "is_degraded": degraded,
+                "readiness": registry.readiness.value,
+            },
         )
 
     @app.get("/settings", response_class=HTMLResponse)

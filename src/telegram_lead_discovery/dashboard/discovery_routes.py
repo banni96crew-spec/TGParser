@@ -30,6 +30,9 @@ from telegram_lead_discovery.source_discovery.keyword_run import (
     cancel_keyword_discovery_run,
     start_keyword_discovery_run,
 )
+from telegram_lead_discovery.source_discovery.keyword_search import (
+    POOL_EXHAUSTED_REASON_CODES,
+)
 from telegram_lead_discovery.source_discovery.profile_service import (
     ProfileNotFoundError,
     ProfileVersionConflict,
@@ -46,12 +49,16 @@ from telegram_lead_discovery.source_discovery.promotion import (
     OpportunityVersionConflict,
     dismiss_opportunity,
     promote_opportunity_to_candidate,
+    reconsider_dismiss_suppress,
 )
 from telegram_lead_discovery.storage.db import session_scope
+from telegram_lead_discovery.storage.dismissed_suppress import get_suppress_by_canonical_key
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
+    DismissedKeywordSource,
     KeywordDiscoveryProfile,
+    SourceAlias,
     SourceDiscoveryEvidence,
     SourceOpportunitySnapshot,
     TelegramSource,
@@ -60,6 +67,7 @@ from telegram_lead_discovery.storage.models import (
 ZERO_STARS_LABEL = "Максимальная стоимость: 0 Stars"
 VERSION_CONFLICT_MESSAGE = "Данные изменились. Обновите страницу"
 EVIDENCE_RETENTION_MESSAGE = "Доказательства очищены по retention policy"
+CONFIRM_RECONSIDER_SUPPRESS = "RECONSIDER_SUPPRESS"
 
 _TERMINAL_QUERY_STATES = frozenset(
     {
@@ -74,6 +82,23 @@ _ACTIVE_RUN_STATES = frozenset(
     {"queued", "running", "retry_wait_flood", "cancelling"}
 )
 _SEED_QUERY_KINDS = frozenset({"global_message", "directory", "public_posts"})
+# Default queue: review + promising (plan moderate/strong aliases). weak is opt-in.
+_DEFAULT_BANDS = frozenset({"review", "promising"})
+_BAND_FILTER_DEFAULT = "default"
+
+_POOL_REASON_BY_CODE = {v: k for k, v in POOL_EXHAUSTED_REASON_CODES.items()}
+_FUNNEL_KEYS = (
+    "acquired_total",
+    "canonicalized_total",
+    "registry_suppressed",
+    "dismissed_suppressed",
+    "cooldown_suppressed",
+    "suppressed_total",
+    "qualified_total",
+    "presented_total",
+    "novel_presented_total",
+    "duplicate_in_run",
+)
 
 
 def _csrf_or_403(request: Request, csrf_token: str) -> HTMLResponse | None:
@@ -172,6 +197,21 @@ def _run_view(
     if not isinstance(counters, dict):
         counters = {}
     prog = progress or {}
+    pool_exhausted = bool(int(counters.get("pool_exhausted") or 0))
+    reason_code = counters.get("pool_exhausted_reason_code")
+    pool_reason = None
+    if isinstance(reason_code, int):
+        pool_reason = _POOL_REASON_BY_CODE.get(reason_code, f"code_{reason_code}")
+    novelty_bp = int(counters.get("novelty_ratio_bp") or 0)
+    funnel = {key: int(counters.get(key) or 0) for key in _FUNNEL_KEYS}
+    # Aggregate suppressed for UI-020 "suppressed" line when total missing.
+    if funnel["suppressed_total"] == 0:
+        funnel["suppressed_total"] = (
+            funnel["registry_suppressed"]
+            + funnel["dismissed_suppressed"]
+            + funnel["cooldown_suppressed"]
+            + funnel["duplicate_in_run"]
+        )
     return {
         "id": run.id,
         "state": run.state,
@@ -180,6 +220,12 @@ def _run_view(
         "search_mode": run.search_mode,
         "last_error_code": run.last_error_code,
         "counters": counters,
+        "funnel": funnel,
+        "pool_exhausted": pool_exhausted,
+        "pool_exhausted_reason": pool_reason,
+        "novelty_ratio": novelty_bp / 10000.0,
+        "novelty_ratio_bp": novelty_bp,
+        "novelty_ratio_pct": f"{novelty_bp / 100:.2f}%",
         "started_at": run.started_at,
         "finished_at": run.finished_at,
         "created_at": run.created_at,
@@ -190,6 +236,14 @@ def _run_view(
         "verified_sources": int(prog.get("verified_sources", 0)),
         "flood_wait_until": prog.get("flood_wait_until"),
         "is_active": bool(prog.get("is_active", run.state in _ACTIVE_RUN_STATES)),
+        "is_loading": run.state in _ACTIVE_RUN_STATES,
+        "is_degraded": run.state == "retry_wait_flood" or bool(run.last_error_code),
+        "is_error": run.state == "failed",
+        "is_empty": (
+            run.state not in _ACTIVE_RUN_STATES
+            and int(counters.get("presented_total") or 0) == 0
+            and int(counters.get("unique_sources") or 0) == 0
+        ),
     }
 
 
@@ -235,10 +289,39 @@ def _rank_reason(view: dict[str, Any]) -> str:
         "noise_penalty",
     )
     parts = [f"{key}={components.get(key, 0)}" for key in ordered]
+    eligibility = components.get("eligibility_reasons") or components.get("reason_codes") or []
+    if isinstance(eligibility, list) and eligibility:
+        parts.append("reasons=" + ",".join(str(r) for r in eligibility))
     return (
         f"Выше других по score {view.get('score', 0)} "
         f"(band={view.get('band', 'weak')}; {', '.join(parts)})"
     )
+
+
+def _eligibility_reasons(components: dict[str, Any]) -> list[str]:
+    raw = components.get("eligibility_reasons") or components.get("reason_codes") or []
+    if isinstance(raw, list):
+        return [str(item) for item in raw]
+    return []
+
+
+def _normalize_band_filter(band: str | None) -> str:
+    """Map query param to filter mode. Missing/empty → default (hide weak)."""
+    if band is None or band == "" or band == _BAND_FILTER_DEFAULT:
+        return _BAND_FILTER_DEFAULT
+    if band == "all":
+        return "all"
+    if band in ("promising", "review", "weak"):
+        return band
+    return _BAND_FILTER_DEFAULT
+
+
+def _apply_band_filter(stmt: Any, band_mode: str) -> Any:
+    if band_mode == "all":
+        return stmt
+    if band_mode == _BAND_FILTER_DEFAULT:
+        return stmt.where(SourceOpportunitySnapshot.band.in_(tuple(_DEFAULT_BANDS)))
+    return stmt.where(SourceOpportunitySnapshot.band == band_mode)
 
 
 def _sampling_label(sample_message_count: int) -> str:
@@ -251,6 +334,8 @@ def _opportunity_view(
     row: SourceOpportunitySnapshot,
     *,
     lifecycle_state: str | None = None,
+    aliases: list[str] | None = None,
+    suppress: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     components = _loads_json_obj(row.score_components_json, {})
     channels = _loads_json_obj(row.discovery_channels_json, [])
@@ -261,6 +346,25 @@ def _opportunity_view(
     existing = row.source_id is not None
     lifecycle = lifecycle_state or ("existing" if existing else "new")
     noise = components.get("noise_penalty", row.excluded_count)
+    identity = {
+        "telegram_id": row.source_telegram_id,
+        "username": row.username,
+        "title": row.title,
+        "source_type": row.source_type,
+        "public_url": row.public_url,
+        "canonical_key": (
+            f"peer:{row.source_telegram_id}"
+            if row.source_telegram_id is not None
+            else (
+                f"username:{str(row.username).casefold()}"
+                if row.username
+                else None
+            )
+        ),
+    }
+    alias_list = list(aliases or [])
+    if row.username and row.username not in alias_list:
+        alias_list = [row.username, *alias_list]
     view = {
         "id": row.id,
         "run_id": row.run_id,
@@ -281,7 +385,18 @@ def _opportunity_view(
         "score": row.score,
         "band": row.band,
         "score_components": components,
+        "eligibility_reasons": _eligibility_reasons(components),
         "discovery_channels": channels,
+        "provenance": channels,
+        "identity": identity,
+        "aliases": alias_list,
+        "evidence_counts": {
+            "qualified": row.qualified_count,
+            "excluded": row.excluded_count,
+            "sample": row.sample_message_count,
+            "active_weeks": row.active_week_count,
+            "ecommerce_qualified": row.ecommerce_qualified_count,
+        },
         "review_state": row.review_state,
         "promoted_source_id": row.promoted_source_id,
         "source_id": row.source_id,
@@ -290,6 +405,7 @@ def _opportunity_view(
         "noise": noise,
         "version": row.version,
         "dismiss_reason": row.dismiss_reason,
+        "suppress": suppress,
     }
     view["rank_reason"] = _rank_reason(view)
     return view
@@ -321,6 +437,56 @@ async def _lifecycle_map(
         )
     ).scalars().all()
     return {s.id: s.lifecycle_state for s in sources}
+
+
+async def _aliases_for_source(
+    session: Any, source_id: int | None
+) -> list[str]:
+    if source_id is None:
+        return []
+    rows = (
+        await session.execute(
+            select(SourceAlias)
+            .where(SourceAlias.source_id == source_id)
+            .order_by(SourceAlias.id.asc())
+        )
+    ).scalars().all()
+    return [r.normalized_username for r in rows]
+
+
+async def _suppress_for_opportunity(
+    session: Any, row: SourceOpportunitySnapshot
+) -> dict[str, Any] | None:
+    key = (
+        f"peer:{row.source_telegram_id}"
+        if row.source_telegram_id is not None
+        else (
+            f"username:{str(row.username).casefold()}" if row.username else None
+        )
+    )
+    suppress_row: DismissedKeywordSource | None = None
+    if key:
+        suppress_row = await get_suppress_by_canonical_key(session, canonical_key=key)
+    if suppress_row is None and row.source_telegram_id is not None:
+        suppress_row = (
+            await session.execute(
+                select(DismissedKeywordSource).where(
+                    DismissedKeywordSource.source_telegram_id == row.source_telegram_id
+                )
+            )
+        ).scalar_one_or_none()
+    if suppress_row is None:
+        return None
+    aliases = _loads_json_obj(suppress_row.aliases_json, [])
+    if not isinstance(aliases, list):
+        aliases = []
+    return {
+        "id": suppress_row.id,
+        "canonical_key": suppress_row.canonical_key,
+        "version": suppress_row.version,
+        "dismiss_reason": suppress_row.dismiss_reason,
+        "aliases": [str(a) for a in aliases],
+    }
 
 
 def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
@@ -592,10 +758,15 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                 )
             progress = await _run_progress(session, run)
             view = _run_view(run, progress=progress)
+            band_mode = _normalize_band_filter(None)
             result_rows = (
                 await session.execute(
-                    select(SourceOpportunitySnapshot)
-                    .where(SourceOpportunitySnapshot.run_id == run_id)
+                    _apply_band_filter(
+                        select(SourceOpportunitySnapshot).where(
+                            SourceOpportunitySnapshot.run_id == run_id
+                        ),
+                        band_mode,
+                    )
                     .order_by(
                         SourceOpportunitySnapshot.score.desc(),
                         SourceOpportunitySnapshot.id.asc(),
@@ -625,7 +796,7 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                 "run_id": run_id,
                 "results": results,
                 "filters": {
-                    "band": None,
+                    "band": band_mode,
                     "source_type": None,
                     "linked_discussion_only": False,
                     "ecommerce_only": False,
@@ -683,8 +854,8 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
             stmt = select(SourceOpportunitySnapshot).where(
                 SourceOpportunitySnapshot.run_id == run_id
             )
-            if band:
-                stmt = stmt.where(SourceOpportunitySnapshot.band == band)
+            band_mode = _normalize_band_filter(band)
+            stmt = _apply_band_filter(stmt, band_mode)
             if source_type:
                 stmt = stmt.where(SourceOpportunitySnapshot.source_type == source_type)
             if linked_discussion_only:
@@ -729,7 +900,7 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                 "run_id": run_id,
                 "results": results,
                 "filters": {
-                    "band": band,
+                    "band": band_mode,
                     "source_type": source_type,
                     "linked_discussion_only": linked_discussion_only,
                     "ecommerce_only": ecommerce_only,
@@ -810,7 +981,14 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
             if row.source_id is not None:
                 src = await session.get(TelegramSource, row.source_id)
                 lifecycle = src.lifecycle_state if src is not None else None
-            view = _opportunity_view(row, lifecycle_state=lifecycle)
+            aliases = await _aliases_for_source(session, row.source_id)
+            suppress = await _suppress_for_opportunity(session, row)
+            view = _opportunity_view(
+                row,
+                lifecycle_state=lifecycle,
+                aliases=aliases,
+                suppress=suppress,
+            )
             categories = sorted(
                 {item["category"] for item in evidence_items if item["category"]}
             )
@@ -843,6 +1021,7 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                 "categories": categories,
                 "service_profiles": service_profiles,
                 "matched_query_ordinals": sorted(matched_ordinals),
+                "confirm_reconsider_suppress": CONFIRM_RECONSIDER_SUPPRESS,
             },
         )
 
@@ -930,10 +1109,81 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
             url=f"/discovery/results/{result_id}", status_code=303
         )
 
+    @router.post("/discovery/results/{result_id}/reconsider-suppress")
+    async def discovery_result_reconsider_suppress(
+        request: Request,
+        result_id: int,
+        csrf_token: str = Form(...),
+        confirm: str = Form(default=""),
+        note: str = Form(default=""),
+        expected_version: int | None = Form(default=None),
+        suppress_id: int | None = Form(default=None),
+    ) -> HTMLResponse:
+        """UI-019: ReconsiderDismissSuppress — CSRF + explicit confirmation required."""
+        rejected = _csrf_or_403(request, csrf_token)
+        if rejected is not None:
+            return rejected
+        if confirm.strip() != CONFIRM_RECONSIDER_SUPPRESS:
+            return _safe_error(
+                status_code=400,
+                error_code="confirm_required",
+                message=(
+                    "Требуется подтверждение: введите "
+                    f"{CONFIRM_RECONSIDER_SUPPRESS}"
+                ),
+            )
+        try:
+            async with session_scope() as session:
+                row = await session.get(SourceOpportunitySnapshot, result_id)
+                if row is None:
+                    return _safe_error(
+                        status_code=404,
+                        error_code="opportunity_not_found",
+                        message="Результат не найден",
+                    )
+                suppress = await _suppress_for_opportunity(session, row)
+                sid = suppress_id or (suppress["id"] if suppress else None)
+                canonical = suppress["canonical_key"] if suppress else None
+                if sid is None and not canonical:
+                    return _safe_error(
+                        status_code=404,
+                        error_code="suppress_not_found",
+                        message="Запись suppress не найдена",
+                    )
+                version = expected_version
+                if version is None and suppress is not None:
+                    version = int(suppress["version"])
+                await reconsider_dismiss_suppress(
+                    session,
+                    suppress_id=sid,
+                    canonical_key=canonical,
+                    note=(note or "").strip()[:1000],
+                    version=version,
+                )
+        except ValueError as exc:
+            code = str(exc)
+            if code.startswith("suppress_version_conflict"):
+                return HTMLResponse(VERSION_CONFLICT_MESSAGE, status_code=409)
+            return _safe_error(
+                status_code=422,
+                error_code="reconsider_suppress_failed",
+                message=code,
+            )
+        except Exception:  # noqa: BLE001
+            return _safe_error(
+                status_code=500,
+                error_code="reconsider_suppress_failed",
+                message="Не удалось снять suppress",
+            )
+        return RedirectResponse(
+            url=f"/discovery/results/{result_id}", status_code=303
+        )
+
     return router
 
 
 __all__ = [
+    "CONFIRM_RECONSIDER_SUPPRESS",
     "EVIDENCE_RETENTION_MESSAGE",
     "VERSION_CONFLICT_MESSAGE",
     "ZERO_STARS_LABEL",

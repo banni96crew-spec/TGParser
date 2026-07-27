@@ -123,7 +123,7 @@ async def test_discovery_csrf_and_303_promote_cancel(discovery_ui_env) -> None:
                 source_type="megagroup",
                 public_url="https://t.me/opp_ui",
                 score=70,
-                band="strong",
+                band="promising",
                 score_components_json="{}",
                 discovery_channels_json='["global_message"]',
                 review_state="unreviewed",
@@ -408,6 +408,29 @@ async def test_discovery_duplicate_start_conflict_and_filters(discovery_ui_env) 
         assert "Filter Strong" in filtered.text
         assert "Filter Weak" not in filtered.text
         assert 'name="band"' in filtered.text
+
+        # Wave 03: default queue hides weak; weak available via explicit filter.
+        default_queue = client.get(f"/discovery/runs/{run_id}/results-fragment")
+        assert default_queue.status_code == 200
+        assert "Filter Strong" in default_queue.text
+        assert "Filter Weak" not in default_queue.text
+        assert "review + promising" in default_queue.text
+
+        weak_opt_in = client.get(
+            f"/discovery/runs/{run_id}/results-fragment",
+            params={"band": "weak"},
+        )
+        assert weak_opt_in.status_code == 200
+        assert "Filter Weak" in weak_opt_in.text
+        assert "Filter Strong" not in weak_opt_in.text
+
+        all_bands = client.get(
+            f"/discovery/runs/{run_id}/results-fragment",
+            params={"band": "all"},
+        )
+        assert all_bands.status_code == 200
+        assert "Filter Strong" in all_bands.text
+        assert "Filter Weak" in all_bands.text
 
 
 @pytest.mark.asyncio

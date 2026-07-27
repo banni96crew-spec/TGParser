@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h1>Покрытие мониторинга</h1>
+  <p class="page-meta">До {{ monitoring_limit }} источников · <a href="/sources">← К источникам</a></p>
+</header>
+
+{% if monitoring_coverage %}
+<div class="panel">
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Username</th>
+          <th>State</th>
+          <th>Last checked</th>
+          <th>Checkpoint msg</th>
+          <th>Checkpoint at</th>
+          <th>Reconciled</th>
+          <th>Backlog jobs</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in monitoring_coverage %}
+        <tr id="monitor-{{ row.id }}">
+          <td class="mono"><a href="/sources#source-{{ row.id }}">{{ row.id }}</a></td>
+          <td>{{ row.title }}</td>
+          <td class="mono">{{ row.username or "—" }}</td>
+          <td class="mono">{{ row.lifecycle_state }}</td>
+          <td class="mono">{{ row.last_checked_at or "—" }}</td>
+          <td class="mono">{{ row.checkpoint_message_id if row.checkpoint_message_id is not none else "—" }}</td>
+          <td class="mono">{{ row.checkpoint_published_at or "—" }}</td>
+          <td class="mono">{{ row.last_reconciled_at or "—" }}</td>
+          <td class="mono">{{ row.backlog_jobs }}</td>
+          <td class="{% if row.has_error %}status-critical{% else %}faint{% endif %}">
+            {{ row.job_error_code or "—" }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% else %}
+<p class="empty-state">Нет источников в monitoring/paused.</p>
+{% endif %}
+{% endblock %}

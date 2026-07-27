@@ -23,6 +23,26 @@ class SourceRef:
 
 
 @dataclass(frozen=True, slots=True)
+class TelegramPeerRef:
+    """Network peer identity for Gateway Telegram I/O (COL-023 / D-064).
+
+    DB ``source_id`` MUST NEVER be used as a Telethon entity. At least one of
+    ``telegram_peer_id`` or ``username_normalized`` is required.
+    """
+
+    schema_version: int
+    telegram_peer_id: int | None = None
+    access_hash: int | None = None
+    username_normalized: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.telegram_peer_id is None and not self.username_normalized:
+            raise ValueError(
+                "TelegramPeerRef requires telegram_peer_id or username_normalized"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class AccountSnapshot:
     schema_version: int
     account_id: int
@@ -45,11 +65,18 @@ class SourceSnapshot:
 class HistoryRequest:
     schema_version: int
     source_id: int
+    peer: TelegramPeerRef
     after_message_id: int | None = None
     after_published_at: datetime | None = None
     before_published_at: datetime | None = None
     limit: int = 100
-    purpose: Literal["backfill", "startup_reconciliation", "periodic_reconciliation"] = "backfill"
+    purpose: Literal[
+        "backfill",
+        "startup_reconciliation",
+        "periodic_reconciliation",
+        "continuation",
+    ] = "backfill"
+    continuation_cursor: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +86,7 @@ class TelegramMessageDTO:
     telegram_message_id: int
     published_at: datetime
     text: str
+    telegram_peer_id: int | None = None
     edited_at: datetime | None = None
     author_peer_id: int | None = None
     author_username: str | None = None
@@ -73,6 +101,7 @@ class TelegramUpdateDTO:
     event_type: Literal["message_new", "message_edited", "message_deleted"]
     message: TelegramMessageDTO | None
     observed_at: datetime
+    telegram_peer_id: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +179,37 @@ class LinkedDiscussionDTO:
     schema_version: int
     parent_telegram_id: int
     discussion: SourceSnapshot
+
+
+GraphEdgeType = Literal[
+    "recommendation",
+    "public_link",
+    "mention",
+    "forward_origin",
+    "linked_discussion",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class GraphEdgeDTO:
+    """Public-only graph edge discovered from a seed (SRC-042 / SRC-003)."""
+
+    schema_version: int
+    edge_type: GraphEdgeType
+    seed_telegram_id: int
+    raw_reference: str
+    normalized_username: str | None = None
+    target: SourceSnapshot | None = None
+    evidence_message_id: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class GraphSampleRequest:
+    """Bounded message sample for public_link / mention / forward_origin edges."""
+
+    schema_version: int
+    source: SourceRef
+    message_limit: int = 50
 
 
 class GatewayFloodWait(Exception):
@@ -238,3 +298,7 @@ class TelegramGateway(Protocol):
     async def get_linked_discussion(
         self, source: SourceRef
     ) -> SourceSnapshot | None: ...
+
+    async def sample_public_graph_edges(
+        self, request: GraphSampleRequest
+    ) -> list[GraphEdgeDTO]: ...

@@ -9,8 +9,10 @@ from typing import Any
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from telegram_lead_discovery.detection.engine import detect
-from telegram_lead_discovery.detection.seed import get_active_ruleset, seed_ruleset_ru_mvp_1
+from telegram_lead_discovery.detection.engine import detect, stable_detection_payload
+from telegram_lead_discovery.detection.errors import RuleSetInvalidError
+from telegram_lead_discovery.detection.loader import LoadedRuleCatalog, get_default_loader
+from telegram_lead_discovery.detection.seed import get_active_ruleset
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.scoring.engine import score_detection
 from telegram_lead_discovery.storage.models import (
@@ -29,6 +31,7 @@ from telegram_lead_discovery.storage.outbox import enqueue_hot_lead
 
 DEDUPE_WINDOW_DAYS = 30
 LEASE_SECONDS = 300
+FAILED_PERMANENT = "failed_permanent"
 
 
 async def recover_stale_envelopes(
@@ -193,15 +196,16 @@ async def process_envelope(
     # exact cross-source dedupe
     canonical = await _apply_exact_dedupe(session, message, norms.dedup_hash, clock)
 
-    ruleset = await get_active_ruleset(session)
-    if ruleset is None:
-        ruleset = await seed_ruleset_ru_mvp_1(session)
+    try:
+        catalog = await _load_pinned_catalog(session)
+    except RuleSetInvalidError as exc:
+        return await _fail_permanent_ruleset(session, envelope, error=exc)
 
     if not canonical.is_canonical or not norms.analysis_text:
         result = ProcessingResult(
             message_id=message.id,
             revision_id=revision.id,
-            rule_set_version_id=ruleset.id,
+            rule_set_version_id=catalog.rule_set_version_id,
             category="duplicate_suppressed" if not canonical.is_canonical else "empty",
             score_total=None,
             score_band=None,
@@ -227,15 +231,23 @@ async def process_envelope(
     source = await session.get(TelegramSource, canonical.source_id)
     quality = source.quality_score if source is not None else 2
 
-    detection = detect(norms.analysis_text)
+    try:
+        detection = detect(
+            norms.analysis_text,
+            rules=catalog.rules,
+            rule_set_checksum=catalog.checksum,
+        )
+    except RuleSetInvalidError as exc:
+        return await _fail_permanent_ruleset(session, envelope, error=exc)
+
     score = score_detection(
         detection,
         published_at=canonical.published_at,
         source_quality_score=quality,
         scored_at=clock,
-        hot_min=ruleset.hot_min,
-        warm_min=ruleset.warm_min,
-        cold_min=ruleset.cold_min,
+        hot_min=catalog.hot_min,
+        warm_min=catalog.warm_min,
+        cold_min=catalog.cold_min,
     )
 
     explanation = {
@@ -251,16 +263,19 @@ async def process_envelope(
         ],
         "signals": detection.signals,
         "service_profiles": list(detection.service_profiles),
+        "rule_set_version_id": catalog.rule_set_version_id,
+        "rule_set_checksum": catalog.checksum,
+        "stable": stable_detection_payload(detection),
     }
     proc = ProcessingResult(
         message_id=canonical.id,
         revision_id=revision.id,
-        rule_set_version_id=ruleset.id,
+        rule_set_version_id=catalog.rule_set_version_id,
         category=detection.category,
         score_total=score.total,
         score_band=score.band,
         hard_exclusion_rule_id=detection.hard_exclusion_rule_id,
-        explanation_json=json.dumps(explanation, ensure_ascii=False),
+        explanation_json=json.dumps(explanation, ensure_ascii=False, sort_keys=True),
         is_lead=score.create_lead,
         processed_at=clock,
     )
@@ -304,7 +319,7 @@ async def process_envelope(
             lead_id=lead.id,
             processing_result_id=proc.id,
             score_version=score_version,
-            rule_set_version_id=ruleset.id,
+            rule_set_version_id=catalog.rule_set_version_id,
             raw_total=score.raw_total,
             soft_penalty_total=score.soft_penalty_total,
             total=score.total,
@@ -337,7 +352,7 @@ async def process_envelope(
         lead.updated_at = clock
         await session.flush()
 
-    canonical.last_processed_rule_version_id = ruleset.id
+    canonical.last_processed_rule_version_id = catalog.rule_set_version_id
     envelope.processing_state = "acked"
     envelope.lease_owner = None
     envelope.lease_until = None
@@ -350,6 +365,8 @@ async def process_envelope(
         "total": score.total,
         "outbox_created": outbox_created,
         "category": detection.category,
+        "rule_set_version_id": catalog.rule_set_version_id,
+        "rule_set_checksum": catalog.checksum,
     }
 
 
@@ -471,3 +488,251 @@ async def process_next_envelope(
     if envelope is None:
         return None
     return await process_envelope(session, envelope, now=now)
+
+
+async def _load_pinned_catalog(session: AsyncSession) -> LoadedRuleCatalog:
+    """Load active ruleset by explicit version id + checksum (no SEED fallback)."""
+    loader = get_default_loader()
+    pin = loader.peek_active_pin()
+    if pin is not None:
+        cached = loader.peek_cache(pin[1])
+        if cached is not None and cached.rule_set_version_id == pin[0]:
+            return cached
+        return await loader.load(
+            session,
+            rule_set_version_id=pin[0],
+            checksum=pin[1],
+        )
+    ruleset = await get_active_ruleset(session)
+    if ruleset is None:
+        raise RuleSetInvalidError("missing_rule_set_version")
+    loaded = await loader.load(
+        session,
+        rule_set_version_id=ruleset.id,
+        checksum=ruleset.checksum,
+    )
+    loader.remember_active_pin(ruleset.id, ruleset.checksum)
+    return loaded
+
+
+async def _fail_permanent_ruleset(
+    session: AsyncSession,
+    envelope: TelegramEventEnvelope,
+    *,
+    error: RuleSetInvalidError,
+) -> dict[str, Any]:
+    envelope.processing_state = FAILED_PERMANENT
+    envelope.lease_owner = None
+    envelope.lease_until = None
+    await session.flush()
+    return {
+        "outcome": FAILED_PERMANENT,
+        "error_code": error.error_code,
+        "detail": error.message,
+        "message_id": None,
+    }
+
+
+async def rescore_revision(
+    session: AsyncSession,
+    *,
+    message_id: int,
+    revision_id: int,
+    rule_set_version_id: int,
+    checksum: str,
+    analysis_text: str,
+    published_at: datetime,
+    source_quality_score: int,
+    now: datetime | None = None,
+) -> ProcessingResult:
+    """Create a new ProcessingResult / score trace for another rule version.
+
+    Does not mutate or delete prior ProcessingResult rows for other versions.
+    """
+    clock = now or datetime.now(UTC)
+    loader = get_default_loader()
+    catalog = await loader.load(
+        session,
+        rule_set_version_id=rule_set_version_id,
+        checksum=checksum,
+    )
+    detection = detect(
+        analysis_text,
+        rules=catalog.rules,
+        rule_set_checksum=catalog.checksum,
+    )
+    score = score_detection(
+        detection,
+        published_at=published_at,
+        source_quality_score=source_quality_score,
+        scored_at=clock,
+        hot_min=catalog.hot_min,
+        warm_min=catalog.warm_min,
+        cold_min=catalog.cold_min,
+    )
+    explanation = {
+        "category": detection.category,
+        "matched_rules": [
+            {
+                "stable_rule_id": m.stable_rule_id,
+                "dimension": m.dimension,
+                "weight": m.weight,
+                "matched_excerpt": m.matched_excerpt,
+            }
+            for m in detection.matched_rules
+        ],
+        "signals": detection.signals,
+        "service_profiles": list(detection.service_profiles),
+        "rule_set_version_id": catalog.rule_set_version_id,
+        "rule_set_checksum": catalog.checksum,
+        "stable": stable_detection_payload(detection),
+        "rescore": True,
+    }
+    proc = ProcessingResult(
+        message_id=message_id,
+        revision_id=revision_id,
+        rule_set_version_id=catalog.rule_set_version_id,
+        category=detection.category,
+        score_total=score.total,
+        score_band=score.band,
+        hard_exclusion_rule_id=detection.hard_exclusion_rule_id,
+        explanation_json=json.dumps(explanation, ensure_ascii=False, sort_keys=True),
+        is_lead=score.create_lead,
+        processed_at=clock,
+    )
+    session.add(proc)
+    await session.flush()
+
+    lead_result = await session.execute(
+        select(Lead).where(Lead.canonical_message_id == message_id)
+    )
+    lead = lead_result.scalar_one_or_none()
+    if lead is not None and score.create_lead:
+        score_version = 1
+        if lead.current_score_id is not None:
+            prev_score = await session.get(LeadScore, lead.current_score_id)
+            if prev_score is not None:
+                score_version = prev_score.score_version + 1
+        lead_score = LeadScore(
+            lead_id=lead.id,
+            processing_result_id=proc.id,
+            score_version=score_version,
+            rule_set_version_id=catalog.rule_set_version_id,
+            raw_total=score.raw_total,
+            soft_penalty_total=score.soft_penalty_total,
+            total=score.total,
+            band=score.band,
+            scored_at=clock,
+        )
+        session.add(lead_score)
+        await session.flush()
+        for comp in score.components:
+            session.add(
+                LeadScoreComponent(
+                    lead_score_id=lead_score.id,
+                    rule_id=comp.rule_id,
+                    dimension=comp.dimension,
+                    value=comp.value,
+                    reason_ru=comp.reason_ru,
+                )
+            )
+        lead.current_score_id = lead_score.id
+        lead.category = detection.category
+        lead.band = score.band
+        lead.updated_at = clock
+        await session.flush()
+    return proc
+
+
+# ---------------------------------------------------------------------------
+# Processing claim loop (INF-022 / D-066)
+# ---------------------------------------------------------------------------
+CLAIM_LOOP_IDLE_SECONDS = 1.0
+CLAIM_LOOP_SHUTDOWN_TIMEOUT_SECONDS = 30.0
+
+
+class ProcessingClaimLoop:
+    """Asyncio claim loop for TelegramEventEnvelope processing (PROC lease)."""
+
+    def __init__(
+        self,
+        *,
+        idle_seconds: float = CLAIM_LOOP_IDLE_SECONDS,
+        owner: str = "processing-claim-worker",
+        shutdown_timeout_seconds: float = CLAIM_LOOP_SHUTDOWN_TIMEOUT_SECONDS,
+    ) -> None:
+        import asyncio
+
+        self._idle_seconds = idle_seconds
+        self._owner = owner
+        self._shutdown_timeout_seconds = shutdown_timeout_seconds
+        self._stop = asyncio.Event()
+        self._task: asyncio.Task[None] | None = None
+        self._last_error: str | None = None
+
+    @property
+    def task(self):  # noqa: ANN201 — asyncio.Task | None without import at type time
+        return self._task
+
+    @property
+    def last_error(self) -> str | None:
+        return self._last_error
+
+    def start(self):
+        import asyncio
+
+        if self._task is not None and not self._task.done():
+            return self._task
+        self._stop.clear()
+        self._task = asyncio.create_task(self._run(), name="processing-claim-loop")
+        return self._task
+
+    async def stop(self) -> None:
+        import asyncio
+
+        self._stop.set()
+        task = self._task
+        if task is None:
+            return
+        try:
+            await asyncio.wait_for(task, timeout=self._shutdown_timeout_seconds)
+        except TimeoutError:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        finally:
+            self._task = None
+
+    async def _run(self) -> None:
+        import asyncio
+        import logging
+
+        from telegram_lead_discovery.storage.db import session_scope
+
+        log = logging.getLogger("tld.processing.loop")
+        while not self._stop.is_set():
+            claimed = False
+            try:
+                async with session_scope() as session:
+                    result = await process_next_envelope(session, owner=self._owner)
+                    claimed = result is not None
+                self._last_error = None
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — isolate loop failures
+                self._last_error = type(exc).__name__
+                log.exception("processing claim/process failed")
+                claimed = True
+
+            if self._stop.is_set():
+                break
+            if claimed:
+                await asyncio.sleep(0)
+                continue
+            try:
+                await asyncio.wait_for(self._stop.wait(), timeout=self._idle_seconds)
+                break
+            except TimeoutError:
+                continue

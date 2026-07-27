@@ -24,8 +24,17 @@ from telegram_lead_discovery.storage.models import (
 
 USERNAME_RE = re.compile(r"^[a-z0-9_]{5,32}$")
 
+REJECT_REASON_CODES = frozenset(
+    {"off_topic", "low_signal", "duplicate_manual", "not_needed"}
+)
+
 
 class InvalidUsernameError(ValueError):
+    pass
+
+
+class SourceLifecycleError(ValueError):
+    """Invalid source lifecycle transition or reason."""
     pass
 
 
@@ -254,6 +263,134 @@ async def approve_source(
     await enqueue_initial_backfill(session, source.id)
     await session.flush()
     return source
+
+
+async def _transition_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    allowed_from: set[str],
+    to_state: str,
+    reason_code: str,
+    note: str | None = None,
+    trigger: str = "ui",
+) -> TelegramSource:
+    """Idempotent lifecycle transition: same target returns current row (SRC-012)."""
+    source = await session.get(TelegramSource, source_id)
+    if source is None:
+        raise KeyError(source_id)
+    if source.lifecycle_state == to_state:
+        return source
+    if source.lifecycle_state not in allowed_from:
+        raise SourceLifecycleError(
+            f"invalid_transition:{source.lifecycle_state}->{to_state}"
+        )
+    from_state = source.lifecycle_state
+    now = datetime.now(UTC)
+    source.lifecycle_state = to_state
+    source.updated_at = now
+    if to_state == "disabled":
+        source.disabled_at = now
+    if to_state == "monitoring" and source.monitoring_started_at is None:
+        source.monitoring_started_at = now
+    session.add(
+        SourceApprovalEvent(
+            event_id=str(uuid.uuid4()),
+            source_id=source.id,
+            from_state=from_state,
+            to_state=to_state,
+            reason_code=reason_code,
+            trigger=trigger,
+            note=note,
+        )
+    )
+    await session.flush()
+    return source
+
+
+async def reject_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    reason_code: str,
+    note: str | None = None,
+) -> TelegramSource:
+    if reason_code not in REJECT_REASON_CODES:
+        raise SourceLifecycleError(f"invalid_reject_reason:{reason_code}")
+    return await _transition_source(
+        session,
+        source_id=source_id,
+        allowed_from={"candidate"},
+        to_state="rejected",
+        reason_code=reason_code,
+        note=note,
+    )
+
+
+async def reconsider_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    note: str | None = None,
+) -> TelegramSource:
+    """ReconsiderSource: rejected → candidate (distinct from ReconsiderDismissSuppress)."""
+    return await _transition_source(
+        session,
+        source_id=source_id,
+        allowed_from={"rejected"},
+        to_state="candidate",
+        reason_code="operator_reconsider",
+        note=note,
+    )
+
+
+async def pause_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    note: str | None = None,
+) -> TelegramSource:
+    return await _transition_source(
+        session,
+        source_id=source_id,
+        allowed_from={"monitoring"},
+        to_state="paused",
+        reason_code="operator_pause",
+        note=note,
+    )
+
+
+async def resume_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    note: str | None = None,
+) -> TelegramSource:
+    return await _transition_source(
+        session,
+        source_id=source_id,
+        allowed_from={"paused"},
+        to_state="monitoring",
+        reason_code="operator_resume",
+        note=note,
+    )
+
+
+async def disable_source(
+    session: AsyncSession,
+    *,
+    source_id: int,
+    note: str | None = None,
+) -> TelegramSource:
+    return await _transition_source(
+        session,
+        source_id=source_id,
+        allowed_from={"monitoring", "paused", "inaccessible"},
+        to_state="disabled",
+        reason_code="operator_disabled",
+        note=note,
+    )
+
 
 async def list_sources(session: AsyncSession) -> list[TelegramSource]:
     result = await session.execute(select(TelegramSource).order_by(TelegramSource.id.asc()))

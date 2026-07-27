@@ -1,0 +1,16 @@
+{
+  "wave": 5,
+  "captured_at": "2026-07-27T17:28:29+03:00",
+  "commands": [
+    {
+      "cmd": "uv run ruff check src/telegram_lead_discovery/collector/ports.py src/telegram_lead_discovery/collector/fake.py src/telegram_lead_discovery/collector/adapter/telethon_gateway.py src/telegram_lead_discovery/collector/service.py tests/integration/test_collector_wave05.py tests/adapter/test_telethon_peer_history.py tests/contract/test_fake_telegram_gateway.py",
+      "result": "pass",
+      "notes": "All checks passed"
+    },
+    {
+      "cmd": "uv run pytest tests/adapter tests/contract tests/integration/test_source_approve_backfill.py tests/integration/test_collector_wave05.py tests/integration/test_keyword_discovery_e2e.py tests/integration/test_pipeline_lead.py tests/unit/test_security.py -q",
+      "result": "pass",
+      "notes": "59 passed in 7.52s"
+    }
+  ]
+}

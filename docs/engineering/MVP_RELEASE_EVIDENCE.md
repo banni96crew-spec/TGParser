@@ -3,55 +3,73 @@
 | Field | Value |
 |---|---|
 | Product | Telegram Lead Discovery |
-| Schema | `schema_version=1` / Alembic `001_initial` |
-| Owner gate | Phase 0 freeze + authorization 2026-07-16 |
-| Status | `pass` — Phases 0–6 critical-path deliverables landed |
+| Captured_at | 2026-07-27T18:46:27+03:00 (Wave 10 independent gates) |
+| HEAD | `552eb53adb53ba8569318c096949e22cc127f16d` |
+| Schema / Alembic | Product migrations present through remediation (`003_dismissed_keyword_suppress` in tree); **live DB migrate = NOT_RUN** (Wave 09 Part B blocked) |
+| Owner gate | Phase 0 freeze + authorization 2026-07-16 (unchanged authority) |
+| Status | **`fail`** — Wave 10 global gates not green |
+| Commit/push/merge | **NOT PERFORMED** |
+| Wave 09 Part B (live pilot) | **NOT_RUN** |
 
-## Phase handoff summary
+## Wave 10 fresh mandatory checks
 
-| Phase | Scope | Gate status | Evidence |
-|---|---|---|---|
-| 0 | Contract freeze D-039…D-047 | `pass` | `docs/prd/PHASE0_RESOLUTION_REGISTER.md`, `validate-prd.py` |
-| 1 | SEC/INF/STO/SET/OBS foundation | `pass` | unit/integration foundation tests |
-| 2 | SRC/COL ingestion sandbox | `pass` | fake gateway approve/backfill tests |
-| 3 | PROC/DET/SCR calibration | `pass` | detection/scoring/pipeline tests |
-| 4 | Shadow + UI | `pass` | `test_shadow_e2e.py`, `test_dashboard_ui.py`, keyset inbox/export |
-| 5 | Hot notification pilot | `pass` | `test_notifications.py` fault injection / idempotency |
-| 6 | Windows release hardening | `pass` | backup/restore/purge, `Register-TldTasks.ps1`, smoke checklist |
+| Check | Result | Exit | Notes |
+|---|---|---:|---|
+| `uv run python tools/quality/validate-prd.py` | **pass** | 0 | 254 requirements / 254 acceptance tests / 67 decisions; `errors: []` |
+| `uv run ruff check src tests` | **fail** | 1 | B009×2 (`test_canonical_identity_suppress.py`); F841 (`test_source_approve_backfill.py:139`) |
+| `uv run pytest tests -q` | **fail** | 2 | Collection error: `ModuleNotFoundError: No module named 'tests'` (`test_wave09_capacity_recovery.py` → `tests.harness`) |
+| `node tools/quality/run-quality-suite.mjs` | **fail** | 1 | `validators.test.mjs` expects requirements count **221**; live count **254** |
+| `node tools/quality/ci-recompute.mjs` | **pass** | 0 | `observe_only`; `authoritative_ci=blocked`; `at_gov_009=local_only`; `at_gov_010=not_run` |
+| Wave 09A load (`pytest tests/integration/test_wave09_capacity_recovery.py`) | **fail** | 2 | Same import failure; historical wave-09 “2 passed” **not** copied |
 
-## Mandatory checks (recorded)
+Evidence directory: `.omc/artifacts/lead-discovery-remediation/wave-10/`  
+(`commands.json`, `verification-report.md`, `code-review-verdict.md`, `security-review-verdict.md`, `acceptance-matrix.md`, command logs).
 
-| Check | Result | Notes |
-|---|---|---|
-| `pytest tests` | `pass` — 52 passed | 2026-07-16 |
-| `ruff check src tests` | `pass` after per-file E501 ignores for DET catalogs + wrap fixes | Phase 6 gate |
-| `validate-prd.py` | `pass` | 195 req / 195 AT / 47 decisions |
+## Independent reviews (Wave 10)
 
-## Shadow mode contract (D-047)
+| Review | Result |
+|---|---|
+| Code review | **REVISE** |
+| Security overall risk | **LOW** — unresolved HIGH/CRITICAL: **none** |
+| Verifier | **FAIL** (confidence HIGH) |
+| Merge-readiness deep | **NOT_RUN** (requires human owner quiz) |
 
-- Default `notifications.delivery_mode=shadow`
-- Hot outbox rows are **not** enqueued until `live` **and** `TG_BOT_TOKEN` + `TG_NOTIFY_CHAT_ID` present
-- Switching to live does not flush historical shadow-eligible events that were never enqueued
+## Shadow mode contract (D-047) — documentation status
+
+- Default `notifications.delivery_mode=shadow` (product contract; not re-piloted live in Wave 10).
+- Hot outbox rows are **not** enqueued until `live` **and** `TG_BOT_TOKEN` + `TG_NOTIFY_CHAT_ID` present.
+- Switching to live does not flush historical shadow-eligible events that were never enqueued.
+- Live Bot API delivery / Part B pilot: **NOT_RUN**.
 
 ## Windows operator smoke (product)
 
-1. `tld migrate`
-2. `tld integrity-check`
-3. `tld backup`
-4. `tld start` → open `http://127.0.0.1:8765/`
-5. Confirm inbox/settings/health without Bot delivery in shadow
-6. `tld restore --backup <path>` only with stopped runtime
-7. `deploy/windows/Register-TldTasks.ps1` for logon/start, 03:00 backup, 04:00 purge
+Checklist owner: `docs/engineering/WINDOWS_SMOKE_CHECKLIST.md`.
 
-## Known limitations
+| Item | Wave 10 status |
+|---|---|
+| Desktop GOV smoke matrix (AT-GOV-011) | **`not_run`** — hosts not confirmed |
+| `uv run pytest tests -q` on this capture | **`fail`** (see above) |
+| Live migrate / backup / restore pilot | **NOT_RUN** (Wave 09 Part B blocked) |
 
-- Full `AT-*` catalog volume is not remapped ID-by-ID in automated suite; suites prove critical DoD journeys per phase.
-- Real Telegram credentials are never used in automated tests.
-- Desktop GOV smoke matrix may remain `not_run` until hosts confirmed (`WINDOWS_SMOKE_CHECKLIST.md`).
+Do **not** treat remediation wave executor PASS notes as substitute for green global suites.
 
-## Rollback
+## Known limitations (current)
+
+- Full automated suite is **not collectable** under default pytest `pythonpath` because Wave 09 harness imports `tests.harness` while `pythonpath = ["src"]` only.
+- Governance node test fixture count (221) drifted from live PRD counts (254).
+- Authoritative hosted CI / required merge protection remain blocked pending hosting prerequisite.
+- Real Telegram credentials are never used in automated tests; live Telegram proof requires owner-approved Part B.
+
+## Rollback (ops)
 
 1. Stop runtime (release process lock).
-2. Restore last verified backup via `tld restore --backup …`.
-3. Re-run `tld integrity-check` and `tld migrate`.
-4. Keep delivery_mode=`shadow` until pilot re-validated.
+2. Restore last verified backup via `tld restore --backup …` only when runtime is stopped.
+3. Re-run `tld integrity-check` and `tld migrate` as appropriate.
+4. Keep `delivery_mode=shadow` until a live pilot is explicitly approved and re-validated.
+
+## Explicit non-claims
+
+- No PASS invented for failed commands.
+- No commit, push, or merge performed.
+- Wave 09 Part B live pilot not completed.
+- Stale 2026-07-16 evidence numbers (e.g. “52 passed”) are **superseded** by this capture and must not be reused.

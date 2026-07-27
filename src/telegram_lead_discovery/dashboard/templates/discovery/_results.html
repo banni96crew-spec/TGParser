@@ -9,10 +9,11 @@
   <div class="form-row filter-row">
     <label>Band
       <select name="band">
-        <option value="">все</option>
+        <option value="default"{% if f.get("band") in (None, "", "default") %} selected{% endif %}>review + promising</option>
         <option value="promising"{% if f.get("band") == "promising" %} selected{% endif %}>promising</option>
         <option value="review"{% if f.get("band") == "review" %} selected{% endif %}>review</option>
-        <option value="weak"{% if f.get("band") == "weak" %} selected{% endif %}>weak</option>
+        <option value="weak"{% if f.get("band") == "weak" %} selected{% endif %}>weak (аудит)</option>
+        <option value="all"{% if f.get("band") == "all" %} selected{% endif %}>все</option>
       </select>
     </label>
     <label>Type

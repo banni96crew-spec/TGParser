@@ -1,0 +1,66 @@
+{
+  "wave": "10",
+  "captured_at": "2026-07-27T18:46:27+03:00",
+  "head_sha": "552eb53adb53ba8569318c096949e22cc127f16d",
+  "commit_push_merge": "NOT_PERFORMED",
+  "wave_09_part_b": "NOT_RUN",
+  "commands": [
+    {
+      "cmd": "uv run python tools/quality/validate-prd.py",
+      "exit_code": 0,
+      "result": "pass",
+      "detail": "status=pass; requirements=254; acceptance_tests=254; decisions=67; errors=[]",
+      "log": "validate-prd-out.txt"
+    },
+    {
+      "cmd": "uv run ruff check src tests",
+      "exit_code": 1,
+      "result": "fail",
+      "detail": "3 errors: B009 x2 in test_canonical_identity_suppress.py (L86, L103); F841 unused gateway in test_source_approve_backfill.py:139",
+      "log": "ruff-out.txt"
+    },
+    {
+      "cmd": "uv run pytest tests -q",
+      "exit_code": 2,
+      "result": "fail",
+      "detail": "collection interrupted: ModuleNotFoundError: No module named 'tests' while importing tests/integration/test_wave09_capacity_recovery.py (from tests.harness.capacity_recovery). pyproject pythonpath=['src'] only.",
+      "log": "pytest-out.txt"
+    },
+    {
+      "cmd": "node tools/quality/run-quality-suite.mjs",
+      "exit_code": 1,
+      "result": "fail",
+      "detail": "suite status=fail; node-tests fail (29 pass / 1 fail); validate-capabilities/governance/prd/ci-recompute steps pass inside suite",
+      "log": "quality-suite-out.txt"
+    },
+    {
+      "cmd": "node tools/quality/ci-recompute.mjs",
+      "exit_code": 0,
+      "result": "pass",
+      "detail": "status=pass; mode=observe_only; authoritative_ci=blocked; at_gov_009=local_only; at_gov_010=not_run; reason=git_present_but_authoritative_ci_blocked_pending_hosting",
+      "log": "ci-recompute-out.txt"
+    },
+    {
+      "cmd": "uv run pytest tests/integration/test_wave09_capacity_recovery.py -vv --tb=short",
+      "exit_code": 2,
+      "result": "fail",
+      "detail": "Wave 09A load re-run FAIL: same ModuleNotFoundError No module named 'tests'. Historical wave-09/pytest-out.txt claimed 2 passed — NOT accepted as current Wave 10 evidence.",
+      "log": "wave09a-load-out.txt"
+    }
+  ],
+  "node_tests_detail": {
+    "cmd": "node --test tests/quality/*.test.mjs (via quality suite)",
+    "failing_test": "Python PRD validator is deterministic and green",
+    "file": "tests/quality/validators.test.mjs:59",
+    "assertion": "expected requirements count 221; actual 254"
+  },
+  "gate": {
+    "Wave10_gate": "FAIL",
+    "code_review": "REVISE",
+    "security_overall_risk": "LOW",
+    "security_unresolved_high_critical": "none",
+    "verifier": "FAIL",
+    "merge_readiness_deep": "NOT_RUN",
+    "wave_09_part_b": "NOT_RUN"
+  }
+}

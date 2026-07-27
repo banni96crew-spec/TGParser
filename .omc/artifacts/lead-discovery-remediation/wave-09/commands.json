@@ -1,0 +1,36 @@
+{
+  "wave": "09A",
+  "captured_at": "2026-07-27T18:40:00+03:00",
+  "part_b": "NOT_RUN",
+  "commands": [
+    {
+      "cmd": "uv run pytest tests/integration/test_wave09_capacity_recovery.py -vv --tb=short",
+      "result": "pass",
+      "detail": "2 passed in ~183s",
+      "log": "pytest-out.txt"
+    },
+    {
+      "cmd": "uv run pytest tests/unit/test_detection_wave07.py tests/unit/test_observability_wave08.py tests/integration/test_pipeline_lead.py -q",
+      "result": "pass",
+      "detail": "15 passed",
+      "log": "pytest-related-out.txt"
+    },
+    {
+      "cmd": "uv run ruff check tests/harness tests/integration/test_wave09_capacity_recovery.py src/telegram_lead_discovery/processing/pipeline.py src/telegram_lead_discovery/detection/loader.py",
+      "result": "pass",
+      "log": "ruff-out.txt"
+    }
+  ],
+  "artifacts": [
+    "harness-report.json",
+    "executor-report.md",
+    "acceptance-matrix.md",
+    "verification-notes.md",
+    "part-b-checklist.md"
+  ],
+  "gate": {
+    "09A": "PASS",
+    "09B": "NOT_RUN",
+    "READY_FOR_WAVE_10": true
+  }
+}

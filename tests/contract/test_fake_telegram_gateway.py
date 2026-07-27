@@ -369,3 +369,125 @@ async def test_search_global_empty_and_cursor_token() -> None:
     assert page.hits == ()
     assert page.next_cursor is None
     assert page.truncated is False
+
+
+# --- Wave 05: TelegramPeerRef / history / live (COL-023..026) -----------------
+
+
+@pytest.mark.asyncio
+async def test_history_request_requires_peer_and_never_uses_source_id_entity() -> None:
+    from telegram_lead_discovery.collector.ports import (
+        HistoryRequest,
+        TelegramMessageDTO,
+        TelegramPeerRef,
+    )
+
+    peer = TelegramPeerRef(schema_version=1, telegram_peer_id=501, username_normalized="p")
+    with pytest.raises(ValueError):
+        TelegramPeerRef(schema_version=1)
+
+    now = datetime.now(UTC)
+    gw = FakeTelegramGateway()
+    msgs = [
+        TelegramMessageDTO(
+            schema_version=1,
+            source_id=7,
+            telegram_message_id=i,
+            published_at=now,
+            text=f"t{i}",
+            telegram_peer_id=501,
+        )
+        for i in range(1, 4)
+    ]
+    gw.register_messages_for_peer(501, msgs)
+    request = HistoryRequest(
+        schema_version=1,
+        source_id=7,
+        peer=peer,
+        limit=10,
+    )
+    out = [m async for m in gw.iter_history(request)]
+    assert len(out) == 3
+    assert gw.resolved_entities == [501]
+    assert 7 not in gw.resolved_entities
+
+
+@pytest.mark.asyncio
+async def test_fake_history_paginates_with_continuation_cursor() -> None:
+    from telegram_lead_discovery.collector.ports import (
+        HistoryRequest,
+        TelegramMessageDTO,
+        TelegramPeerRef,
+    )
+
+    now = datetime.now(UTC)
+    gw = FakeTelegramGateway()
+    gw.set_page_size(2)  # unrelated to history; history uses request.limit
+    msgs = [
+        TelegramMessageDTO(
+            schema_version=1,
+            source_id=1,
+            telegram_message_id=i,
+            published_at=now,
+            text=f"m{i}",
+            telegram_peer_id=10,
+        )
+        for i in range(1, 6)
+    ]
+    gw.register_messages_for_peer(10, msgs)
+    peer = TelegramPeerRef(schema_version=1, telegram_peer_id=10)
+    page1 = [
+        m
+        async for m in gw.iter_history(
+            HistoryRequest(schema_version=1, source_id=1, peer=peer, limit=2)
+        )
+    ]
+    assert [m.telegram_message_id for m in page1] == [5, 4]  # newest-first
+    oldest = min(m.telegram_message_id for m in page1)
+    page2 = [
+        m
+        async for m in gw.iter_history(
+            HistoryRequest(
+                schema_version=1,
+                source_id=1,
+                peer=peer,
+                limit=2,
+                continuation_cursor=str(oldest),
+            )
+        )
+    ]
+    assert [m.telegram_message_id for m in page2] == [3, 2]
+
+
+@pytest.mark.asyncio
+async def test_fake_live_updates_queue() -> None:
+    from telegram_lead_discovery.collector.ports import (
+        TelegramMessageDTO,
+        TelegramUpdateDTO,
+    )
+
+    gw = FakeTelegramGateway()
+    now = datetime.now(UTC)
+    msg = TelegramMessageDTO(
+        schema_version=1,
+        source_id=0,
+        telegram_message_id=1,
+        published_at=now,
+        text="hi",
+        telegram_peer_id=99,
+    )
+    await gw.push_update(
+        TelegramUpdateDTO(
+            schema_version=1,
+            event_type="message_new",
+            message=msg,
+            observed_at=now,
+            telegram_peer_id=99,
+        )
+    )
+    await gw.close_updates()
+    updates = [u async for u in gw.iter_updates()]
+    assert len(updates) == 1
+    assert updates[0].telegram_peer_id == 99
+    assert updates[0].message is not None
+    assert updates[0].message.telegram_peer_id == 99

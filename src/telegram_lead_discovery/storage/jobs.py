@@ -15,7 +15,10 @@ HEARTBEAT_SECONDS = 60
 
 
 async def claim_job(session: AsyncSession, *, job_types: list[str], owner: str) -> Job | None:
+    """Claim next queued/retry_wait job, or reclaim an expired running lease (STO-018)."""
     now = datetime.now(UTC)
+    # Reclaim expired leases first so kill/restart mid-batch restores work.
+    await recover_stale_jobs(session)
     stmt = (
         select(Job)
         .where(
@@ -39,6 +42,8 @@ async def claim_job(session: AsyncSession, *, job_types: list[str], owner: str) 
     job.lease_until = now + timedelta(seconds=LEASE_SECONDS)
     job.updated_at = now
     job.last_error_code = None
+    # owner is retained for heartbeat diagnostics (lease_owner column not on Job).
+    _ = owner
     await session.flush()
     return job
 

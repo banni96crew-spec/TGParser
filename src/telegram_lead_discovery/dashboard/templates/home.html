@@ -7,6 +7,11 @@
   {% else %}
   <p class="page-meta">По умолчанию скрыты irrelevant.</p>
   {% endif %}
+  {% if rule_pin and rule_pin.version_label %}
+  <p class="page-meta mono">
+    Active rules: {{ rule_pin.version_label }} · checksum={{ rule_pin.checksum }}
+  </p>
+  {% endif %}
 </header>
 
 <nav class="filter-row" aria-label="Фильтр band">

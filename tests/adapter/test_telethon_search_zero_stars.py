@@ -27,6 +27,7 @@ from telegram_lead_discovery.collector.ports import (
     GatewaySearchQuotaExhausted,
     GatewayUnauthorized,
     GlobalSearchRequest,
+    GraphSampleRequest,
     PublicPostSearchRequest,
     SearchCursor,
     SourceMessageSearchRequest,
@@ -450,3 +451,65 @@ async def test_search_hit_maps_megagroup_permalink_and_date() -> None:
     assert hit.permalink == "https://t.me/mega_dev/5"
     assert hit.published_at == published
     assert hit.telegram_message_id == 5
+
+
+@pytest.mark.asyncio
+async def test_get_recommendations_public_only() -> None:
+    from telethon.tl.functions.channels import GetChannelRecommendationsRequest
+
+    client = _RecordingClient()
+    parent = _channel(telegram_id=100, username="parent_ch")
+    public = _channel(telegram_id=201, username="rec_public")
+    private = SimpleNamespace(
+        id=202,
+        username=None,
+        title="Private Rec",
+        broadcast=True,
+        megagroup=False,
+        access_hash=333,
+    )
+    client.register_entity(100, parent)
+    client.on(
+        GetChannelRecommendationsRequest,
+        SimpleNamespace(chats=[public, private]),
+    )
+    gw = TelethonTelegramGateway(client=client)
+    recs = await gw.get_recommendations(
+        SourceRef(schema_version=1, source_id=1, telegram_id=100), limit=10
+    )
+    assert len(recs) == 1
+    assert recs[0].username == "rec_public"
+    assert any(isinstance(c, GetChannelRecommendationsRequest) for c in client.calls)
+
+
+@pytest.mark.asyncio
+async def test_sample_public_graph_edges_mentions_and_links() -> None:
+    client = _RecordingClient()
+    parent = _channel(telegram_id=100, username="parent_ch")
+    client.register_entity(100, parent)
+
+    class _MsgClient(_RecordingClient):
+        async def get_messages(self, peer_id: int, limit: int = 50):
+            return [
+                SimpleNamespace(
+                    id=1,
+                    message="see @public_alpha and https://t.me/shop_beta plus t.me/+InviteOnly",
+                    fwd_from=None,
+                    forward=None,
+                )
+            ]
+
+    msg_client = _MsgClient()
+    msg_client.register_entity(100, parent)
+    gw = TelethonTelegramGateway(client=msg_client)
+    edges = await gw.sample_public_graph_edges(
+        GraphSampleRequest(
+            schema_version=1,
+            source=SourceRef(schema_version=1, source_id=1, telegram_id=100),
+            message_limit=20,
+        )
+    )
+    usernames = {e.normalized_username for e in edges}
+    assert "public_alpha" in usernames
+    assert "shop_beta" in usernames
+    assert all(e.edge_type in {"mention", "public_link"} for e in edges)

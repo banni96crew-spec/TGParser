@@ -590,3 +590,30 @@ button.btn-secondary:hover {
     transition: none !important;
   }
 }
+
+/* —— Wave 08 lifecycle / monitoring —— */
+
+.lifecycle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.inline-form {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+  margin: 0;
+}
+
+.funnel-counters .faint {
+  display: inline;
+  margin-left: 0.35rem;
+}
+
+.opportunity-card .section-title {
+  margin-top: 1.25rem;
+}
+

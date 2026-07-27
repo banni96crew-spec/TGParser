@@ -282,6 +282,12 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-016 | Automatic outreach отсутствует | MUST | В UI нет send-to-author action |
 | UI-017 | Keyword discovery surface доступен по `/discovery` | MUST | Profiles/runs/results routes работают; nav label «Разведка источников» |
 | UI-018 | Discovery UI соблюдает Zero Stars и CSRF | MUST | Текст `0 Stars` виден; paid controls отсутствуют; POST без CSRF отклонён; promote/cancel используют optimistic version и `303` |
+| UI-019 | Reconsider dismiss-suppress UI with confirmation | MUST | Action requires CSRF + confirmation; calls `ReconsiderDismissSuppress`; distinct from `ReconsiderSource` |
+| UI-020 | Run detail shows funnel counters | MUST | Displays acquired/canonicalized/suppressed/qualified/presented/novel, `pool_exhausted`, reason, `novelty_ratio` |
+| UI-021 | Discovery default band filter `promising,review` | MUST | Default candidate/opportunity queue shows bands `promising,review` only; `weak` only via explicit filter (D-067) |
+| UI-022 | Source/opportunity card fields | MUST | Card shows identity, aliases, provenance, evidence, score components, eligibility reason codes |
+| UI-023 | Lifecycle actions including reconsider-suppress | MUST | Opportunity: promote / dismiss / `ReconsiderDismissSuppress`; source: approve/reject/reconsider/pause/resume/disable; no auto-approve, send-to-author, or Stars controls |
+| UI-024 | Monitoring coverage page signals | MUST | Checkpoint/backlog/errors visible for up to `100` monitoring sources |
 
 ## 15. Observability
 
@@ -326,6 +332,12 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-016 | Просмотрены все lead actions | Send-to-author action отсутствует |
 | AT-UI-017 | Открыт `/discovery`, создан profile, запущен run | Страницы и fragments отображают run/results на русском |
 | AT-UI-018 | POST discovery без CSRF; UI без Stars controls | State не изменён; `0 Stars` текст присутствует; paid input отсутствует |
+| AT-UI-019 | Reconsider dismiss-suppress with/without confirmation | Without confirmation blocked; with CSRF+confirm membership removed |
+| AT-UI-020 | Completed keyword run detail | Funnel counters, pool_exhausted, novelty_ratio visible |
+| AT-UI-021 | Open discovery results without changing filter | Default bands promising+review; weak hidden until explicit filter |
+| AT-UI-022 | Opportunity card for verified and directory-only | Identity/aliases/provenance/evidence/components/reasons present |
+| AT-UI-023 | Lifecycle action matrix on opportunity and source | Promote/dismiss/reconsider-suppress and source lifecycle actions present; no send-to-author/Stars |
+| AT-UI-024 | Monitoring coverage with ≤100 sources | Checkpoint/backlog/error signals rendered per source |
 
 ## 18. DEFERRED
 

@@ -58,6 +58,7 @@
 | INF-019 | Release validation MUST включать clean install, upgrade migration, restart recovery, backup restore и SQLite integrity tests. |
 | INF-020 | Нормальный startup при исправных локальных зависимостях MUST достигать readiness не более чем за 5 минут. |
 | INF-021 | Runtime MUST запускать keyword discovery worker как отдельную asyncio task на том же shared `TelegramGateway`, что collector/dashboard; FastAPI `BackgroundTasks` для длинного поиска запрещены. Shutdown MUST остановить claim loop, дождаться текущей короткой операции, disconnect gateway и остановить Uvicorn. При отсутствии Telegram credentials web UI остаётся доступным, discovery health = `blocked`, запуск disabled с причиной `telegram_credentials_missing` (D-057). |
+| INF-022 | RuntimeCoordinator MUST run named loops with heartbeat/lease (D-066): keyword/graph discovery claim, collector job worker, live `iter_updates` consumer, processing claim, notification outbox, startup + periodic reconciliation (periodic every **15 minutes**), health watchdog. Collector MUST NOT remain permanent `STOPPED`/`deferred` when credentials and monitoring sources exist. |
 
 ## 5. Acceptance criteria
 
@@ -84,6 +85,7 @@
 | AT-INF-019 | Clean install, upgrade migration, restart recovery, backup restore и integrity test suites проходят без ошибок. |
 | AT-INF-020 | При исправных локальных зависимостях приложение достигает readiness не более чем за 5 минут. |
 | AT-INF-021 | Runtime стартует discovery worker task; без credentials UI доступен и discovery `blocked`; shutdown останавливает worker до disconnect gateway. |
+| AT-INF-022 | With credentials + monitoring sources, named loops including collector live consumer and reconciliation are running (not permanent deferred); periodic reconciliation schedule = 15 min. |
 
 ## 6. Входные и выходные контракты
 
@@ -154,7 +156,7 @@
 ## 14. Acceptance test catalogue
 
 - `INF-INSTALL`: AT-INF-001, AT-INF-006.
-- `INF-STARTUP`: AT-INF-002, AT-INF-003, AT-INF-004, AT-INF-005, AT-INF-007, AT-INF-008, AT-INF-009, AT-INF-010, AT-INF-020, AT-INF-021.
+- `INF-STARTUP`: AT-INF-002, AT-INF-003, AT-INF-004, AT-INF-005, AT-INF-007, AT-INF-008, AT-INF-009, AT-INF-010, AT-INF-020, AT-INF-021, AT-INF-022.
 - `INF-BACKUP`: AT-INF-011, AT-INF-012, AT-INF-013, AT-INF-014.
 - `INF-RESTORE`: AT-INF-015, AT-INF-016.
 - `INF-MAINTENANCE`: AT-INF-017.

@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "wave": "00",
+  "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+  "captured_by": "verifier",
+  "head": "f1b9445",
+  "note": "Baseline capture only. Non-zero exits are expected evidence, not remediation targets for Wave 00.",
+  "commands": [
+    {
+      "command": "git status --short",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:17:55Z",
+      "finished_at": "2026-07-27T12:18:01Z",
+      "exit_code": 0,
+      "brief_result": "Dirty: M .omc/plans/telegram-lead-discovery-remediation.md; ?? .omc/artifacts/. src/ tests/ docs/ clean. Matches baseline gist."
+    },
+    {
+      "command": "git diff --name-only",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:17:55Z",
+      "finished_at": "2026-07-27T12:18:01Z",
+      "exit_code": 0,
+      "brief_result": "Only .omc/plans/telegram-lead-discovery-remediation.md. Identical to baseline/git-diff-name-only.txt product-risk set (no src/tests/docs)."
+    },
+    {
+      "command": "uv run python tools/quality/validate-prd.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:18:16.7628015Z",
+      "finished_at": "2026-07-27T12:18:17.4596825Z",
+      "exit_code": 0,
+      "brief_result": "status=pass; requirements=223; acceptance_tests=223; decisions=60; files=32; errors=[]"
+    },
+    {
+      "command": "uv run ruff check src tests",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:18:17.0933488Z",
+      "finished_at": "2026-07-27T12:18:17.4060100Z",
+      "exit_code": 1,
+      "brief_result": "1 error F841 unused local `gateway` at tests/integration/test_source_approve_backfill.py:139. No product src issues."
+    },
+    {
+      "command": "uv run pytest tests -q",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:18:27.6881998Z",
+      "finished_at": "2026-07-27T12:19:18.8209112Z",
+      "exit_code": 1,
+      "brief_result": "1 failed, 158 passed in 46.06s. FAILED: tests/integration/test_storage_settings.py::test_at_sto_003_migration_head (stale head assert expects 002)."
+    },
+    {
+      "command": "node tools/quality/run-quality-suite.mjs",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:20:02.6909138Z",
+      "finished_at": "2026-07-27T12:20:10.2143821Z",
+      "exit_code": 1,
+      "brief_result": "suite status=fail. Steps: node-tests fail; validate-capabilities/governance/prd/ci-recompute pass. Diagnostic: 29/30 node tests pass; fail=validators.test.mjs hardcoded expected requirements 221 vs actual 223."
+    }
+  ]
+}

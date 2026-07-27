@@ -195,10 +195,13 @@ Cleanup запускается ежедневно в `04:00` по timezone `Euro
 | Keyword `DiscoveryRunQuery` rows | 90 дней | Rows удаляются |
 | Terminal keyword `DiscoveryRun` | 90 дней | Rows удаляются |
 | `KeywordDiscoveryProfileVersion` | без автоудаления | Сохраняются |
+| `DismissedSource` / dismiss suppress ledger | без автоудаления | Retention MUST NOT purge; immune to SRC-030/STO-016 matrix (D-062 / STO-017) |
 
 `Lead.last_activity_at` обновляется при message edit, новом score, status transition, note и feedback. Чтение lead и отправка notification его не меняют.
 
-Cleanup никогда не удаляет active jobs, non-terminal outbox events, schema history и settings. Результат run содержит счётчики по каждому классу и duration.
+Cleanup никогда не удаляет active jobs, non-terminal outbox events, schema history, settings и dismiss suppress membership rows. Результат run содержит счётчики по каждому классу и duration.
+
+Historical backfill invariant (Wave 02 migration semantics; code not in Wave 01): every `SourceOpportunitySnapshot.review_state=dismissed` (all ages) MUST yield ≥1 suppress membership row after migrate (idempotent).
 
 ## 12. Migrations
 
@@ -254,6 +257,8 @@ Cleanup никогда не удаляет active jobs, non-terminal outbox even
 | STO-014 | Exact duplicate window равен 30 дням | MUST | Сообщение за пределами окна не связывается |
 | STO-015 | Schema keyword discovery: tables profiles/versions/queries/evidence/snapshots и nullable extensions `discovery_runs` | MUST | Migration `002_keyword_source_discovery` up/down; constraints score `0–100`; unique keys из DOMAIN_MODEL |
 | STO-016 | Retention keyword artifacts по матрице §11 (SRC-030) | MUST | Boundary tests очищают excerpt 30d и rows 90d; profile versions сохраняются |
+| STO-017 | Retention immunity + historical backfill invariant for dismiss suppress table | MUST | Suppress rows never purged by SRC-030/STO-016; every historical dismissed snapshot yields ≥1 suppress row after migrate (idempotent); migration `003` semantics owned by Wave 02 |
+| STO-018 | Unified job lease/idempotency invariants (cross-type) | MUST | Lease 5 min; heartbeat 60 s; expired lease → queued; unique inbox/outbox keys; one unfinished collector job per `(source_id, type)` |
 
 ## 15. Observability
 
@@ -300,6 +305,8 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-014 | STO-014 | Cross-source exact repost в окне 30 дней | Один canonical lead и duplicate relation; вне окна — без связи |
 | AT-STO-015 | STO-015 | Apply/upgrade migration 002 на empty и existing DB | Tables/indexes/constraints созданы; downgrade удаляет только новые сущности |
 | AT-STO-016 | STO-016 | Fixture evidence/snapshots/queries/runs с age 31/91 дней | Excerpt/rows purged по матрице; profile versions intact |
+| AT-STO-017 | STO-017 | Dismissed snapshots of all ages + purge after suppress migrate | ≥1 suppress row per dismissed identity; suppress rows remain after retention purge |
+| AT-STO-018 | STO-018 | Cross-type jobs with expired lease and duplicate dedupe_key | Lease recovery to queued; no parallel duplicate jobs; unique outbox key holds |
 
 ## 18. DEFERRED
 

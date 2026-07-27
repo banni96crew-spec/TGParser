@@ -191,7 +191,7 @@ Identity MUST применяться в порядке: `telegram_id` → сущ
 
 ### SRC-024 — Глубокая проверка источника
 
-После seed search система MUST выбрать не более `25` источников для deep verification по предварительному рейтингу (число запросов, seed evidence, directory match, приоритет megagroup/linked discussion, свежесть, tie-break Telegram ID). На источник: максимум `5` релевантных profile queries, максимум `20` уникальных сообщений, окно `30` дней. Сообщения нормализуются и оцениваются pure DET `detect()`; результат пишется только в evidence.
+После seed search система MUST выбрать не более `25` источников для deep verification по предварительному рейтингу (число запросов, seed evidence, directory match, приоритет megagroup/linked discussion, свежесть, tie-break Telegram ID). На источник: максимум `5` **profile** queries из `KeywordDiscoveryProfileVersion` (`required_service_profiles` / profile-bound queries, not global `post_queries[:5]`), максимум `20` уникальных сообщений, окно `30` дней. Сообщения нормализуются и оцениваются pure DET `detect()`; результат пишется только в evidence. `required_service_profiles` и `additional_exclusions` MUST влиять на eligibility/score с explainable reason codes (SRC-045).
 
 ### SRC-025 — Source Opportunity Score
 
@@ -204,7 +204,7 @@ Identity MUST применяться в порядке: `telegram_id` → сущ
 - noise penalty `0–30` = `floor(30 × excluded / max(1, qualified+excluded))`;
 - `score = clamp(qualified + regularity + ecommerce + recency − noise, 0, 100)`.
 
-Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Tie-break: score DESC, qualified DESC, active weeks DESC, last qualified DESC, Telegram ID ASC. Score MUST NOT копироваться в `TelegramSource.quality_score`.
+Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Plan prose aliases (D-067): `strong` ≡ `promising`, `moderate` ≡ `review` — enums MUST NOT be renamed. Tie-break: score DESC, qualified DESC, active weeks DESC, last qualified DESC, Telegram ID ASC. Score MUST NOT копироваться в `TelegramSource.quality_score`.
 
 ### SRC-026 — Продвижение в кандидаты
 
@@ -270,6 +270,75 @@ Keyword scouting MUST suppress источники, уже присутствую
 - повторный dismiss того же suppressed источника MUST оставаться идемпотентным;
 - run counter `dismissed_suppressed` MUST равняться числу **уникальных** suppressed `telegram_id` за run.
 
+### SRC-033 — Canonical source identity model
+
+Система MUST представлять публичный источник через logical `CanonicalSourceIdentity` (D-061):
+
+- `canonical_key` ∈ {`peer:<telegram_id>`, `username:<casefold>`};
+- after resolve, canonical identity is Telegram numeric peer ID;
+- linked `SourceAlias[]` remain owned by SRC (no dual owner);
+- identity match order (frozen): `telegram_id` → registry `telegram_id` → current username → `SourceAlias` → provisional `username:<casefold>`;
+- one canonical key per opportunity snapshot per run (extends SRC-022);
+- promotion/suppress match MUST use `canonical_key`.
+
+### SRC-034 — Provisional identity lifecycle and atomic merge
+
+Unresolved username opportunities MUST use provisional key `username:<casefold>` until resolve (D-061):
+
+- provisional identity MUST NOT reach `lifecycle_state=monitoring`;
+- after resolve, transactional merge into `peer:<telegram_id>` MUST preserve dismiss provenance and aliases;
+- merge emits existing `SourceApprovalEvent` / discovery merge outcomes — no second event owner.
+
+### SRC-035 — Dismiss suppress ledger entity
+
+Durable suppress ledger `DismissedSource` / `DismissedKeywordSource` MUST store (D-062 / SRC-032):
+
+- `canonical_key`, nullable `telegram_id`, usernames/aliases JSON, `dismiss_reason`, `dismissed_at`, nullable `source_opportunity_id`, `operator_trigger`, version/upsert stamp;
+- membership is permanent until explicit `ReconsiderDismissSuppress`;
+- claim fields MAY upsert;
+- the sole authoritative audit event for successful reconsider is `DismissSuppressReconsidered` (owner `SRC`); `SourceDiscoveryEvent` MUST NOT be used as an alternate or second authoritative reconsider channel;
+- snapshot `review_state=dismissed` alone is NOT durable suppress.
+
+### SRC-036 — ReconsiderDismissSuppress command
+
+`ReconsiderDismissSuppress(canonical_key|suppress_id, note, CSRF, version)` MUST remove suppress membership only via that explicit action and MUST emit authoritative audit event `DismissSuppressReconsidered` (D-062 / SRC-035). It is distinct from `ReconsiderSource` (`rejected→candidate`). Re-dismiss remains idempotent (SRC-032).
+
+### SRC-037 — Discovery run funnel counters and novelty
+
+Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063): `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`; `novelty_ratio = novel_presented_total / max(1, presented_total)`. Deterministic fixture with sufficient replacement pool: `novelty_ratio ≥ 0.80` after first run; dismissed recurrence across future runs = `0`. Live pilot: `5` sequential runs; median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has proven `pool_exhausted=true` with reason.
+
+### SRC-038 — pool_exhausted terminal reason codes
+
+When replacement cannot fill presented quota, run MUST set `pool_exhausted=true` and `pool_exhausted_reason` from closed enum: `provider_empty`, `budget_cap_reached`, `quota_skipped_remaining`, `flood_wait_deferred`, `cancel_requested`, `no_unseen_after_suppress`.
+
+### SRC-039 — Acquisition / qualification / presentation stages
+
+Keyword worker MUST separate stages (D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provenance MUST record provider method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`. Profile fields `required_service_profiles` and `additional_exclusions` apply under this stage model with SRC-024 caps.
+
+### SRC-040 — Replacement acquisition after suppress
+
+After registry/dismiss/cooldown suppress, worker MUST continue provider cursor/replacement fetches until presented quota (deep/qualification caps) OR `pool_exhausted` (D-063). Permanent dismiss (SRC-032) is not replaced by cooldown.
+
+### SRC-041 — Cross-run presentation cooldown
+
+Already-presented **non-dismissed** canonical identity MUST be hidden from default presentation for **24 hours** across keyword runs (`cooldown_suppressed`). Permanent dismiss suppress is not replaced by cooldown.
+
+### SRC-042 — Graph edge types and public-only targets
+
+Graph discovery MUST allow only closed public-only edge types: `recommendation`, `public_link`, `mention`, `forward_origin`, `linked_discussion` (SRC-003/023). Targets MUST be public `channel|megagroup|group` with resolvable public identity. Private/invite-only/unconfirmed username MUST NOT become candidates (`unsupported_source` / skip). Limits remain D-017 / SRC-004/005: `max_depth=2` (supersedes any plan prose `depth=1`), `candidate_cap=100`, `resolve/expansion_cap=25`, max outgoing edges examined per seed node = `25`, max unique graph candidates/run = `100`, one canonical node resolved at most once per run. FloodWait → provider phase `retry_wait` / run degraded with state preserved.
+
+### SRC-043 — Evidence eligibility gates
+
+Directory-only opportunities (no message/member/activity evidence) MUST NOT receive band `review` or `promising`; score forced into `weak` `0–34` with reason `directory_only_no_evidence`. Linked discussion / source lacking verification evidence → reason `needs_verification`; MUST NOT get `review`/`promising` (plan `moderate`/`strong` aliases) without deep verification.
+
+### SRC-044 — Neutral noise sampling
+
+Deep verification noise sample MUST include up to `20` messages in a `30`-day window that are neutral (not only exact-query hits), same caps as SRC-024.
+
+### SRC-045 — Profile semantics enforcement
+
+`required_service_profiles` MUST affect eligibility/score; `additional_exclusions` MUST apply with explainable reason codes. Profile semantics are owned by SRC opportunity path, not SCR.
+
 ## 6. Входные и выходные контракты
 
 ### Команды
@@ -283,6 +352,7 @@ Keyword scouting MUST suppress источники, уже присутствую
 | `CancelKeywordDiscoveryRun` | `run_id`, `version` | `cancelling`/`cancelled` |
 | `PromoteOpportunityToCandidate` | `opportunity_id`, `version` | candidate source id |
 | `DismissOpportunity` | `opportunity_id`, `reason`, `version` | `dismissed` + future keyword suppress |
+| `ReconsiderDismissSuppress` | `canonical_key` \| `suppress_id`, `note`, `version` | suppress membership removed |
 | `ApproveSource` | `source_id` | новое состояние или validation error |
 | `RejectSource` | `source_id`, `reason_code` | `rejected` |
 | `ReconsiderSource` | `source_id` | `candidate` |
@@ -296,8 +366,9 @@ Keyword scouting MUST suppress источники, уже присутствую
 |---|---|
 | `SourceCandidateDiscovered` | `event_id`, `source_id`, `run_id`, `method`, `occurred_at` |
 | `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
-| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, counters, `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters, `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
 | `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method`, `occurred_at` |
+| `DismissSuppressReconsidered` | `event_id`, `canonical_key` \| `suppress_id`, `note`, `occurred_at` |
 | `SourceMonitoringRequested` | `event_id`, `source_id`, `telegram_id`, `occurred_at` |
 | `SourcePaused` | `event_id`, `source_id`, `occurred_at` |
 | `SourceDisabled` | `event_id`, `source_id`, `occurred_at` |
@@ -306,11 +377,12 @@ Keyword scouting MUST suppress источники, уже присутствую
 
 ## 7. Data ownership
 
-Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence` и `SourceOpportunitySnapshot`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine.
+Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity` и `DismissedSource` / `DismissedKeywordSource`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine. Physical suppress table and retention immunity are STO (STO-017).
 
 Ключевые ограничения:
 
-- `TelegramSource.telegram_id` — unique, nullable только до первого resolve;
+- `TelegramSource.telegram_id` — unique, nullable только до первого resolve / provisional;
+- provisional identity MUST NOT enter `monitoring` (D-061 / SRC-034);
 - `SourceAlias.normalized_username` — unique;
 - не более одного active `graph` DiscoveryRun одновременно;
 - не более одного active `keyword_scouting` DiscoveryRun одновременно (D-058);
@@ -370,7 +442,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-032 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-045 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -408,6 +480,19 @@ MVP включает SRC-001—SRC-032 полностью. Исключены se
 | `AT-SRC-030` | SRC-030 | Evidence старше 30/90 дней | Excerpt/rows/snapshots/runs очищены по матрице |
 | `AT-SRC-031` | SRC-031 | Registry содержит `telegram_id=X` (любой lifecycle); run находит hits для `X` и нового `Y` | Нет evidence/opportunity/deep query для `X`; opportunity только для `Y`; `registry_suppressed` ≥ 1 |
 | `AT-SRC-032` | SRC-032 | В run-1 оператор dismiss-ит opportunity для `telegram_id=X`; run-2 снова находит hits для `X` и нового `Y` | В run-2 нет evidence/opportunity/deep query/linked discussion для `X`; opportunity только для `Y`; `dismissed_suppressed` ≥ 1 |
+| `AT-SRC-033` | SRC-033 | Same peer under two usernames | One identity, two aliases |
+| `AT-SRC-034` | SRC-034 | Unresolved username opportunity → provisional key; after resolve merge into peer | Dismiss provenance retained; monitoring blocked while provisional |
+| `AT-SRC-035` | SRC-035 | Dismiss creates suppress row; purge snapshots | Suppress membership remains; recurrence = 0 |
+| `AT-SRC-036` | SRC-036 | `ReconsiderDismissSuppress` then new run finds same peer | Opportunity may appear again; exactly one authoritative `DismissSuppressReconsidered`; distinct from `ReconsiderSource` |
+| `AT-SRC-037` | SRC-037 | Fixture with sufficient replacement pool after first run | `novelty_ratio ≥ 0.80`; dismissed recurrence = 0 |
+| `AT-SRC-038` | SRC-038 | Exhaust provider after suppress without quota fill | `pool_exhausted=true` with closed reason code |
+| `AT-SRC-039` | SRC-039 | Trace single hit through stages | Stages `acquired→…→presented` recorded with provenance method |
+| `AT-SRC-040` | SRC-040 | Suppress removes presented slot | Replacement fetch increases `replacement_fetches_total` until quota or exhaust |
+| `AT-SRC-041` | SRC-041 | Present non-dismissed identity; second run within 24h | Hidden via `cooldown_suppressed`; after 24h eligible again |
+| `AT-SRC-042` | SRC-042 | Private invite and depth-3 public link | Private skipped; depth>2 not resolved; depth stays `2`, caps `100`/`25` |
+| `AT-SRC-043` | SRC-043 | Directory-only peer without message evidence | Band `weak`, reason `directory_only_no_evidence` |
+| `AT-SRC-044` | SRC-044 | Deep sample includes non-query hits | ≤20 messages / 30d; neutral noise counted in exclusions |
+| `AT-SRC-045` | SRC-045 | Profile with `required_service_profiles` + exclusion | Eligibility/score reflect profile; exclusion reason explainable |
 
 ## 14. Принятые записи decision log
 
@@ -419,3 +504,7 @@ MVP включает SRC-001—SRC-032 полностью. Исключены se
 - `D-048`–`D-058`: keyword scouting contract freeze (public-only, promote-only source creation, Zero Stars, free `searchPosts`, evidence isolation, linked discussion, SRC opportunity score, versioned profile/formula, excerpt ≤240, manual launch, single active keyword run).
 - `D-059`: cross-run suppress registry-known sources (SRC-031).
 - `D-060`: dismissed keyword result becomes durable future-run suppress (SRC-032).
+- `D-061`: provisional identity + peer merge (SRC-033/034).
+- `D-062`: suppress ledger + `ReconsiderDismissSuppress` (SRC-035/036).
+- `D-063`: acquisition≠qualification, novelty, pool_exhausted (SRC-037..041).
+- `D-067`: opportunity bands stay `promising|review|weak`; plan `strong|moderate` aliases only.

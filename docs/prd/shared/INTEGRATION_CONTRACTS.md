@@ -63,13 +63,32 @@ Zero Stars invariant (D-050, D-051): adapter MUST всегда передава�
 - `username_or_url`;
 - private invite/import fields отсутствуют.
 
+`TelegramPeerRef`
+
+- `schema_version=1`;
+- `telegram_peer_id: int | null`;
+- `access_hash: int | null`;
+- `username_normalized: str | null`;
+- at least one of `telegram_peer_id` or `username_normalized` required.
+
 `HistoryRequest`
 
-- `source_id`;
+- `source_id` — DB FK for jobs/checkpoints only; MUST NEVER be passed as Telethon entity (D-064 / COL-023);
+- `peer: TelegramPeerRef` — mandatory for Gateway Telegram I/O;
 - `after_message_id` и/или `after_published_at`;
 - `before_published_at`;
 - `limit`;
-- `purpose: backfill | startup_reconciliation | periodic_reconciliation`.
+- `purpose: backfill | startup_reconciliation | periodic_reconciliation | continuation`;
+- `continuation_cursor: opaque | null` — for multi-page backfill beyond a single page.
+
+Gateway MUST use `peer`, never raw DB `source_id`, as the Telethon entity. Persist batch size ≤ `50` envelopes per SQLite write TX; network I/O MUST remain outside long write transactions (COL-025).
+
+`TelegramUpdateDTO` / live envelope identity:
+
+- stable network identity `(telegram_peer_id, telegram_message_id)`;
+- `event_type: message_new | message_edited | message_deleted`;
+- maps to monitoring `source_id` via Source Registry;
+- live filter: only sources with `lifecycle_state=monitoring`.
 
 Gateway errors:
 
@@ -109,19 +128,23 @@ Producer/owner: `SRC`; consumers: `UI`, `OBS`, `STO`; search I/O через `COL
 | `StartKeywordDiscoveryRun` | `profile_id`, CSRF, optimistic checks | `discovery_run_id`, Job `keyword_discovery` |
 | `CancelKeywordDiscoveryRun` | `run_id`, optimistic `version` | state `cancelling` → `cancelled` |
 | `PromoteOpportunityToCandidate` | `opportunity_id`, optimistic `version` | `TelegramSource(candidate)` или existing source link |
-| `DismissOpportunity` | `opportunity_id`, reason, optimistic `version` | `review_state=dismissed` |
+| `DismissOpportunity` | `opportunity_id`, reason, optimistic `version` | `review_state=dismissed` + durable suppress membership |
+| `ReconsiderDismissSuppress` | `canonical_key` \| `suppress_id`, note, CSRF, optimistic `version` | removes suppress membership only; MUST emit authoritative `DismissSuppressReconsidered`; distinct from `ReconsiderSource` |
 
 События / outcomes:
 
 | Событие | Обязательные поля |
 |---|---|
 | `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
-| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, counters, `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters (`acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`), `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
 | `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method` (`keyword_search`\|`linked_discussion`), `occurred_at` |
+| `DismissSuppressReconsidered` | sole authoritative audit for reconsider (owner `SRC`); `event_id`, `canonical_key` \| `suppress_id`, `note`, `occurred_at` |
 
 Isolation (D-052): keyword search hits записываются только в `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot`. Они MUST NOT публиковать `TelegramEventEnvelope`, MUST NOT создавать `TelegramMessage`/`Lead`/`LeadScore`/notification outbox и MUST NOT изменять `CollectorCheckpoint`.
 
-Detection reuse: SRC вызывает pure DET evaluation на normalized scouting text через shared detect function / port с `analysis_text` и зафиксированным `rule_set_version_id`; результат сохраняется в evidence fields, не как pipeline `DetectionResult` row lead-path (см. DET-015).
+Detection reuse: SRC вызывает pure DET evaluation на normalized scouting text через shared detect function / port с `analysis_text` и зафиксированными `rule_set_version_id` + checksum; результат сохраняется в evidence fields, не как pipeline `DetectionResult` row lead-path (см. DET-015 / DET-016). Pipeline detection MUST load rules only by pinned version+checksum; `SEED_RULES` is bootstrap-only (D-065).
+
+Acquisition stages (machine-readable, D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provider provenance method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`.
 
 ## 4. Telegram event envelope
 

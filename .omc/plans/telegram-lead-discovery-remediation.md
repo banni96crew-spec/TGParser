@@ -4,19 +4,21 @@ overview: >
   Исполнимый план исправления повторяющегося и низкокачественного source discovery,
   запуска полного monitoring pipeline и доказательства ёмкости 100 публичных источников
   / не менее 1000 сообщений в сутки без AI, auto-outreach и private auto-join.
-status: pending approval
+status: Одобрен
 audit_date: 2026-07-27
+dispatch_override: owner-2026-07-27
+dispatch_override_path: .omc/artifacts/lead-discovery-remediation/EXECUTION_DISPATCH_OVERRIDE.md
 isProject: false
 todos:
   - id: wave-00
     content: "Зафиксировать baseline, сохранить пользовательский dirty worktree и провести Planner → Architect → Critic ratification"
-    status: pending
+    status: completed
   - id: wave-01
     content: "Синхронизировать PRD, decision log, shared contracts и TRACEABILITY до изменения product code"
-    status: pending
+    status: completed
   - id: wave-02
     content: "Завершить durable dismiss/suppress, исторический backfill, canonical identity и миграцию 003"
-    status: pending
+    status: completed
   - id: wave-03
     content: "Исправить keyword discovery: novelty, replacement acquisition, profile semantics и quality eligibility"
     status: pending
@@ -45,9 +47,16 @@ todos:
 
 # План реализации исправлений Telegram Lead Discovery
 
-> **Статус:** `pending approval`. Этот файл — план, а не разрешение на реализацию.
-> До явного одобрения владельца запрещено менять product code, product PRD, live SQLite,
-> Telegram session, внешние Telegram-чаты и Bot API.
+> **Статус:** `Одобрен`. Исполнение волн разрешено владельцем.
+> Live SQLite, Telegram session, внешние Telegram-чаты и Bot API остаются
+> fail-closed по HC-6 и gate Wave 09.
+>
+> **Dispatch override (owner 2026-07-27):** см.
+> `.omc/artifacts/lead-discovery-remediation/EXECUTION_DISPATCH_OVERRIDE.md`.
+> Паттерн: `wave → executor (tests+code) → verifier`; architect/critic только
+> Wave 00 и при смене контракта/ADR; security только 04/05/10; Wave 10 =
+> code-reviewer + security + verifier; координатор может писать простые волны.
+> Цели/AC волн и fail-closed gates плана не ослабляются.
 
 ## 0. Как главный LLM-агент обязан использовать этот документ
 

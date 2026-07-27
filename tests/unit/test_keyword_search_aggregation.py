@@ -24,6 +24,7 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     aggregate_search_hits,
     build_opportunity_from_evidence,
     build_preliminary_candidates,
+    dismissed_telegram_ids,
     is_registry_suppressed,
     linked_discussion_opportunity,
     merge_evidence_duplicates,
@@ -749,3 +750,187 @@ def test_preliminary_candidates_exclude_dismissed_known() -> None:
         dismissed=dismissed,
     )
     assert {c.telegram_id for c in cands} == {99}
+
+
+# --- Wave 02: durable suppress + canonical identity (SRC-033..036 / D-061/062) ---
+
+
+def test_rename_and_alias_collision_one_suppress_src033() -> None:
+    """Rename + alias must collapse to one dismissed canonical identity (AT-SRC-033)."""
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [
+            DismissedKeywordSourceEntry(
+                telegram_id=42,
+                username_normalized="newname",
+                aliases=("old", "aliasname"),
+            )
+        ]
+    )
+    for username in ("old", "newname", "aliasname"):
+        match = resolve_dismissed_identity(
+            telegram_id=999_001 if username != "newname" else 42,
+            username=username,
+            dismissed=dismissed,
+        )
+        assert match is not None
+        assert match.canonical_telegram_id == 42
+
+    from telegram_lead_discovery.source_discovery.canonical_identity import (
+        CanonicalSourceIdentity,
+        collapse_identity_claims,
+    )
+
+    claims = (
+        CanonicalSourceIdentity(canonical_key="peer:42", telegram_id=42, username_normalized="old"),
+        CanonicalSourceIdentity(
+            canonical_key="username:newname",
+            telegram_id=None,
+            username_normalized="newname",
+        ),
+        CanonicalSourceIdentity(
+            canonical_key="username:aliasname",
+            telegram_id=None,
+            username_normalized="aliasname",
+        ),
+    )
+    collapsed = collapse_identity_claims(
+        claims,
+        resolved_peer_id=42,
+        aliases=("old", "newname", "aliasname"),
+    )
+    assert collapsed.canonical_key == "peer:42"
+    assert collapsed.telegram_id == 42
+    assert set(collapsed.aliases) >= {"old", "newname", "aliasname"}
+
+
+def test_same_source_two_providers_one_identity_suppress() -> None:
+    """Same peer from two discovery channels → one opportunity / one suppress key."""
+    now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+    hit_posts = _hit(
+        telegram_id=7001,
+        message_id=1,
+        excerpt="нужен интернет-магазин",
+        published_at=now - timedelta(days=1),
+        username="shop_peer",
+    )
+    hit_dir = _hit(
+        telegram_id=7001,
+        message_id=2,
+        excerpt="нужен telegram бот",
+        published_at=now - timedelta(hours=3),
+        username="Shop_Peer",
+    )
+    result = aggregate_search_hits(
+        [
+            AnnotatedSearchHit(hit_posts, 1, "public_posts"),
+            AnnotatedSearchHit(hit_dir, 2, "directory"),
+        ],
+        run_id=1,
+        scored_at=now,
+        detect_fn=lambda _t: _fake_detect("direct_order", is_lead=True),
+    )
+    assert len(result.opportunities) == 1
+    assert result.opportunities[0].source_telegram_id == 7001
+    channels = set(result.opportunities[0].discovery_channels)
+    assert channels >= {"public_posts", "directory"}
+
+    from telegram_lead_discovery.source_discovery.canonical_identity import peer_key
+
+    assert peer_key(7001) == "peer:7001"
+
+
+def test_provisional_username_key_until_resolve_src034() -> None:
+    """Unresolved username uses provisional key; must not look like peer identity."""
+    from telegram_lead_discovery.source_discovery.canonical_identity import (
+        CanonicalSourceIdentity,
+        provisional_username_key,
+    )
+
+    key = provisional_username_key("ScoutChannel")
+    assert key == "username:scoutchannel"
+    provisional = CanonicalSourceIdentity(
+        canonical_key=key,
+        telegram_id=None,
+        username_normalized="scoutchannel",
+    )
+    assert provisional.telegram_id is None
+    assert provisional.canonical_key.startswith("username:")
+    assert not provisional.canonical_key.startswith("peer:")
+
+
+def test_dismissed_recurrence_zero_multi_run_fixture() -> None:
+    """Deterministic multi-run fixture: dismissed peer recurrence across runs = 0."""
+    now = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [
+            DismissedKeywordSourceEntry(
+                telegram_id=42,
+                username_normalized="hidden",
+                aliases=("hidden_alias",),
+            )
+        ]
+    )
+    presented_ids: list[frozenset[int]] = []
+    for run_id in (1, 2, 3):
+        hidden = _hit(
+            telegram_id=42 if run_id % 2 else 4200,
+            message_id=run_id * 10,
+            excerpt="нужен сайт hidden",
+            published_at=now - timedelta(hours=run_id),
+            username="hidden_alias" if run_id % 2 else "hidden",
+            title="Hidden",
+        )
+        fresh = _hit(
+            telegram_id=100 + run_id,
+            message_id=run_id * 10 + 1,
+            excerpt="нужен сайт fresh",
+            published_at=now - timedelta(minutes=run_id),
+            username=f"fresh_{run_id}",
+            title=f"Fresh {run_id}",
+        )
+        result = aggregate_search_hits(
+            [
+                AnnotatedSearchHit(hidden, 1, "global_message"),
+                AnnotatedSearchHit(fresh, 1, "global_message"),
+            ],
+            run_id=run_id,
+            scored_at=now,
+            dismissed=dismissed,
+            detect_fn=lambda _t: _fake_detect("commercial_intent", is_lead=True),
+        )
+        opp_ids = frozenset(o.source_telegram_id for o in result.opportunities)
+        evidence_ids = frozenset(e.source_telegram_id for e in result.evidence)
+        assert 42 not in opp_ids
+        assert 42 not in evidence_ids
+        assert 4200 not in opp_ids
+        assert result.dismissed_suppressed_ids == frozenset({42})
+        presented_ids.append(opp_ids)
+
+    recurrence = sum(1 for ids in presented_ids if 42 in ids or 4200 in ids)
+    assert recurrence == 0
+
+
+def test_aggregation_does_not_implicitly_unsuppress() -> None:
+    """Discovery aggregation alone MUST NOT clear durable dismiss membership."""
+    now = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [DismissedKeywordSourceEntry(telegram_id=55, username_normalized="blocked")]
+    )
+    hit = _hit(
+        telegram_id=55,
+        message_id=1,
+        excerpt="нужен сайт",
+        published_at=now - timedelta(hours=1),
+        username="blocked",
+    )
+    before = dismissed_telegram_ids(dismissed)
+    result = aggregate_search_hits(
+        [AnnotatedSearchHit(hit, 1, "global_message")],
+        run_id=9,
+        scored_at=now,
+        dismissed=dismissed,
+        detect_fn=lambda _t: _fake_detect("commercial_intent", is_lead=True),
+    )
+    assert result.opportunities == ()
+    assert dismissed_telegram_ids(dismissed) == before
+    assert 55 in before

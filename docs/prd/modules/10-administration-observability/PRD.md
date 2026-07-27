@@ -53,6 +53,9 @@
 | OBS-016 | Dashboard MUST показывать размер calibration corpus, число источников, precision `hot + warm`, recall `direct_order` и false positive rate для `vacancy/advertising/spam`. |
 | OBS-017 | Система MUST публиковать keyword discovery metrics: `discovery_runs_total{state}`, `discovery_queries_total{kind,outcome}`, `discovery_search_hits_total{kind}`, `discovery_unique_sources_total`, `discovery_verified_sources_total`, `discovery_qualified_evidence_total`, `discovery_promotions_total{result}`, `discovery_flood_wait_seconds`, `discovery_quota_skipped_total`, `discovery_run_duration_seconds`, `discovery_score_total{band}`. Labels MUST NOT включать query text, source title, username, run ID или Telegram ID. |
 | OBS-018 | Health MUST включать component `discovery` со состояниями `healthy`, `degraded` (длительный FloodWait / частые transient errors), `blocked` (нет credentials / unauthorized/frozen), `stopped` (worker не запущен). Исчерпание free quota само по себе MUST NOT делать приложение unhealthy. |
+| OBS-019 | Система MUST публиковать novelty/suppress/exhaustion metrics aligned with SRC-037/038: `discovery_novel_presented_total`, `discovery_registry_suppressed_total`, `discovery_dismissed_suppressed_total`, `discovery_cooldown_suppressed_total`, `discovery_pool_exhausted_total{reason}`, `discovery_novelty_ratio`. Labels MUST NOT включать query text, source title, username, run ID или Telegram ID. |
+| OBS-020 | Loop health MUST reflect named runtime loops (INF-022): discovery claim, collector jobs, live updates, processing claim, notification outbox, reconciliation, health watchdog. Collector MUST NOT be reported permanent `STOPPED`/`deferred` when Telegram credentials and monitoring sources exist (D-066). |
+| OBS-021 | Capacity/latency/recovery metric names MUST cover NFR-PERF-006..008 / NFR-REL-008: monitoring source count, ingestion rate, burst backlog age, p95 `received_at→processed_at`, restart recovery duration, exact-dedupe counters. |
 
 ## 5. Acceptance criteria
 
@@ -73,9 +76,12 @@
 | AT-OBS-013 | Dashboard отображает p95 live-to-lead ≤10 секунд, lead-to-notification ≤30 секунд, 0 duplicates и recovery не более 20 минут на принятом тестовом наборе. |
 | AT-OBS-014 | После restart система достигает readiness не более чем за 5 минут при исправных зависимостях; каждая обязательная неисправность отдельно переводит её в not-ready. |
 | AT-OBS-015 | `/health/live` отвечает при недоступном Telegram; `/health/ready` возвращает failure при ошибке migration или integrity check. |
-| AT-OBS-016 | MVP quality gate проходит только при corpus не менее 500 сообщений из не менее 10 источников, precision `hot + warm` не ниже 80%, recall `direct_order` не ниже 70% и false positive rate для `vacancy/advertising/spam` не выше 5%. |
+| AT-OBS-016 | Remediation release quality gate (D-067): corpus ≥ 500 messages from ≥ 10 sources; hot precision ≥ 0.80; hot+warm precision ≥ 0.70; purchase-intent / `direct_order` recall ≥ 0.75; false-positive rate for `vacancy/advertising/spam` ≤ 5%. Historical MVP wording hot+warm ≥ 80% / `direct_order` recall ≥ 70% is superseded for remediation and MUST NOT be treated as a live gate. Dashboard still displays the OBS-016 metric fields. |
 | AT-OBS-017 | Keyword discovery metrics публикуются с утверждёнными именами; запрещённые labels отсутствуют. |
 | AT-OBS-018 | Component `discovery` отражает `healthy`/`degraded`/`blocked`/`stopped`; quota exhaustion alone не ставит app unhealthy. |
+| AT-OBS-019 | Novelty/suppress/exhaustion metrics published with approved names; forbidden labels absent. |
+| AT-OBS-020 | With credentials + monitoring sources, collector loop is not permanent deferred/STOPPED; named loops report heartbeats. |
+| AT-OBS-021 | Capacity/latency/recovery metric names present for monitoring capacity, burst drain, p95 received-to-processed, and restart recovery. |
 
 ## 6. Входные и выходные контракты
 
@@ -150,11 +156,11 @@
 
 ## 14. Acceptance test catalogue
 
-- `OBS-HEALTH`: AT-OBS-001, AT-OBS-002, AT-OBS-003, AT-OBS-010, AT-OBS-011, AT-OBS-012, AT-OBS-014, AT-OBS-015, AT-OBS-018.
+- `OBS-HEALTH`: AT-OBS-001, AT-OBS-002, AT-OBS-003, AT-OBS-010, AT-OBS-011, AT-OBS-012, AT-OBS-014, AT-OBS-015, AT-OBS-018, AT-OBS-020.
 - `OBS-REDACTION`: AT-OBS-004, AT-OBS-005.
 - `OBS-ADMIN`: AT-OBS-008, AT-OBS-009.
 - `OBS-RETENTION`: AT-OBS-006, AT-OBS-007.
-- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016, AT-OBS-017.
+- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016, AT-OBS-017, AT-OBS-019, AT-OBS-021.
 
 ## 15. Decision log references
 

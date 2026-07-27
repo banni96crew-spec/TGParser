@@ -164,6 +164,10 @@ Heartbeat продлевает lease каждые `60 секунд`. При star
 
 Administration UI MUST разрешать replay failed job и replay current message revision с выбранной активной rule/scoring version. Replay создаёт новый `ProcessingResult`, но не новую `TelegramMessageRevision`. Один job нельзя replay одновременно.
 
+### PROC-019 — Pinned rule-set version + checksum into detect
+
+Processing job MUST pass pinned `rule_set_version_id` and checksum into detection (D-065 / DET-016). Missing version or checksum mismatch MUST yield permanent processing error / dead-letter (`RULE_SET_INVALID` or equivalent) with **no** silent `SEED_RULES` fallback. Re-score creates a new `ProcessingResult` / score trace; it does not rewrite historical detection rows.
+
 ## 8. Data ownership
 
 Модуль владеет `TelegramMessage`, `TelegramMessageRevision`, semantics `ProcessingJob`, `ProcessingResult`, `DuplicateGroup` и membership. Lead Detection владеет rule results, Lead Scoring — score details, Lead Storage — физической схемой, общей `Job` table и repositories.
@@ -210,7 +214,7 @@ Structured log: `event_id`, `job_id`, `source_id`, `message_id`, `revision_id`, 
 
 ## 12. MVP и исключённые функции
 
-MVP включает PROC-001—PROC-018. Исключены fuzzy/semantic similarity, media/OCR, language translation, distributed workers и reprocessing всех исторических versions по расписанию.
+MVP включает PROC-001—PROC-019. Исключены fuzzy/semantic similarity, media/OCR, language translation, distributed workers и reprocessing всех исторических versions по расписанию.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -234,6 +238,7 @@ MVP включает PROC-001—PROC-018. Исключены fuzzy/semantic simi
 | `AT-PROC-016` | PROC-016 | Пять transient errors | Точная delay sequence, затем failed |
 | `AT-PROC-017` | PROC-017 | Crash после commit до job ack | Replay создаёт ноль дубликатов |
 | `AT-PROC-018` | PROC-018 | Manual replay failed job | Один новый result, revision не меняется |
+| `AT-PROC-019` | PROC-019 | Job with mismatched checksum / missing version | Permanent `RULE_SET_INVALID`; no SEED_RULES fallback; no rewritten history |
 
 ## 14. Принятые записи decision log
 

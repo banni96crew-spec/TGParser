@@ -370,3 +370,104 @@ async def test_dismiss_does_not_create_source(db_env) -> None:
             await promote_opportunity_to_candidate(
                 session, opportunity_id=opportunity_id, version=new_version
             )
+
+
+@pytest.mark.asyncio
+async def test_dismiss_during_competing_discovery_retry_one_suppress(db_env) -> None:
+    """Concurrent dismiss of rename/alias variants must yield one suppress row (Wave 02)."""
+    async with session_scope() as session:
+        run_a = await _insert_run(session)
+        snap_a = await _insert_snapshot(
+            session,
+            run_id=run_a.id,
+            telegram_id=800_001,
+            username="old_name",
+            title="Peer A",
+        )
+        # Competing retry uses a second run; same peer under renamed username.
+        run_b = await _insert_run(session)
+        snap_b = await _insert_snapshot(
+            session,
+            run_id=run_b.id,
+            telegram_id=800_001,
+            username="new_name",
+            title="Peer A renamed",
+        )
+        id_a, ver_a = snap_a.id, snap_a.version
+        id_b, ver_b = snap_b.id, snap_b.version
+
+    async with session_scope() as session:
+        await dismiss_opportunity(
+            session, opportunity_id=id_a, version=ver_a, reason="race_a"
+        )
+        await dismiss_opportunity(
+            session, opportunity_id=id_b, version=ver_b, reason="race_b"
+        )
+
+    async with session_scope() as session:
+        rows = list((await session.execute(select(DismissedKeywordSource))).scalars().all())
+        assert len(rows) == 1
+        assert rows[0].source_telegram_id == 800_001
+        # Wave 02 ledger: single canonical_key for the peer (SRC-033/035).
+        canonical_key = getattr(rows[0], "canonical_key", None)
+        assert canonical_key == "peer:800001"
+        aliases_raw = getattr(rows[0], "aliases_json", "[]")
+        assert "old_name" in aliases_raw or "new_name" in aliases_raw
+
+
+@pytest.mark.asyncio
+async def test_reconsider_dismiss_suppress_is_explicit_src036(db_env) -> None:
+    """AT-SRC-036: only ReconsiderDismissSuppress removes membership; emits audit event."""
+    from telegram_lead_discovery.source_discovery.promotion import (
+        reconsider_dismiss_suppress,
+    )
+    from telegram_lead_discovery.storage.models import DismissSuppressReconsideredEvent
+
+    async with session_scope() as session:
+        run = await _insert_run(session)
+        snap = await _insert_snapshot(
+            session, run_id=run.id, telegram_id=800_010, username="blocked_peer"
+        )
+        dismissed = await dismiss_opportunity(
+            session,
+            opportunity_id=snap.id,
+            version=snap.version,
+            reason="noise",
+        )
+        suppress_id = (
+            await session.execute(select(DismissedKeywordSource))
+        ).scalar_one().id
+
+    async with session_scope() as session:
+        # Discovery / promote MUST NOT implicitly unsuppress.
+        with pytest.raises(OpportunityReviewStateError):
+            await promote_opportunity_to_candidate(
+                session,
+                opportunity_id=dismissed.id,
+                version=dismissed.version,
+            )
+        assert (
+            await session.execute(select(func.count()).select_from(DismissedKeywordSource))
+        ).scalar_one() == 1
+
+        result = await reconsider_dismiss_suppress(
+            session,
+            suppress_id=suppress_id,
+            note="operator_reconsider",
+            version=1,
+        )
+        assert result.removed is True
+
+    async with session_scope() as session:
+        assert (
+            await session.execute(select(func.count()).select_from(DismissedKeywordSource))
+        ).scalar_one() == 0
+        events = list(
+            (await session.execute(select(DismissSuppressReconsideredEvent))).scalars().all()
+        )
+        assert len(events) == 1
+        assert events[0].note == "operator_reconsider"
+        # Authoritative channel is NOT SourceDiscoveryEvent (SRC-035).
+        assert (
+            await session.execute(select(func.count()).select_from(SourceDiscoveryEvent))
+        ).scalar_one() == 0

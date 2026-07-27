@@ -9,6 +9,9 @@
 | `NFR-PERF-003` | Inbox first page ≤ `1 s` для `100,000 messages / 10,000 leads` | Локальный benchmark на целевой Windows host |
 | `NFR-PERF-004` | Rule processing p95 ≤ `100 ms/message` | Активный DET-A corpus; каждый regex timeout ≤ `50 ms` |
 | `NFR-PERF-005` | UI pagination не загружает более `100 leads/request` | Route contract и query plan test |
+| `NFR-PERF-006` | Monitoring capacity: `100` sources / ≥ `1000` messages/day ingestion | Capacity harness (Wave 09); external volume reported separately |
+| `NFR-PERF-007` | Burst `10` msg/s × `10` min (`6000` events); backlog drain ≤ `15` min | Fake gateway load harness |
+| `NFR-PERF-008` | p95 `received_at→processed_at` ≤ `30 s` steady / ≤ `120 s` burst | Distinct from NFR-PERF-001 (live→Lead); same burst profile as PERF-007 |
 
 ## 2. Reliability
 
@@ -21,16 +24,18 @@
 | `NFR-REL-005` | Checkpoint не опережает committed message | Fault injection до и после commit |
 | `NFR-REL-006` | FloodWait не создаёт Telegram retry до `until` | Fake gateway с server wait |
 | `NFR-REL-007` | Migration и backup restore сохраняют referential integrity | `foreign_key_check` и `integrity_check` возвращают `ok` |
+| `NFR-REL-008` | Kill/restart reconciliation continues from checkpoint without gap/dup; restart recovery wall ≤ `5` min (align NFR-REL-004) | Process kill mid-job; resume jobs + checkpoint; exact dedupe `100%` (0 duplicate raw/lead/outbox on replay) |
 
 ## 3. Classification quality
 
 | ID | Requirement | Acceptance criterion |
 |---|---|---|
-| `NFR-QLT-001` | Calibration corpus ≥ `500 messages` из ≥ `10 sources` | Corpus manifest содержит counts и labels |
-| `NFR-QLT-002` | Precision `hot + warm` ≥ `80%` | Fixed corpus, active rule checksum |
-| `NFR-QLT-003` | Recall `direct_order` ≥ `70%` | Fixed corpus, confusion matrix |
+| `NFR-QLT-001` | Calibration corpus ≥ `500 messages` из ≥ `10` source types | Corpus manifest содержит counts и labels |
+| `NFR-QLT-002` | Precision `hot + warm` ≥ `80%` | **Superseded for remediation release by `NFR-QLT-006` (D-067).** Historical MVP acceptance kept for non-remediation reports only. |
+| `NFR-QLT-003` | Recall `direct_order` ≥ `70%` | **Superseded for remediation release by `NFR-QLT-006` (D-067)** where purchase-intent ≡ DET category/`direct_order` recall ≥ `0.75`. Historical MVP acceptance kept for non-remediation reports only. |
 | `NFR-QLT-004` | False-positive rate negative categories ≤ `5%` | Vacancy/advertising/spam labeled subset |
 | `NFR-QLT-005` | Один input + revision + ruleset даёт одинаковый result | `100` повторных runs, byte-equivalent structured result |
+| `NFR-QLT-006` | Remediation calibration / discovery quality gates (single numeric source of truth, D-067 / plan §2) | Fixed corpus + discovery fixtures: hot precision ≥ `0.80`; hot+warm precision ≥ `0.70`; purchase-intent/`direct_order` recall ≥ `0.75`; permanent dismiss suppress recurrence = `0`; in-run canonical dedupe ≤ `1` presentation / canonical / run; novelty_ratio ≥ `0.80` after first run when replacement pool sufficient; live 5 sequential runs median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has `pool_exhausted=true` with reason; UI bind `127.0.0.1` only |
 
 ## 4. Security
 

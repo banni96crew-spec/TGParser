@@ -1,0 +1,61 @@
+{
+  "wave": "02",
+  "role": "verifier",
+  "captured_at": "2026-07-27T16:35:00+03:00",
+  "live_db_touched": false,
+  "live_db_path_observed": "%LOCALAPPDATA%\\TelegramLeadDiscovery",
+  "live_db_exists": true,
+  "live_db_note": "Directory exists; verifier did not migrate or open live product DB",
+  "commands": [
+    {
+      "id": "focused_pytest",
+      "command": "uv run pytest tests/unit/test_keyword_search_aggregation.py tests/integration/test_opportunity_promotion.py tests/integration/test_dismissed_suppress_migration.py tests/integration/test_canonical_identity_suppress.py tests/integration/test_storage_settings.py -q",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "44 passed in 8.22s"
+    },
+    {
+      "id": "ruff_touched_paths",
+      "command": "uv run ruff check src/telegram_lead_discovery/storage src/telegram_lead_discovery/source_discovery/canonical_identity.py src/telegram_lead_discovery/source_discovery/promotion.py src/telegram_lead_discovery/source_discovery/keyword_search.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "All checks passed!"
+    },
+    {
+      "id": "temp_db_empty_upgrade_head",
+      "command": "uv run python (upgrade_head on %TEMP%\\tld-wave02-verify-*\\verify.sqlite)",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "temp_db": "C:\\Users\\...\\AppData\\Local\\Temp\\tld-wave02-verify-1089602140\\verify.sqlite",
+      "summary": "empty → 001→002→003_dismissed_keyword_suppress; canonical_key present; suppress_count=0"
+    },
+    {
+      "id": "migration_integration_suite",
+      "command": "uv run pytest tests/integration/test_dismissed_suppress_migration.py -q --tb=short",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "3 passed (empty, populated-002 backfill, remigrate idempotent)"
+    },
+    {
+      "id": "unique_canonical_key_runtime_proof",
+      "command": "PRAGMA index_list + duplicate INSERT on temp SQLite",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "sqlite_autoindex_* unique=1 on canonical_key and source_telegram_id; duplicate insert → IntegrityError UNIQUE constraint failed: dismissed_keyword_sources.canonical_key"
+    },
+    {
+      "id": "gate_spot_ac",
+      "command": "uv run pytest tests/integration/test_dismissed_suppress_migration.py::test_migration_remigrate_idempotent_counts_unchanged tests/unit/test_keyword_search_aggregation.py::test_dismissed_recurrence_zero_multi_run_fixture -q --tb=line",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "2 passed"
+    },
+    {
+      "id": "git_status_short",
+      "command": "git status --short",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "exit_code": 0,
+      "summary": "No secrets/session/.env; Wave02 src/tests + docs/prd + .omc artifacts + __pycache__ present"
+    }
+  ]
+}

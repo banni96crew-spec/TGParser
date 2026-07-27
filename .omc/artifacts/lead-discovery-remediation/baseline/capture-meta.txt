@@ -1,0 +1,3 @@
+﻿captured_at: 2026-07-27T14:59:25+03:00
+cwd: C:\Users\Николай\Desktop\Telegram Parser
+wave: 00

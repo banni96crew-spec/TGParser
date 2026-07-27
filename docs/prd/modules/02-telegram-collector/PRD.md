@@ -187,16 +187,33 @@ get_linked_discussion(source) -> SourceSnapshot | None
 
 Adapter MUST всегда передавать `allow_paid_stars=None` в Telethon `channels.SearchPostsRequest` (D-050). При необходимости Stars без бесплатного слота запрос MUST NOT выполняться. Contract/adapter tests MUST перехватывать raw request и подтверждать `allow_paid_stars is None`.
 
+### COL-023 — TelegramPeerRef mandatory for Telegram I/O
+
+All Gateway history/live/search entity resolution MUST use `TelegramPeerRef` (`schema_version=1`: `telegram_peer_id`, `access_hash`, `username_normalized` — at least one of peer_id or username required) (D-064). `HistoryRequest` carries DB `source_id` for jobs **plus** `peer: TelegramPeerRef`. Gateway MUST use `peer`, never raw DB `source_id`, as Telethon entity.
+
+### COL-024 — Backfill continuation beyond single page
+
+Initial backfill remains **14 days** OR **3000** messages, whichever first (COL-005) — not hard-coded page size 100 as a hard stop. When a page/cap is hit before the backfill goal, collector MUST enqueue/continue via `continuation` job and opaque `continuation_cursor`. Startup reconciliation batch ≤ **5000**; periodic reconciliation every **15 min**, ≤ **1000**/source/batch.
+
+### COL-025 — Persist batching / no network inside long write TX
+
+Persist batch size MUST be ≤ **50** envelopes per SQLite write transaction. Network I/O MUST remain outside long write transactions. Job lease **5 min**, heartbeat **60 s** (COL-019). FloodWait waits exact `until`.
+
+### COL-026 — Live TelegramUpdateDTO contract completeness
+
+Live `TelegramUpdateDTO` / envelope MUST carry stable identity `(telegram_peer_id, telegram_message_id)`, `event_type` ∈ `message_new|message_edited|message_deleted`, and map to monitoring `source_id` via registry. Live filter: only `lifecycle_state=monitoring`.
+
 ## 8. Data ownership
 
-Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope` и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
+Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` gateway DTO и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
 
 Ограничения:
 
 - unique checkpoint per source;
 - unique active job per `(source_id, job_type)`;
 - timestamps UTC milliseconds;
-- raw Telethon objects никогда не сериализуются в БД.
+- raw Telethon objects никогда не сериализуются в БД;
+- DB `source_id` never used as Telethon entity (D-064).
 
 ## 9. Security requirements
 
@@ -231,7 +248,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-022. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-026. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -259,6 +276,10 @@ MVP включает COL-001—COL-022. Исключены multiple sessions, ac
 | `AT-COL-020` | COL-020 | Disconnect и reconnect | `iter_updates` восстановлен; startup reconciliation создан |
 | `AT-COL-021` | COL-021 | Fake gateway search contract suite | Search DTO/methods стабильны; hits не создают envelopes/checkpoint |
 | `AT-COL-022` | COL-022 | Mock SearchPosts raw request | `allow_paid_stars is None`; Stars-required path не вызывает request |
+| `AT-COL-023` | COL-023 | HistoryRequest with DB source_id only vs peer | Gateway uses `peer`; bare source_id never Telethon entity |
+| `AT-COL-024` | COL-024 | Backfill hits page before 14d/3000 goal | Continuation job + cursor advances without hard stop at 100 |
+| `AT-COL-025` | COL-025 | Persist >50 envelopes | Write TX batches ≤50; no network inside long write TX |
+| `AT-COL-026` | COL-026 | Live update for monitoring and non-monitoring | Only monitoring mapped; identity `(telegram_peer_id, telegram_message_id)` stable |
 
 ## 14. Принятые записи decision log
 
@@ -269,3 +290,4 @@ MVP включает COL-001—COL-022. Исключены multiple sessions, ac
 - `DEC-COL-005`: checkpoint коммитится атомарно с envelope.
 - `DEC-COL-006`: live updates являются основным каналом; reconciliation восстанавливает пропуски.
 - `D-050`/`D-051`/`D-052`: Zero Stars, free `searchPosts` only, scouting isolation from collector pipeline.
+- `D-064`: `TelegramPeerRef` + HistoryRequest peer; persist batch ≤50; no network in long write TX.

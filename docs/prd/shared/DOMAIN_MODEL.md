@@ -14,8 +14,8 @@
 
 | Entity | Owner |
 |---|---|
-| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot` | `SRC` |
-| `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope` | `COL` |
+| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource` | `SRC` |
+| `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` (gateway DTO) | `COL` |
 | `TelegramMessage`, `TelegramMessageRevision`, `DuplicateGroup`, `MessageDuplicate`, `ProcessingJob`, `ProcessingRun`, `ProcessingResult`, `ProcessingLog` | `PROC` |
 | `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `MatchedRule`, `DetectionResult` | `DET` |
 | `LeadScore`, `LeadScoreComponent` | `SCR` |
@@ -86,7 +86,18 @@ Constraints:
 
 - unique non-null `telegram_id`;
 - unique non-null `username_normalized`;
-- только `monitoring` может порождать collector jobs.
+- только `monitoring` может порождать collector jobs;
+- provisional identity (`telegram_id IS NULL`, key `username:<casefold>`) MUST NOT enter `monitoring` (D-061).
+
+`CanonicalSourceIdentity` (logical, owner `SRC`)
+
+- `canonical_key: str` ∈ {`peer:<telegram_id>`, `username:<casefold>`};
+- `telegram_id: int | null` — set after resolve;
+- `username_normalized: str | null`;
+- linked `SourceAlias[]` when merged into registry source;
+- identity match order (frozen, extends SRC-022): `telegram_id` → registry `telegram_id` → current username → `SourceAlias` → provisional `username:<casefold>`;
+- one canonical key per opportunity snapshot per run;
+- after resolve, transactional merge into `peer:<telegram_id>` preserves dismiss provenance and aliases (D-061).
 
 `SourceAlias`
 
@@ -94,6 +105,20 @@ Constraints:
 - `normalized_username: str unique`;
 - `valid_from`, `valid_until: timestamp | null`;
 - current alias имеет `valid_until=NULL`.
+
+`DismissedSource` / `DismissedKeywordSource` (logical suppress ledger, owner `SRC`; physical table `STO`)
+
+- `id` / `suppress_id`;
+- `canonical_key: str`;
+- `telegram_id: int | null`;
+- `usernames_json` / aliases;
+- `dismiss_reason: str | null`;
+- `dismissed_at`;
+- `source_opportunity_id: int | null`;
+- `operator_trigger: str | null`;
+- `version` / upsert stamp — claim fields MAY upsert; membership is permanent until explicit `ReconsiderDismissSuppress` (D-062);
+- retention MUST NOT delete suppress rows;
+- snapshot `review_state=dismissed` alone is not durable suppress.
 
 `SourceApprovalEvent`
 
@@ -152,7 +177,14 @@ Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
 - `phase: str | null` — для keyword (A–I);
 - `quota_snapshot_json`, `cursor_json`, `last_error_code`;
 - `version: int` — optimistic concurrency;
-- counters и timestamps.
+- counters и timestamps;
+- remediation funnel counters (all `int ≥ 0`, keyword runs; D-063 / SRC-037):
+  - `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`,
+  - `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`,
+  - `novel_presented_total`, `replacement_fetches_total`;
+- `pool_exhausted: bool`;
+- `pool_exhausted_reason: enum(provider_empty, budget_cap_reached, quota_skipped_remaining, flood_wait_deferred, cancel_requested, no_unseen_after_suppress) | null`;
+- `novelty_ratio: float` = `novel_presented_total / max(1, presented_total)` for completed keyword runs.
 
 `partial` означает, что часть queries пропущена из-за бесплатной квоты или permanent errors отдельных шагов.
 
@@ -203,6 +235,10 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 
 Opportunity score принадлежит `SRC` (D-054) и MUST NOT копироваться в `TelegramSource.quality_score`.
 
+Band mapping (frozen, D-054 / D-067): plan prose `strong` ≡ `promising` (`60–100`); `moderate` ≡ `review` (`35–59`); `weak` (`0–34`). Enums MUST NOT be renamed.
+
+Eligibility reason codes (SRC opportunity, not SCR): `directory_only_no_evidence`, `needs_verification` — directory-only / unverified linked discussion MUST NOT receive `review` or `promising` without deep verification evidence.
+
 `SourceDiscoveryEvent`
 
 - `id`, `event_id: UUIDv7 unique`, `run_id`, `source_id: int | null`;
@@ -218,6 +254,14 @@ Opportunity score принадлежит `SRC` (D-054) и MUST NOT копиро�
 Методы `keyword_search` и `linked_discussion` используются только при promotion scouting-результата в candidate (D-049, D-053).
 
 ### 3.4. Collector
+
+`TelegramPeerRef` (gateway DTO, owner `COL`, schema_version=`1`)
+
+- `telegram_peer_id: int | null`;
+- `access_hash: int | null`;
+- `username_normalized: str | null`;
+- at least one of `telegram_peer_id` or `username_normalized` required;
+- Gateway Telegram I/O MUST use `TelegramPeerRef`, never raw DB `source_id`, as Telethon entity (D-064).
 
 `CollectorCheckpoint`
 
@@ -238,10 +282,11 @@ Opportunity score принадлежит `SRC` (D-054) и MUST NOT копиро�
 - `event_id: str`;
 - `event_type: enum(message_new, message_edited, message_deleted)`;
 - `source_id`, `telegram_message_id`;
+- `telegram_peer_id` — stable network identity paired with `telegram_message_id`;
 - `observed_at`;
 - `payload` — typed in integration contracts.
 
-Envelope — application contract; отдельная таблица создаётся только для durable jobs/replay evidence.
+Envelope — application contract; отдельная таблица создаётся только для durable jobs/replay evidence. Mapping `telegram_peer_id` → monitoring `source_id` выполняется через Source Registry.
 
 ### 3.5. Messages и processing
 
@@ -450,6 +495,8 @@ Lead row создаётся только при первом committed score ban
 - `payload_json`, `attempt`, `available_at`, `lease_until`;
 - `cancel_requested_at: timestamp | null`;
 - timestamps и error code.
+
+Lease/idempotency invariants (D-066 / STO-018): lease `5 minutes`; heartbeat every `60 s`; expired lease → `running→queued` on startup/scan; transient retries `5` with delays `1, 5, 30, 120, 600` s where COL/PROC apply; unique inbox/envelope keys; unique outbox key; one unfinished collector job per `(source_id, type)` for activation. Keyword run-level states live on `DiscoveryRun`, not on `Job`.
 
 `NotificationOutbox`
 

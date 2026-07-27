@@ -6,7 +6,6 @@ call ``validate_source``, approval, checkpoint creation, backfill, or monitoring
 
 from __future__ import annotations
 
-import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -15,6 +14,20 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.observability.discovery import record_promotion
+from telegram_lead_discovery.source_discovery.canonical_identity import (
+    CanonicalSourceIdentity,
+    peer_key,
+)
+from telegram_lead_discovery.storage.dismissed_suppress import (
+    ReconsiderSuppressResult,
+    SuppressIdentity,
+)
+from telegram_lead_discovery.storage.dismissed_suppress import (
+    reconsider_dismiss_suppress as _sto_reconsider_dismiss_suppress,
+)
+from telegram_lead_discovery.storage.dismissed_suppress import (
+    upsert_dismiss_suppress as _sto_upsert_dismiss_suppress,
+)
 from telegram_lead_discovery.storage.models import (
     DismissedKeywordSource,
     SourceAlias,
@@ -60,57 +73,70 @@ def _normalize_username(username: str | None) -> str | None:
     return text or None
 
 
-def _load_aliases(raw: str) -> list[str]:
-    try:
-        data = json.loads(raw or "[]")
-    except json.JSONDecodeError:
-        return []
-    return [str(item) for item in data if isinstance(item, str)]
-
-
 async def _upsert_dismissed_suppress_rule(
     session: AsyncSession,
     *,
     snapshot: SourceOpportunitySnapshot,
     reason: str,
 ) -> DismissedKeywordSource:
+    """Persist durable suppress via storage helper (canonical_key = peer:<id>)."""
     normalized = _normalize_username(snapshot.username)
-    existing = await session.execute(
-        select(DismissedKeywordSource).where(
-            DismissedKeywordSource.source_telegram_id == snapshot.source_telegram_id
-        )
-    )
-    row = existing.scalar_one_or_none()
-    now = datetime.now(UTC)
-    if row is None:
-        row = DismissedKeywordSource(
-            source_telegram_id=snapshot.source_telegram_id,
+    tid = int(snapshot.source_telegram_id)
+    return await _sto_upsert_dismiss_suppress(
+        session,
+        identity=SuppressIdentity(
+            canonical_key=peer_key(tid),
+            telegram_id=tid,
             username_normalized=normalized,
-            aliases_json="[]",
-            dismiss_reason=reason,
-            origin_run_id=snapshot.run_id,
-            origin_opportunity_id=snapshot.id,
-            created_at=now,
-            updated_at=now,
-        )
-        session.add(row)
-        await session.flush()
-        return row
+        ),
+        reason=reason,
+        operator_trigger="DismissOpportunity",
+        origin_run_id=snapshot.run_id,
+        origin_opportunity_id=snapshot.id,
+    )
 
-    aliases = _load_aliases(row.aliases_json)
-    if normalized and normalized != row.username_normalized and normalized not in aliases:
-        if row.username_normalized and row.username_normalized not in aliases:
-            aliases.append(row.username_normalized)
-        aliases.append(normalized)
-        row.aliases_json = json.dumps(sorted(set(aliases)), ensure_ascii=False)
-    if row.username_normalized is None and normalized is not None:
-        row.username_normalized = normalized
-    row.dismiss_reason = row.dismiss_reason or reason
-    row.origin_run_id = row.origin_run_id or snapshot.run_id
-    row.origin_opportunity_id = row.origin_opportunity_id or snapshot.id
-    row.updated_at = now
-    await session.flush()
-    return row
+
+async def upsert_dismiss_suppress_for_identity(
+    session: AsyncSession,
+    *,
+    identity: CanonicalSourceIdentity,
+    reason: str,
+    operator_trigger: str | None = None,
+    origin_run_id: int | None = None,
+    origin_opportunity_id: int | None = None,
+) -> DismissedKeywordSource:
+    """SRC wrapper: upsert suppress membership for an explicit identity claim."""
+    return await _sto_upsert_dismiss_suppress(
+        session,
+        identity=SuppressIdentity(
+            canonical_key=identity.canonical_key,
+            telegram_id=identity.telegram_id,
+            username_normalized=identity.username_normalized,
+        ),
+        reason=reason,
+        operator_trigger=operator_trigger,
+        origin_run_id=origin_run_id,
+        origin_opportunity_id=origin_opportunity_id,
+        extra_aliases=identity.aliases,
+    )
+
+
+async def reconsider_dismiss_suppress(
+    session: AsyncSession,
+    *,
+    suppress_id: int | None = None,
+    canonical_key: str | None = None,
+    note: str = "",
+    version: int | None = None,
+) -> ReconsiderSuppressResult:
+    """Explicit ReconsiderDismissSuppress — removes membership + audit (SRC-036)."""
+    return await _sto_reconsider_dismiss_suppress(
+        session,
+        suppress_id=suppress_id,
+        canonical_key=canonical_key,
+        note=note,
+        version=version,
+    )
 
 
 async def _find_source_by_identity(
@@ -312,4 +338,6 @@ __all__ = [
     "PromoteOpportunityResult",
     "dismiss_opportunity",
     "promote_opportunity_to_candidate",
+    "reconsider_dismiss_suppress",
+    "upsert_dismiss_suppress_for_identity",
 ]

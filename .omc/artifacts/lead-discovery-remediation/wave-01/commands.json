@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "wave": "01",
+  "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+  "captured_by": "verifier",
+  "head": "f1b9445",
+  "note": "Wave 01 PRD/contract freeze gate. Primary gate = validate-prd. No product-code green claim. quality-suite not required for this gate.",
+  "commands": [
+    {
+      "command": "uv run python tools/quality/validate-prd.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:52:00Z",
+      "finished_at": "2026-07-27T12:52:05Z",
+      "exit_code": 0,
+      "brief_result": "status=pass; requirements=254; acceptance_tests=254; decisions=67; files=32; errors=[]"
+    },
+    {
+      "command": "git status --short",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:52:00Z",
+      "finished_at": "2026-07-27T12:52:05Z",
+      "exit_code": 0,
+      "brief_result": "M docs/prd (13 files); M .omc/plans; ?? .omc/artifacts; src __pycache__ only; no src/*.py modifications"
+    },
+    {
+      "command": "git diff --name-only -- docs/prd",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:52:00Z",
+      "finished_at": "2026-07-27T12:52:05Z",
+      "exit_code": 0,
+      "brief_result": "13 docs/prd paths changed vs HEAD"
+    },
+    {
+      "command": "git diff --name-only -- src/**/*.py ; git status --short -- src/**/*.py",
+      "cwd": "C:\\Users\\Николай\\Desktop\\Telegram Parser",
+      "started_at": "2026-07-27T12:53:00Z",
+      "finished_at": "2026-07-27T12:53:07Z",
+      "exit_code": 0,
+      "brief_result": "Empty - no Python source under src differs from HEAD"
+    }
+  ]
+}

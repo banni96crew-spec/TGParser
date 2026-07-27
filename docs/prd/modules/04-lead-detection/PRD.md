@@ -151,6 +151,10 @@ Engine MUST публиковать boolean signals: `budget_present`, `deadline_
 
 Detection engine MUST предоставлять pure evaluation entrypoint (тот же алгоритм DET-004..DET-014), принимающий `analysis_text`, `rule_set_version_id` и checksum без обязательной `message_revision_id` pipeline binding. SRC keyword scouting MAY вызывать этот entrypoint для классификации evidence. Вызов MUST NOT создавать Lead pipeline side effects: не пишет `TelegramMessage`/`ProcessingResult` lead-path и не эмитит `LeadDetected` outbox для scouting (D-052). Результат для scouting сохраняется владельцем SRC в `SourceDiscoveryEvidence`.
 
+### DET-016 — Runtime loader by version + checksum; bootstrap-only seed
+
+Runtime loader MUST fetch immutable compiled catalog from DB/cache keyed by **checksum** for the pinned `rule_set_version_id` (D-065). Missing version or checksum mismatch → permanent processing error / dead-letter (`RULE_SET_INVALID` / equivalent) — **no** `SEED_RULES` silent fallback. `SEED_RULES` allowed **only** when creating the initial DB version at bootstrap/migration. Regex timeout **50 ms**; input cap **4096** characters; compile cache key = checksum; byte-stable result for same revision+version (NFR-QLT-005).
+
 ## 7. Data ownership и contracts
 
 Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult; Source Discovery потребляет pure detect для scouting text.
@@ -215,7 +219,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 12. MVP и исключённые функции
 
-MVP включает DET-001—DET-015 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
+MVP включает DET-001—DET-016 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -236,6 +240,7 @@ MVP включает DET-001—DET-015 и приложение DET-A. Исклю
 | `AT-DET-013` | DET-013 | Fixture содержит бюджет, срок, контакт | Три boolean signals true |
 | `AT-DET-014` | DET-014 | Бюджет указан дважды | Один boolean signal и два matched IDs без усиления |
 | `AT-DET-015` | DET-015 | Вызвать DetectAnalysisText из scouting fixture | Category совпадает с DetectLead на том же тексте; Lead/outbox не созданы |
+| `AT-DET-016` | DET-016 | Runtime load with wrong checksum; bootstrap seed path | RULE_SET_INVALID / no silent SEED_RULES fallback; seed only at bootstrap |
 
 Golden classification fixtures:
 

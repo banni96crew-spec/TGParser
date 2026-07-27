@@ -1,0 +1,5 @@
+﻿ M .omc/plans/telegram-lead-discovery-remediation.md
+?? .omc/artifacts/lead-discovery-remediation/baseline/capture-meta.txt
+?? .omc/artifacts/lead-discovery-remediation/baseline/git-diff-name-only.txt
+?? .omc/artifacts/lead-discovery-remediation/baseline/git-diff-stat.txt
+?? .omc/artifacts/lead-discovery-remediation/baseline/git-status-short.txt

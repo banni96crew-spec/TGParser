@@ -79,6 +79,39 @@ class SourceRegistryIndex:
 
 
 @dataclass(frozen=True, slots=True)
+class DismissedKeywordSourceEntry:
+    """Durable suppress row for future keyword runs (SRC-032)."""
+
+    telegram_id: int
+    username_normalized: str | None
+    aliases: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class DismissedKeywordSourceIndex:
+    """Lookup indexes for dismissed suppress identity matching."""
+
+    by_telegram_id: Mapping[int, DismissedKeywordSourceEntry] = field(default_factory=dict)
+    by_username: Mapping[str, DismissedKeywordSourceEntry] = field(default_factory=dict)
+    by_alias: Mapping[str, DismissedKeywordSourceEntry] = field(default_factory=dict)
+
+    @classmethod
+    def from_entries(
+        cls, entries: Sequence[DismissedKeywordSourceEntry]
+    ) -> DismissedKeywordSourceIndex:
+        by_tid: dict[int, DismissedKeywordSourceEntry] = {}
+        by_user: dict[str, DismissedKeywordSourceEntry] = {}
+        by_alias: dict[str, DismissedKeywordSourceEntry] = {}
+        for entry in entries:
+            by_tid[entry.telegram_id] = entry
+            if entry.username_normalized:
+                by_user[entry.username_normalized] = entry
+            for alias in entry.aliases:
+                by_alias[alias] = entry
+        return cls(by_telegram_id=by_tid, by_username=by_user, by_alias=by_alias)
+
+
+@dataclass(frozen=True, slots=True)
 class ResolvedSourceIdentity:
     """Canonical source identity after SRC-022 resolution."""
 
@@ -92,6 +125,77 @@ class ResolvedSourceIdentity:
         "alias",
         "username_fallback",
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class DismissedIdentityMatch:
+    canonical_telegram_id: int
+    username_normalized: str | None
+    matched_via: Literal["dismissed_telegram_id", "username", "alias"]
+
+
+def registry_telegram_ids(registry: SourceRegistryIndex) -> frozenset[int]:
+    """All telegram_id values currently present in the Source Registry index."""
+    return frozenset(registry.by_telegram_id.keys())
+
+
+def dismissed_telegram_ids(index: DismissedKeywordSourceIndex) -> frozenset[int]:
+    """All telegram_id values currently suppressed by past dismiss actions."""
+    return frozenset(index.by_telegram_id.keys())
+
+
+def is_registry_suppressed(
+    identity: ResolvedSourceIdentity,
+    *,
+    registry: SourceRegistryIndex | None = None,
+) -> bool:
+    """SRC-031 / D-059: true when identity already resolves to a registry source."""
+    if identity.registry_source_id is not None:
+        return True
+    if registry is None:
+        return False
+    return identity.canonical_telegram_id in registry.by_telegram_id
+
+
+def resolve_dismissed_identity(
+    *,
+    telegram_id: int,
+    username: str | None,
+    dismissed: DismissedKeywordSourceIndex | None = None,
+) -> DismissedIdentityMatch | None:
+    """Resolve whether a source matches the durable dismissed suppress set."""
+    if dismissed is None:
+        return None
+    username_normalized: str | None = None
+    if username:
+        try:
+            username_normalized = normalize_username(username)
+        except ValueError:
+            username_normalized = username.strip().lstrip("@").lower() or None
+
+    by_tid = dismissed.by_telegram_id.get(telegram_id)
+    if by_tid is not None:
+        return DismissedIdentityMatch(
+            canonical_telegram_id=by_tid.telegram_id,
+            username_normalized=username_normalized or by_tid.username_normalized,
+            matched_via="dismissed_telegram_id",
+        )
+    if username_normalized:
+        by_user = dismissed.by_username.get(username_normalized)
+        if by_user is not None:
+            return DismissedIdentityMatch(
+                canonical_telegram_id=by_user.telegram_id,
+                username_normalized=username_normalized,
+                matched_via="username",
+            )
+        by_alias = dismissed.by_alias.get(username_normalized)
+        if by_alias is not None:
+            return DismissedIdentityMatch(
+                canonical_telegram_id=by_alias.telegram_id,
+                username_normalized=username_normalized,
+                matched_via="alias",
+            )
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,6 +314,8 @@ class AggregationResult:
     opportunities: tuple[OpportunitySnapshotRecord, ...]
     budget_skipped_count: int
     window_skipped_count: int
+    registry_suppressed_ids: frozenset[int] = frozenset()
+    dismissed_suppressed_ids: frozenset[int] = frozenset()
 
 
 def resolve_source_identity(
@@ -512,10 +618,17 @@ def build_preliminary_candidates(
     directory_sources: Sequence[SourceSnapshot] = (),
     directory_query_texts: Sequence[str] = (),
     linked_parent_ids: Mapping[int, int] | None = None,
+    registry: SourceRegistryIndex | None = None,
+    dismissed: DismissedKeywordSourceIndex | None = None,
 ) -> list[PreliminarySourceCandidate]:
     """Derive phase-G candidates from seed evidence + directory hits."""
+    suppressed = set(registry_telegram_ids(registry)) if registry is not None else set()
+    if dismissed is not None:
+        suppressed.update(dismissed_telegram_ids(dismissed))
     by_source: dict[int, list[EvidenceRecord]] = {}
     for row in evidence:
+        if row.source_telegram_id in suppressed:
+            continue
         by_source.setdefault(row.source_telegram_id, []).append(row)
 
     directory_by_id = {s.telegram_id: s for s in directory_sources}
@@ -549,6 +662,8 @@ def build_preliminary_candidates(
         )
 
     for snap in directory_sources:
+        if snap.telegram_id in suppressed:
+            continue
         if snap.telegram_id in candidates:
             continue
         dir_match = _directory_title_match(snap.title, query_folded)
@@ -573,6 +688,7 @@ def aggregate_search_hits(
     run_id: int,
     scored_at: datetime,
     registry: SourceRegistryIndex | None = None,
+    dismissed: DismissedKeywordSourceIndex | None = None,
     detect_fn: DetectFn = detect,
     evidence_cap: int = MAX_EVIDENCE_PER_RUN,
     existing_evidence_count: int = 0,
@@ -587,6 +703,8 @@ def aggregate_search_hits(
     drafts: list[EvidenceRecord] = []
     source_meta: dict[int, SourceSnapshot] = {}
     identities: dict[int, ResolvedSourceIdentity] = {}
+    suppressed_ids: set[int] = set()
+    dismissed_ids: set[int] = set()
 
     for annotated in annotated_hits:
         hit = annotated.hit
@@ -598,6 +716,17 @@ def aggregate_search_hits(
             username=hit.source.username,
             registry=registry,
         )
+        if is_registry_suppressed(identity, registry=registry):
+            suppressed_ids.add(identity.canonical_telegram_id)
+            continue
+        dismissed_match = resolve_dismissed_identity(
+            telegram_id=identity.canonical_telegram_id,
+            username=identity.username_normalized or hit.source.username,
+            dismissed=dismissed,
+        )
+        if dismissed_match is not None:
+            dismissed_ids.add(dismissed_match.canonical_telegram_id)
+            continue
         identities[identity.canonical_telegram_id] = identity
         # Remap snapshot telegram_id to canonical for grouping.
         canon_source = SourceSnapshot(
@@ -659,6 +788,8 @@ def aggregate_search_hits(
         opportunities=tuple(opportunities),
         budget_skipped_count=budget_skipped,
         window_skipped_count=window_skipped,
+        registry_suppressed_ids=frozenset(suppressed_ids),
+        dismissed_suppressed_ids=frozenset(dismissed_ids),
     )
 
 
@@ -702,6 +833,9 @@ __all__ = [
     "AnnotatedSearchHit",
     "DetectFn",
     "DiscoveryChannel",
+    "DismissedIdentityMatch",
+    "DismissedKeywordSourceEntry",
+    "DismissedKeywordSourceIndex",
     "ECOMMERCE_SERVICE_CODE",
     "EVIDENCE_WINDOW_DAYS",
     "EvidenceRecord",
@@ -717,11 +851,15 @@ __all__ = [
     "build_opportunity_from_evidence",
     "build_preliminary_candidates",
     "evidence_from_hit",
+    "dismissed_telegram_ids",
+    "is_registry_suppressed",
     "is_within_evidence_window",
     "linked_discussion_opportunity",
     "merge_evidence_duplicates",
     "preliminary_rank_key",
     "qualify_excerpt_text",
+    "registry_telegram_ids",
+    "resolve_dismissed_identity",
     "resolve_source_identity",
     "select_sources_for_deep_verification",
     "sort_opportunity_snapshots",

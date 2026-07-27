@@ -152,17 +152,27 @@ async def test_discovery_csrf_and_303_promote_cancel(discovery_ui_env) -> None:
         assert after.status_code == 200
         assert "promoted" in after.text
         assert 'rel="noopener noreferrer"' in after.text
+        assert "Одобрить мониторинг" not in after.text
+        assert "Одобрить в Источниках" in after.text
+        assert "/sources#source-" in after.text
+
+        index_after = client.get("/discovery")
+        assert index_after.status_code == 200
+        assert f'href="/discovery/runs/{run_id}"' in index_after.text
+        assert "Открыть" in index_after.text
 
         status = client.get(f"/discovery/runs/{run_id}/status-fragment")
         assert status.status_code == 200
         assert "progress-bar" in status.text
         assert f'hx-get="/discovery/runs/{run_id}/status-fragment"' in status.text
         assert 'hx-trigger="every 5s"' in status.text
+        assert "Dismissed-suppressed:" in status.text
 
         results = client.get(f"/discovery/runs/{run_id}/results-fragment")
         assert results.status_code == 200
         assert "discovery-filters" in results.text
         assert "Opp UI" in results.text
+        assert f'href="/discovery/results/{opp_id}"' in results.text
 
 @pytest.mark.asyncio
 async def test_discovery_htmx_vendored_locally(discovery_ui_env) -> None:
@@ -497,7 +507,9 @@ async def test_discovery_evidence_escaping_and_repeated_promote(
         final = client.get(f"/discovery/results/{opp_id}")
         assert "promoted" in final.text
         assert "Одобрить мониторинг" not in final.text
-        assert 'href="/sources"' in final.text
+        assert "Одобрить в Источниках" in final.text
+        assert "/sources#source-" in final.text
+        assert 'href="/sources' in final.text
 
 
 @pytest.mark.asyncio

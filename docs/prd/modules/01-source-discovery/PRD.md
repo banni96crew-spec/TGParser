@@ -208,7 +208,7 @@ Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Tie-break: s
 
 ### SRC-026 — Продвижение в кандидаты
 
-`PromoteOpportunityToCandidate` MUST по optimistic version и `review_state` создать `TelegramSource(candidate)` при отсутствии identity match либо связать существующий source без дубля. Method provenance: `keyword_search` или `linked_discussion`. Promotion MUST NOT вызывать `validate_source`, approval, checkpoint, backfill или monitoring (D-049). `DismissOpportunity` MUST помечать snapshot `dismissed` без создания source.
+`PromoteOpportunityToCandidate` MUST по optimistic version и `review_state` создать `TelegramSource(candidate)` при отсутствии identity match либо связать существующий source без дубля. Method provenance: `keyword_search` или `linked_discussion`. Promotion MUST NOT вызывать `validate_source`, approval, checkpoint, backfill или monitoring (D-049). `DismissOpportunity` MUST помечать snapshot `dismissed` без создания source и MUST записывать durable suppress для будущих keyword scouting runs по identity order SRC-022.
 
 ### SRC-027 — Идемпотентность keyword команд
 
@@ -246,6 +246,30 @@ Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Tie-break: s
 
 Batch максимум `500` rows за транзакцию. После очистки evidence UI MUST показывать «Доказательства очищены по retention policy», а не пустую ошибку.
 
+### SRC-031 — Cross-run suppress registry sources (D-059)
+
+Keyword scouting MUST suppress источники, уже присутствующие в Source Registry:
+
+- match по identity order SRC-022 (`telegram_id` → registry `telegram_id` → username → alias);
+- любой `lifecycle_state` реестра считается известным;
+- suppressed `telegram_id` MUST NOT получать `SourceDiscoveryEvidence` и `SourceOpportunitySnapshot` в текущем run;
+- suppressed `telegram_id` MUST NOT входить в deep-verification selection (≤25) и MUST NOT порождать linked-discussion opportunity;
+- seed/directory/public_posts search MAY всё ещё получать hits от Telegram;
+- run counter `registry_suppressed` MUST равняться числу **уникальных** suppressed `telegram_id` за run;
+- SRC-022 внутри run сохраняется: один snapshot на новый (не suppressed) Telegram ID;
+- dismissed suppress из SRC-032 применяется отдельно от registry suppress и использует тот же identity order.
+
+### SRC-032 — Global dismiss suppress for future runs (D-060)
+
+`DismissOpportunity` MUST создавать durable suppress-правило для будущих keyword scouting runs:
+
+- match по identity order SRC-022 (`telegram_id` → registry `telegram_id` → username → alias);
+- suppressed dismissed source MUST NOT получать `SourceDiscoveryEvidence` и `SourceOpportunitySnapshot` в любом следующем keyword run;
+- suppressed dismissed source MUST NOT входить в deep-verification selection (≤25) и MUST NOT порождать linked-discussion opportunity;
+- suppress MUST переживать retention `SourceOpportunitySnapshot` и MUST NOT зависеть только от `review_state` старого snapshot;
+- повторный dismiss того же suppressed источника MUST оставаться идемпотентным;
+- run counter `dismissed_suppressed` MUST равняться числу **уникальных** suppressed `telegram_id` за run.
+
 ## 6. Входные и выходные контракты
 
 ### Команды
@@ -258,7 +282,7 @@ Batch максимум `500` rows за транзакцию. После очис
 | `StartKeywordDiscoveryRun` | `profile_id` | `discovery_run_id` |
 | `CancelKeywordDiscoveryRun` | `run_id`, `version` | `cancelling`/`cancelled` |
 | `PromoteOpportunityToCandidate` | `opportunity_id`, `version` | candidate source id |
-| `DismissOpportunity` | `opportunity_id`, `reason`, `version` | `dismissed` |
+| `DismissOpportunity` | `opportunity_id`, `reason`, `version` | `dismissed` + future keyword suppress |
 | `ApproveSource` | `source_id` | новое состояние или validation error |
 | `RejectSource` | `source_id`, `reason_code` | `rejected` |
 | `ReconsiderSource` | `source_id` | `candidate` |
@@ -346,7 +370,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-030 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-032 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -382,6 +406,8 @@ MVP включает SRC-001—SRC-030 полностью. Исключены se
 | `AT-SRC-028` | SRC-028 | Cancel во время running | `cancelling`→`cancelled`; сетевые вызовы прекращены после текущей page |
 | `AT-SRC-029` | SRC-029 | Превысить evidence cap и получить FloodWait | `budget_skipped`; run `retry_wait_flood` до `until` |
 | `AT-SRC-030` | SRC-030 | Evidence старше 30/90 дней | Excerpt/rows/snapshots/runs очищены по матрице |
+| `AT-SRC-031` | SRC-031 | Registry содержит `telegram_id=X` (любой lifecycle); run находит hits для `X` и нового `Y` | Нет evidence/opportunity/deep query для `X`; opportunity только для `Y`; `registry_suppressed` ≥ 1 |
+| `AT-SRC-032` | SRC-032 | В run-1 оператор dismiss-ит opportunity для `telegram_id=X`; run-2 снова находит hits для `X` и нового `Y` | В run-2 нет evidence/opportunity/deep query/linked discussion для `X`; opportunity только для `Y`; `dismissed_suppressed` ≥ 1 |
 
 ## 14. Принятые записи decision log
 
@@ -391,3 +417,5 @@ MVP включает SRC-001—SRC-030 полностью. Исключены se
 - `DEC-SRC-004`: identity определяется Telegram ID, затем normalized username.
 - `DEC-SRC-005`: private-source auto-join отсутствует.
 - `D-048`–`D-058`: keyword scouting contract freeze (public-only, promote-only source creation, Zero Stars, free `searchPosts`, evidence isolation, linked discussion, SRC opportunity score, versioned profile/formula, excerpt ≤240, manual launch, single active keyword run).
+- `D-059`: cross-run suppress registry-known sources (SRC-031).
+- `D-060`: dismissed keyword result becomes durable future-run suppress (SRC-032).

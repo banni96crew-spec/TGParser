@@ -23,6 +23,7 @@ from telegram_lead_discovery.source_discovery.keyword_run import (
 from telegram_lead_discovery.source_discovery.profile_service import (
     create_keyword_discovery_profile,
 )
+from telegram_lead_discovery.source_discovery.promotion import dismiss_opportunity
 from telegram_lead_discovery.source_discovery.worker import (
     HEARTBEAT_SECONDS,
     LEASE_SECONDS,
@@ -43,6 +44,7 @@ from telegram_lead_discovery.storage.models import (
     SourceOpportunitySnapshot,
     TelegramEventEnvelope,
     TelegramMessage,
+    TelegramSource,
 )
 
 
@@ -518,3 +520,262 @@ async def test_restart_recovers_stale_keyword_lease(db_env) -> None:
             )
         ).scalar_one()
         assert job.state == "succeeded"
+
+
+@pytest.mark.asyncio
+async def test_registry_known_source_suppressed_src031(db_env) -> None:
+    """AT-SRC-031: registry telegram_id gets no evidence/opportunity/deep queries."""
+    import json
+
+    gw = FakeTelegramGateway()
+    known = make_source(
+        telegram_id=42,
+        username="known_chat",
+        source_type="megagroup",
+        title="Known",
+    )
+    fresh = make_source(
+        telegram_id=99,
+        username="fresh_chat",
+        source_type="megagroup",
+        title="Fresh",
+    )
+    gw.register_source("known_chat", known)
+    gw.register_source("fresh_chat", fresh)
+    gw.set_global_hits(
+        [
+            make_hit(
+                source=known,
+                message_id=1,
+                excerpt="нужен сайт known",
+                published_at=_fresh(),
+            ),
+            make_hit(
+                source=fresh,
+                message_id=2,
+                excerpt="нужен сайт fresh",
+                published_at=_fresh(1),
+            ),
+        ]
+    )
+    gw.set_directory_results([known, fresh])
+    gw.set_quota(free_slot_available=True)
+    gw.set_public_post_hits("нужен сайт", [])
+
+    async with session_scope() as session:
+        session.add(
+            TelegramSource(
+                telegram_id=42,
+                username_normalized="known_chat",
+                title="Known",
+                source_type="megagroup",
+                public_url="https://t.me/known_chat",
+                lifecycle_state="monitoring",
+                quality_score=3,
+            )
+        )
+        profile = await _make_profile(session, name="suppress-prof")
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+        run_id = started.run.id
+
+    async with session_scope() as session:
+        outcome = await claim_and_process_keyword_job(session, gw)
+        assert outcome is not None
+        assert outcome["outcome"] in ("succeeded", "partial")
+
+    async with session_scope() as session:
+        run = await session.get(DiscoveryRun, run_id)
+        assert run is not None
+        counters = json.loads(run.counters_json or "{}")
+        assert int(counters.get("registry_suppressed", 0)) >= 1
+
+        evidence_ids = set(
+            (
+                await session.execute(
+                    select(SourceDiscoveryEvidence.source_telegram_id).where(
+                        SourceDiscoveryEvidence.run_id == run_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert 42 not in evidence_ids
+        assert 99 in evidence_ids
+
+        opp_ids = set(
+            (
+                await session.execute(
+                    select(SourceOpportunitySnapshot.source_telegram_id).where(
+                        SourceOpportunitySnapshot.run_id == run_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert 42 not in opp_ids
+        assert 99 in opp_ids
+
+        deep_for_known = list(
+            (
+                await session.execute(
+                    select(DiscoveryRunQuery).where(
+                        DiscoveryRunQuery.run_id == run_id,
+                        DiscoveryRunQuery.query_kind == "source_verification",
+                        DiscoveryRunQuery.source_telegram_id == 42,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert deep_for_known == []
+
+
+@pytest.mark.asyncio
+async def test_dismissed_source_suppressed_src032(db_env) -> None:
+    """AT-SRC-032: dismissed opportunity never reappears in future keyword runs."""
+    import json
+
+    gw = FakeTelegramGateway()
+    hidden = make_source(
+        telegram_id=52,
+        username="hidden_chat",
+        source_type="megagroup",
+        title="Hidden",
+    )
+    fresh = make_source(
+        telegram_id=99,
+        username="fresh_chat",
+        source_type="megagroup",
+        title="Fresh",
+    )
+    hidden_renamed = make_source(
+        telegram_id=52,
+        username="hidden_alias",
+        source_type="megagroup",
+        title="Hidden Alias",
+    )
+    gw.register_source("hidden_chat", hidden)
+    gw.register_source("hidden_alias", hidden_renamed)
+    gw.register_source("fresh_chat", fresh)
+    gw.set_directory_results([hidden_renamed, fresh])
+    gw.set_quota(free_slot_available=True)
+    gw.set_public_post_hits("нужен сайт", [])
+
+    async with session_scope() as session:
+        profile = await _make_profile(session, name="dismiss-prof")
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+        run1_id = started.run.id
+
+    gw.set_global_hits(
+        [
+            make_hit(
+                source=hidden,
+                message_id=1,
+                excerpt="нужен сайт hidden",
+                published_at=_fresh(),
+            ),
+            make_hit(
+                source=fresh,
+                message_id=2,
+                excerpt="нужен сайт fresh",
+                published_at=_fresh(1),
+            ),
+        ]
+    )
+    async with session_scope() as session:
+        outcome = await claim_and_process_keyword_job(session, gw)
+        assert outcome is not None
+
+    async with session_scope() as session:
+        hidden_snapshot = (
+            await session.execute(
+                select(SourceOpportunitySnapshot).where(
+                    SourceOpportunitySnapshot.run_id == run1_id,
+                    SourceOpportunitySnapshot.source_telegram_id == 52,
+                )
+            )
+        ).scalar_one()
+        await dismiss_opportunity(
+            session,
+            opportunity_id=hidden_snapshot.id,
+            version=hidden_snapshot.version,
+            reason="hidden_by_operator",
+        )
+
+    async with session_scope() as session:
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+        run2_id = started.run.id
+
+    gw.set_global_hits(
+        [
+            make_hit(
+                source=hidden_renamed,
+                message_id=11,
+                excerpt="нужен сайт hidden again",
+                published_at=_fresh(),
+            ),
+            make_hit(
+                source=fresh,
+                message_id=12,
+                excerpt="нужен сайт fresh again",
+                published_at=_fresh(1),
+            ),
+        ]
+    )
+    async with session_scope() as session:
+        outcome = await claim_and_process_keyword_job(session, gw)
+        assert outcome is not None
+        assert outcome["outcome"] in ("succeeded", "partial")
+
+    async with session_scope() as session:
+        run = await session.get(DiscoveryRun, run2_id)
+        assert run is not None
+        counters = json.loads(run.counters_json or "{}")
+        assert int(counters.get("dismissed_suppressed", 0)) >= 1
+
+        evidence_ids = set(
+            (
+                await session.execute(
+                    select(SourceDiscoveryEvidence.source_telegram_id).where(
+                        SourceDiscoveryEvidence.run_id == run2_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert 52 not in evidence_ids
+        assert 99 in evidence_ids
+
+        opp_ids = set(
+            (
+                await session.execute(
+                    select(SourceOpportunitySnapshot.source_telegram_id).where(
+                        SourceOpportunitySnapshot.run_id == run2_id
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert 52 not in opp_ids
+        assert 99 in opp_ids
+
+        deep_for_hidden = list(
+            (
+                await session.execute(
+                    select(DiscoveryRunQuery).where(
+                        DiscoveryRunQuery.run_id == run2_id,
+                        DiscoveryRunQuery.query_kind == "source_verification",
+                        DiscoveryRunQuery.source_telegram_id == 52,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert deep_for_hidden == []
+

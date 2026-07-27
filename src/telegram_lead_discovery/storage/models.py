@@ -361,6 +361,25 @@ class SourceOpportunitySnapshot(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class DismissedKeywordSource(Base):
+    __tablename__ = "dismissed_keyword_sources"
+    __table_args__ = (
+        UniqueConstraint("source_telegram_id", name="uq_dismissed_keyword_source_telegram_id"),
+        Index("ix_dismissed_keyword_sources_username", "username_normalized"),
+        Index("ix_dismissed_keyword_sources_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    source_telegram_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    username_normalized: Mapped[str | None] = mapped_column(String(64))
+    aliases_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    dismiss_reason: Mapped[str | None] = mapped_column(String(512))
+    origin_run_id: Mapped[int | None] = mapped_column(Integer)
+    origin_opportunity_id: Mapped[int | None] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class SourceDiscoveryEvent(Base):
     __tablename__ = "source_discovery_events"
     __table_args__ = (UniqueConstraint("event_id", name="uq_discovery_event_id"),)

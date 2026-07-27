@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -62,6 +62,8 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     MAX_EVIDENCE_PER_RUN,
     MAX_MESSAGES_PER_SOURCE,
     AnnotatedSearchHit,
+    DismissedKeywordSourceEntry,
+    DismissedKeywordSourceIndex,
     EvidenceRecord,
     OpportunitySnapshotRecord,
     RegistrySourceEntry,
@@ -69,7 +71,11 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     aggregate_search_hits,
     build_opportunity_from_evidence,
     build_preliminary_candidates,
+    is_registry_suppressed,
     linked_discussion_opportunity,
+    registry_telegram_ids,
+    resolve_dismissed_identity,
+    resolve_source_identity,
     select_sources_for_deep_verification,
 )
 from telegram_lead_discovery.source_discovery.profile_service import version_as_normalized
@@ -83,6 +89,7 @@ from telegram_lead_discovery.storage.jobs import (
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
+    DismissedKeywordSource,
     Job,
     KeywordDiscoveryProfileVersion,
     SourceAlias,
@@ -130,10 +137,13 @@ class _WorkerContext:
     post_queries: tuple[str, ...]
     directory_queries: tuple[str, ...]
     registry: SourceRegistryIndex
+    dismissed: DismissedKeywordSourceIndex
     directory_sources: list[SourceSnapshot]
     linked_parents: dict[int, int]
     last_heartbeat_at: datetime
     public_posts_quota_exhausted: bool = False
+    registry_suppressed_ids: set[int] = field(default_factory=set)
+    dismissed_suppressed_ids: set[int] = field(default_factory=set)
 
 
 def _utcnow() -> datetime:
@@ -220,6 +230,7 @@ async def process_keyword_discovery_job(
 
     normalized = version_as_normalized(version_row)
     registry = await _load_registry(session)
+    dismissed = await _load_dismissed_sources(session)
     now = _utcnow()
     if run.state in ("queued", "retry_wait_flood", "cancelling"):
         if run.state != "cancelling":
@@ -238,6 +249,7 @@ async def process_keyword_discovery_job(
         post_queries=normalized.post_queries,
         directory_queries=normalized.directory_queries,
         registry=registry,
+        dismissed=dismissed,
         directory_sources=[],
         linked_parents={},
         last_heartbeat_at=now,
@@ -397,6 +409,37 @@ async def _load_registry(session: AsyncSession) -> SourceRegistryIndex:
         for src in sources
     ]
     return SourceRegistryIndex.from_entries(entries)
+
+
+async def _load_dismissed_sources(session: AsyncSession) -> DismissedKeywordSourceIndex:
+    rows = list((await session.execute(select(DismissedKeywordSource))).scalars().all())
+    entries: list[DismissedKeywordSourceEntry] = []
+    for row in rows:
+        aliases: tuple[str, ...]
+        try:
+            raw = json.loads(row.aliases_json or "[]")
+            aliases = tuple(str(item) for item in raw if isinstance(item, str))
+        except json.JSONDecodeError:
+            aliases = ()
+        entries.append(
+            DismissedKeywordSourceEntry(
+                telegram_id=row.source_telegram_id,
+                username_normalized=row.username_normalized,
+                aliases=aliases,
+            )
+        )
+    return DismissedKeywordSourceIndex.from_entries(entries)
+
+
+def _dismissed_canonical_id(
+    ctx: _WorkerContext, *, telegram_id: int, username: str | None
+) -> int | None:
+    match = resolve_dismissed_identity(
+        telegram_id=telegram_id,
+        username=username,
+        dismissed=ctx.dismissed,
+    )
+    return None if match is None else match.canonical_telegram_id
 
 
 async def _check_cancel(ctx: _WorkerContext) -> None:
@@ -797,12 +840,30 @@ async def _resume_linked_query(ctx: _WorkerContext, query: DiscoveryRunQuery) ->
         return
 
     ctx.linked_parents[discussion.telegram_id] = telegram_id
+    identity = resolve_source_identity(
+        telegram_id=discussion.telegram_id,
+        username=discussion.username,
+        registry=ctx.registry,
+    )
+    if is_registry_suppressed(identity, registry=ctx.registry):
+        await _note_registry_suppressed(ctx, {identity.canonical_telegram_id})
+        await _mark_query_terminal(query, "succeeded", error_code="registry_suppressed")
+        return
+    dismissed_match = resolve_dismissed_identity(
+        telegram_id=identity.canonical_telegram_id,
+        username=identity.username_normalized or discussion.username,
+        dismissed=ctx.dismissed,
+    )
+    if dismissed_match is not None:
+        await _note_dismissed_suppressed(ctx, {dismissed_match.canonical_telegram_id})
+        await _mark_query_terminal(query, "succeeded", error_code="dismissed_suppressed")
+        return
     snap = linked_discussion_opportunity(
         run_id=ctx.run.id,
         parent_telegram_id=telegram_id,
         discussion=discussion,
         scored_at=_utcnow(),
-        registry_source_id=None,
+        registry_source_id=identity.registry_source_id,
     )
     await _upsert_opportunity(ctx, snap)
     query.result_count = 1
@@ -818,7 +879,26 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         directory_sources=ctx.directory_sources,
         directory_query_texts=ctx.directory_queries,
         linked_parent_ids=ctx.linked_parents,
+        registry=ctx.registry,
+        dismissed=ctx.dismissed,
     )
+    # Count directory-only suppressed ids that never appeared in seed evidence.
+    known = registry_telegram_ids(ctx.registry)
+    dir_suppressed = {s.telegram_id for s in ctx.directory_sources if s.telegram_id in known}
+    await _note_registry_suppressed(ctx, dir_suppressed)
+    dir_dismissed = {
+        matched_id
+        for s in ctx.directory_sources
+        if (
+            matched_id := _dismissed_canonical_id(
+                ctx,
+                telegram_id=s.telegram_id,
+                username=s.username,
+            )
+        )
+        is not None
+    }
+    await _note_dismissed_suppressed(ctx, dir_dismissed)
     selected = select_sources_for_deep_verification(
         candidates,
         limit=MAX_DEEP_VERIFICATION_SOURCES,
@@ -984,6 +1064,36 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
     ctx.run.counters_json = _dumps_counters(counters)
 
 
+async def _note_registry_suppressed(
+    ctx: _WorkerContext, telegram_ids: set[int] | frozenset[int]
+) -> None:
+    """Merge unique suppressed telegram_ids into run counter (SRC-031)."""
+    if not telegram_ids:
+        return
+    before = len(ctx.registry_suppressed_ids)
+    ctx.registry_suppressed_ids.update(telegram_ids)
+    if len(ctx.registry_suppressed_ids) == before:
+        return
+    counters = _loads_counters(ctx.run.counters_json)
+    counters["registry_suppressed"] = len(ctx.registry_suppressed_ids)
+    ctx.run.counters_json = _dumps_counters(counters)
+
+
+async def _note_dismissed_suppressed(
+    ctx: _WorkerContext, telegram_ids: set[int] | frozenset[int]
+) -> None:
+    """Merge unique dismissed-suppressed telegram_ids into run counter (SRC-032)."""
+    if not telegram_ids:
+        return
+    before = len(ctx.dismissed_suppressed_ids)
+    ctx.dismissed_suppressed_ids.update(telegram_ids)
+    if len(ctx.dismissed_suppressed_ids) == before:
+        return
+    counters = _loads_counters(ctx.run.counters_json)
+    counters["dismissed_suppressed"] = len(ctx.dismissed_suppressed_ids)
+    ctx.run.counters_json = _dumps_counters(counters)
+
+
 async def _persist_hits(
     ctx: _WorkerContext,
     annotated: list[AnnotatedSearchHit],
@@ -996,6 +1106,7 @@ async def _persist_hits(
         run_id=ctx.run.id,
         scored_at=_utcnow(),
         registry=ctx.registry,
+        dismissed=ctx.dismissed,
         existing_evidence_count=existing,
         linked_parents=ctx.linked_parents,
     )
@@ -1003,6 +1114,8 @@ async def _persist_hits(
         await _bump_counter(ctx, "window_skipped", result.window_skipped_count)
     if result.budget_skipped_count:
         await _bump_counter(ctx, "budget_skipped", result.budget_skipped_count)
+    await _note_registry_suppressed(ctx, result.registry_suppressed_ids)
+    await _note_dismissed_suppressed(ctx, result.dismissed_suppressed_ids)
     hits_by_kind: dict[str, int] = {}
     for item in annotated:
         hits_by_kind[item.discovery_channel] = hits_by_kind.get(item.discovery_channel, 0) + 1
@@ -1071,6 +1184,18 @@ async def _upsert_opportunity(
     ctx: _WorkerContext,
     snap: OpportunitySnapshotRecord,
 ) -> None:
+    # SRC-031 safety net: never persist opportunity for registry-known ids.
+    if snap.source_telegram_id in registry_telegram_ids(ctx.registry) or snap.source_id is not None:
+        await _note_registry_suppressed(ctx, {snap.source_telegram_id})
+        return
+    dismissed_id = _dismissed_canonical_id(
+        ctx,
+        telegram_id=snap.source_telegram_id,
+        username=snap.username,
+    )
+    if dismissed_id is not None:
+        await _note_dismissed_suppressed(ctx, {dismissed_id})
+        return
     existing = await ctx.session.execute(
         select(SourceOpportunitySnapshot).where(
             SourceOpportunitySnapshot.run_id == snap.run_id,
@@ -1190,12 +1315,31 @@ async def _opportunity_count(ctx: _WorkerContext) -> int:
 
 async def _channel_telegram_ids(ctx: _WorkerContext) -> list[int]:
     evidence = await _load_evidence_records(ctx)
+    known = registry_telegram_ids(ctx.registry)
     ids: set[int] = set()
     for row in evidence:
-        if row.source_type == "channel":
+        if (
+            row.source_type == "channel"
+            and row.source_telegram_id not in known
+            and _dismissed_canonical_id(
+                ctx,
+                telegram_id=row.source_telegram_id,
+                username=row.source_username,
+            )
+            is None
+        ):
             ids.add(row.source_telegram_id)
     for snap in ctx.directory_sources:
-        if snap.source_type == "channel":
+        if (
+            snap.source_type == "channel"
+            and snap.telegram_id not in known
+            and _dismissed_canonical_id(
+                ctx,
+                telegram_id=snap.telegram_id,
+                username=snap.username,
+            )
+            is None
+        ):
             ids.add(snap.telegram_id)
     return sorted(ids)
 

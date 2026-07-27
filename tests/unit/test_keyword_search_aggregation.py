@@ -15,6 +15,8 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     MAX_DEEP_VERIFICATION_SOURCES,
     MAX_EVIDENCE_PER_RUN,
     AnnotatedSearchHit,
+    DismissedKeywordSourceEntry,
+    DismissedKeywordSourceIndex,
     EvidenceRecord,
     PreliminarySourceCandidate,
     RegistrySourceEntry,
@@ -22,9 +24,12 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     aggregate_search_hits,
     build_opportunity_from_evidence,
     build_preliminary_candidates,
+    is_registry_suppressed,
     linked_discussion_opportunity,
     merge_evidence_duplicates,
     qualify_excerpt_text,
+    registry_telegram_ids,
+    resolve_dismissed_identity,
     resolve_source_identity,
     select_sources_for_deep_verification,
 )
@@ -169,6 +174,7 @@ def test_identity_order_username_maps_to_registry_telegram_id() -> None:
 
 
 def test_aggregate_merges_sources_via_alias_identity() -> None:
+    """Registry alias/tid identity still resolves; known sources are suppressed (SRC-031)."""
     now = datetime(2026, 7, 23, tzinfo=UTC)
     registry = SourceRegistryIndex.from_entries(
         [
@@ -204,12 +210,14 @@ def test_aggregate_merges_sources_via_alias_identity() -> None:
         registry=registry,
         detect_fn=lambda _t: _fake_detect("direct_order", is_lead=True),
     )
-    assert len(result.opportunities) == 1
-    opp = result.opportunities[0]
-    assert opp.source_telegram_id == 100
-    assert opp.source_id == 10
-    assert opp.sample_message_count == 2
-    assert opp.qualified_count == 2
+    assert result.opportunities == ()
+    assert result.evidence == ()
+    assert 100 in result.registry_suppressed_ids
+    identity_alias = resolve_source_identity(
+        telegram_id=999, username="aliasname", registry=registry
+    )
+    assert identity_alias.registry_source_id == 10
+    assert is_registry_suppressed(identity_alias, registry=registry) is True
 
 
 def test_window_and_budget_skips() -> None:
@@ -526,3 +534,218 @@ def test_real_detect_qualifies_ecommerce_order() -> None:
     assert len(excerpt) <= MAX_EVIDENCE_EXCERPT_CODEPOINTS
     assert detection.is_lead is True
     assert "ecommerce" in detection.service_profiles
+
+
+def test_is_registry_suppressed_by_source_id_and_telegram_id() -> None:
+    registry = SourceRegistryIndex.from_entries(
+        [
+            RegistrySourceEntry(
+                source_id=7,
+                telegram_id=42,
+                username_normalized="known_chat",
+            )
+        ]
+    )
+    known = resolve_source_identity(
+        telegram_id=42, username="known_chat", registry=registry
+    )
+    unknown = resolve_source_identity(
+        telegram_id=99, username="fresh_chat", registry=registry
+    )
+    assert is_registry_suppressed(known, registry=registry) is True
+    assert is_registry_suppressed(unknown, registry=registry) is False
+    assert registry_telegram_ids(registry) == frozenset({42})
+
+
+def test_aggregate_skips_registry_known_sources_src031() -> None:
+    now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+    registry = SourceRegistryIndex.from_entries(
+        [
+            RegistrySourceEntry(
+                source_id=1,
+                telegram_id=42,
+                username_normalized="known_chat",
+            )
+        ]
+    )
+    known_hit = _hit(
+        telegram_id=42,
+        message_id=1,
+        excerpt="нужен сайт известный чат",
+        published_at=now - timedelta(days=1),
+        username="known_chat",
+        title="Known",
+    )
+    new_hit = _hit(
+        telegram_id=99,
+        message_id=2,
+        excerpt="нужен сайт новый чат",
+        published_at=now - timedelta(hours=2),
+        username="new_chat",
+        title="New",
+    )
+    result = aggregate_search_hits(
+        [
+            AnnotatedSearchHit(known_hit, 1, "global_message"),
+            AnnotatedSearchHit(new_hit, 1, "global_message"),
+        ],
+        run_id=1,
+        scored_at=now,
+        registry=registry,
+        detect_fn=lambda _t: _fake_detect("commercial_intent", is_lead=True),
+    )
+    assert result.registry_suppressed_ids == frozenset({42})
+    assert {e.source_telegram_id for e in result.evidence} == {99}
+    assert {o.source_telegram_id for o in result.opportunities} == {99}
+
+
+def test_preliminary_candidates_exclude_registry_known() -> None:
+    now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+    registry = SourceRegistryIndex.from_entries(
+        [RegistrySourceEntry(source_id=1, telegram_id=42, username_normalized="k")]
+    )
+    evidence = [
+        EvidenceRecord(
+            run_id=1,
+            source_telegram_id=99,
+            source_username="new",
+            source_title="New",
+            source_type="megagroup",
+            telegram_message_id=1,
+            published_at=now,
+            permalink=None,
+            excerpt="x",
+            normalized_hash="a" * 64,
+            matched_query_ordinals=(1,),
+            discovery_channels=("global_message",),
+            detection_category="commercial_intent",
+            is_qualified=True,
+            hard_exclusion=False,
+            hard_exclusion_rule_id=None,
+            service_profiles=("ecommerce",),
+            rule_set_checksum="abc",
+        )
+    ]
+    directory = [
+        _source(42, username="k", title="Known"),
+        _source(99, username="new", title="New"),
+    ]
+    cands = build_preliminary_candidates(
+        evidence,
+        directory_sources=directory,
+        directory_query_texts=["ecom"],
+        registry=registry,
+    )
+    assert {c.telegram_id for c in cands} == {99}
+    selected = select_sources_for_deep_verification(cands, limit=25)
+    assert all(c.telegram_id != 42 for c in selected)
+
+
+def test_resolve_dismissed_identity_by_username_and_alias() -> None:
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [
+            DismissedKeywordSourceEntry(
+                telegram_id=77,
+                username_normalized="oldname",
+                aliases=("aliasname",),
+            )
+        ]
+    )
+    via_user = resolve_dismissed_identity(
+        telegram_id=999,
+        username="oldname",
+        dismissed=dismissed,
+    )
+    via_alias = resolve_dismissed_identity(
+        telegram_id=1000,
+        username="aliasname",
+        dismissed=dismissed,
+    )
+    assert via_user is not None
+    assert via_user.canonical_telegram_id == 77
+    assert via_user.matched_via == "username"
+    assert via_alias is not None
+    assert via_alias.canonical_telegram_id == 77
+    assert via_alias.matched_via == "alias"
+
+
+def test_aggregate_skips_dismissed_sources_src032() -> None:
+    now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [
+            DismissedKeywordSourceEntry(
+                telegram_id=42,
+                username_normalized="hidden_chat",
+                aliases=("hidden_alias",),
+            )
+        ]
+    )
+    hidden_hit = _hit(
+        telegram_id=4200,
+        message_id=1,
+        excerpt="нужен сайт скрытый чат",
+        published_at=now - timedelta(days=1),
+        username="hidden_alias",
+        title="Hidden",
+    )
+    fresh_hit = _hit(
+        telegram_id=99,
+        message_id=2,
+        excerpt="нужен сайт новый чат",
+        published_at=now - timedelta(hours=2),
+        username="new_chat",
+        title="New",
+    )
+    result = aggregate_search_hits(
+        [
+            AnnotatedSearchHit(hidden_hit, 1, "global_message"),
+            AnnotatedSearchHit(fresh_hit, 1, "global_message"),
+        ],
+        run_id=1,
+        scored_at=now,
+        dismissed=dismissed,
+        detect_fn=lambda _t: _fake_detect("commercial_intent", is_lead=True),
+    )
+    assert result.dismissed_suppressed_ids == frozenset({42})
+    assert {e.source_telegram_id for e in result.evidence} == {99}
+    assert {o.source_telegram_id for o in result.opportunities} == {99}
+
+
+def test_preliminary_candidates_exclude_dismissed_known() -> None:
+    now = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+    dismissed = DismissedKeywordSourceIndex.from_entries(
+        [DismissedKeywordSourceEntry(telegram_id=42, username_normalized="dismissed")]
+    )
+    evidence = [
+        EvidenceRecord(
+            run_id=1,
+            source_telegram_id=99,
+            source_username="new",
+            source_title="New",
+            source_type="megagroup",
+            telegram_message_id=1,
+            published_at=now,
+            permalink=None,
+            excerpt="x",
+            normalized_hash="a" * 64,
+            matched_query_ordinals=(1,),
+            discovery_channels=("global_message",),
+            detection_category="commercial_intent",
+            is_qualified=True,
+            hard_exclusion=False,
+            hard_exclusion_rule_id=None,
+            service_profiles=("ecommerce",),
+            rule_set_checksum="abc",
+        )
+    ]
+    directory = [
+        _source(42, username="dismissed", title="Dismissed"),
+        _source(99, username="new", title="New"),
+    ]
+    cands = build_preliminary_candidates(
+        evidence,
+        directory_sources=directory,
+        directory_query_texts=["ecom"],
+        dismissed=dismissed,
+    )
+    assert {c.telegram_id for c in cands} == {99}

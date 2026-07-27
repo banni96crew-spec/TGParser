@@ -10,7 +10,7 @@
 
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
-| Source Discovery | `SRC-001..030` | `AT-SRC-001..030` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated |
+| Source Discovery | `SRC-001..032` | `AT-SRC-001..032` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated |
 | Telegram Collector | `COL-001..022` | `AT-COL-001..022` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars |
 | Message Processing | `PROC-001..018` | `AT-PROC-001..018` | [PRD](modules/03-message-processing/PRD.md) | Detection получает одну eligible revision |
 | Lead Detection | `DET-001..015` | `AT-DET-001..015` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect |
@@ -77,7 +77,7 @@
 | Journey | Requirements | Gate |
 |---|---|---|
 | Add and approve source | `SRC-001`, `SRC-007..014`, `COL-004..005`, `UI-006` | Candidate не мониторится до approve; backfill создаётся один раз |
-| Keyword scouting → promote → approve | `SRC-017..030`, `COL-021..022`, `DET-015`, `STO-015..016`, `UI-017..018`, `OBS-017..018`, `SEC-016..017`, `INF-021` | Evidence ∉ Lead pipeline; Zero Stars; promote → candidate only; approve starts backfill |
+| Keyword scouting → promote → approve | `SRC-017..032`, `COL-021..022`, `DET-015`, `STO-015..016`, `UI-017..018`, `OBS-017..018`, `SEC-016..017`, `INF-021` | Evidence ∉ Lead pipeline; Zero Stars; promote → candidate only; approve starts backfill; registry-known and dismissed-known suppressed |
 | Live lead | `COL-006`, `PROC-001..004`, `DET-004..014`, `SCR-001..013`, `STO-001..005`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s только при `delivery_mode=live`+secrets; в shadow Lead без outbox |
 | Disconnect recovery | `COL-007..010`, `COL-017..020`, `STO-010`, `OBS-001..016`, `INF-002..010` | Gap ≤20 min; duplicates `0` |
 | Edit/delete/repost | `COL-013..015`, `PROC-005..014`, `STO-003..007`, `UI-012..014`, `NOT-009..015` | Revision/tombstone/canonical behavior детерминировано |
@@ -105,10 +105,10 @@ Release evidence включает:
 - Critical codes OBS-012 / NOT: `collector_stopped`, `telegram_session_unavailable`, `migration_failed`, `integrity_check_failed`.
 - Shadow (`notifications.delivery_mode`): см. [PHASE0_RESOLUTION_REGISTER.md](PHASE0_RESOLUTION_REGISTER.md) и D-047.
 
-## 7. Keyword source discovery contract freeze (D-048..D-058)
+## 7. Keyword source discovery contract freeze (D-048..D-059)
 
 - Decisions `D-048`–`D-058` accepted without gaps; см. [DECISION_LOG.md](DECISION_LOG.md).
-- New SRC requirements `SRC-017..030` ↔ `AT-SRC-017..030` 1:1.
+- New SRC requirements `SRC-017..032` ↔ `AT-SRC-017..032` 1:1; `D-059` / `SRC-031` registry suppress; `D-060` / `SRC-032` dismissed suppress.
 - Cross-module MUST: `COL-021..022`, `DET-015`, `STO-015..016`, `UI-017..018`, `OBS-017..018`, `SEC-016..017`, `INF-021`.
 - Shared domain entities: `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `DiscoveryRunQuery`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`; `DiscoveryRun` extended with `run_type=keyword_scouting`.
 - Gateway search ports and Zero Stars invariant documented in [INTEGRATION_CONTRACTS.md](shared/INTEGRATION_CONTRACTS.md).

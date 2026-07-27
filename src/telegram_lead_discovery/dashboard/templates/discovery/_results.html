@@ -78,7 +78,7 @@
       <tr>
         <td class="mono">{{ item.score }}</td>
         <td><span class="band-chip band-{{ item.band }}">{{ item.band }}</span></td>
-        <td>{{ item.title }}</td>
+        <td><a href="/discovery/results/{{ item.id }}">{{ item.title }}</a></td>
         <td class="mono">{{ item.username or "—" }}</td>
         <td>{{ item.source_type }}</td>
         <td>{% if item.is_linked_discussion %}да{% else %}нет{% endif %}</td>

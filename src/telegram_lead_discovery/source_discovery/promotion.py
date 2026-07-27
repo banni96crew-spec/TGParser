@@ -6,6 +6,7 @@ call ``validate_source``, approval, checkpoint creation, backfill, or monitoring
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -15,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.observability.discovery import record_promotion
 from telegram_lead_discovery.storage.models import (
+    DismissedKeywordSource,
     SourceAlias,
     SourceDiscoveryEvent,
     SourceOpportunitySnapshot,
@@ -56,6 +58,59 @@ def _normalize_username(username: str | None) -> str | None:
         return None
     text = username.strip().lstrip("@").lower()
     return text or None
+
+
+def _load_aliases(raw: str) -> list[str]:
+    try:
+        data = json.loads(raw or "[]")
+    except json.JSONDecodeError:
+        return []
+    return [str(item) for item in data if isinstance(item, str)]
+
+
+async def _upsert_dismissed_suppress_rule(
+    session: AsyncSession,
+    *,
+    snapshot: SourceOpportunitySnapshot,
+    reason: str,
+) -> DismissedKeywordSource:
+    normalized = _normalize_username(snapshot.username)
+    existing = await session.execute(
+        select(DismissedKeywordSource).where(
+            DismissedKeywordSource.source_telegram_id == snapshot.source_telegram_id
+        )
+    )
+    row = existing.scalar_one_or_none()
+    now = datetime.now(UTC)
+    if row is None:
+        row = DismissedKeywordSource(
+            source_telegram_id=snapshot.source_telegram_id,
+            username_normalized=normalized,
+            aliases_json="[]",
+            dismiss_reason=reason,
+            origin_run_id=snapshot.run_id,
+            origin_opportunity_id=snapshot.id,
+            created_at=now,
+            updated_at=now,
+        )
+        session.add(row)
+        await session.flush()
+        return row
+
+    aliases = _load_aliases(row.aliases_json)
+    if normalized and normalized != row.username_normalized and normalized not in aliases:
+        if row.username_normalized and row.username_normalized not in aliases:
+            aliases.append(row.username_normalized)
+        aliases.append(normalized)
+        row.aliases_json = json.dumps(sorted(set(aliases)), ensure_ascii=False)
+    if row.username_normalized is None and normalized is not None:
+        row.username_normalized = normalized
+    row.dismiss_reason = row.dismiss_reason or reason
+    row.origin_run_id = row.origin_run_id or snapshot.run_id
+    row.origin_opportunity_id = row.origin_opportunity_id or snapshot.id
+    row.updated_at = now
+    await session.flush()
+    return row
 
 
 async def _find_source_by_identity(
@@ -220,7 +275,7 @@ async def dismiss_opportunity(
     version: int,
     reason: str,
 ) -> SourceOpportunitySnapshot:
-    """DismissOpportunity — mark snapshot dismissed without creating a source."""
+    """DismissOpportunity — mark snapshot dismissed and persist future-run suppress."""
     snapshot = await session.get(SourceOpportunitySnapshot, opportunity_id)
     if snapshot is None:
         raise OpportunityNotFoundError(f"opportunity_not_found:{opportunity_id}")
@@ -231,6 +286,7 @@ async def dismiss_opportunity(
         )
 
     if snapshot.review_state == "dismissed":
+        await _upsert_dismissed_suppress_rule(session, snapshot=snapshot, reason=reason)
         return snapshot
 
     if snapshot.review_state == "promoted":
@@ -243,6 +299,7 @@ async def dismiss_opportunity(
     snapshot.dismiss_reason = reason
     snapshot.version = version + 1
     snapshot.updated_at = datetime.now(UTC)
+    await _upsert_dismissed_suppress_rule(session, snapshot=snapshot, reason=reason)
     await session.flush()
     return snapshot
 

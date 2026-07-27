@@ -16,6 +16,8 @@
     <li>Verified sources: <span class="mono">{{ run.verified_sources }}</span></li>
     <li>Qualified evidence: <span class="mono">{{ run.counters.get("evidence_count", 0) }}</span></li>
     <li>Quota-skipped: <span class="mono">{{ run.counters.get("quota_skipped_queries", 0) }}</span></li>
+    <li>Registry-suppressed: <span class="mono">{{ run.counters.get("registry_suppressed", 0) }}</span></li>
+    <li>Dismissed-suppressed: <span class="mono">{{ run.counters.get("dismissed_suppressed", 0) }}</span></li>
     <li>FloodWait until:
       <span class="mono">{% if run.flood_wait_until %}{{ run.flood_wait_until }}{% else %}—{% endif %}</span>
     </li>

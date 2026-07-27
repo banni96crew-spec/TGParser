@@ -12,7 +12,7 @@
     </thead>
     <tbody>
       {% for source in sources %}
-      <tr>
+      <tr id="source-{{ source.id }}">
         <td class="mono">{{ source.id }}</td>
         <td class="mono">{{ source.username_normalized }}</td>
         <td>{{ source.title }}</td>

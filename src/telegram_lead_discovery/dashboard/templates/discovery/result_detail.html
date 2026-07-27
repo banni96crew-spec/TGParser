@@ -109,8 +109,15 @@
       <button type="submit" class="btn-secondary">Скрыть результат</button>
     </form>
     {% endif %}
-    {% if result.source_id %}
-    <a class="btn btn-secondary" href="/sources">Открыть источник #{{ result.source_id }}</a>
+    {% if result.review_state == "promoted" %}
+      {% set handoff_source_id = result.promoted_source_id or result.source_id %}
+      {% if handoff_source_id %}
+      <a class="btn" href="/sources#source-{{ handoff_source_id }}">Одобрить в Источниках</a>
+      {% else %}
+      <a class="btn" href="/sources">Одобрить в Источниках</a>
+      {% endif %}
+    {% elif result.source_id %}
+    <a class="btn btn-secondary" href="/sources#source-{{ result.source_id }}">Открыть источник #{{ result.source_id }}</a>
     {% endif %}
   </div>
 </section>

@@ -21,6 +21,7 @@ from telegram_lead_discovery.storage.migrate import upgrade_head
 from telegram_lead_discovery.storage.models import (
     CollectorCheckpoint,
     DiscoveryRun,
+    DismissedKeywordSource,
     Job,
     SourceAlias,
     SourceApprovalEvent,
@@ -342,6 +343,13 @@ async def test_dismiss_does_not_create_source(db_env) -> None:
         assert (
             await session.execute(select(func.count()).select_from(TelegramSource))
         ).scalar_one() == 0
+        dismissed_rows = (
+            await session.execute(select(DismissedKeywordSource))
+        ).scalars().all()
+        assert len(dismissed_rows) == 1
+        assert dismissed_rows[0].source_telegram_id == 900_077
+        assert dismissed_rows[0].username_normalized == "scout_channel"
+        assert dismissed_rows[0].dismiss_reason == "not_relevant"
         assert (
             await session.execute(select(func.count()).select_from(SourceDiscoveryEvent))
         ).scalar_one() == 0
@@ -354,6 +362,9 @@ async def test_dismiss_does_not_create_source(db_env) -> None:
         )
         assert again.review_state == "dismissed"
         assert again.dismiss_reason == "not_relevant"
+        assert (
+            await session.execute(select(func.count()).select_from(DismissedKeywordSource))
+        ).scalar_one() == 1
 
         with pytest.raises(OpportunityReviewStateError, match="opportunity_dismissed"):
             await promote_opportunity_to_candidate(

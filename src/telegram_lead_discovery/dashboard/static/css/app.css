@@ -245,14 +245,22 @@ input:focus-visible {
   background: color-mix(in srgb, var(--bg-elevated) 80%, var(--accent) 8%);
 }
 
-.data-table a {
-  color: var(--text);
+.data-table tbody tr:target {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+  background: color-mix(in srgb, var(--bg-elevated) 70%, var(--accent) 18%);
 }
 
-.data-table a:hover {
+.data-table a,
+.discovery-panel a {
   color: var(--accent-fg);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+.data-table a:hover,
+.discovery-panel a:hover {
+  color: var(--accent);
 }
 
 /* —— Band chips —— */

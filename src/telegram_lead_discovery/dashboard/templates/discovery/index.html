@@ -42,6 +42,7 @@
           <th>State</th>
           <th>Phase</th>
           <th>Создан</th>
+          <th>Действие</th>
         </tr>
       </thead>
       <tbody>
@@ -51,6 +52,7 @@
           <td>{{ run.state }}</td>
           <td>{{ run.phase or "—" }}</td>
           <td class="mono">{{ run.created_at }}</td>
+          <td><a href="/discovery/runs/{{ run.id }}">Открыть</a></td>
         </tr>
         {% endfor %}
       </tbody>

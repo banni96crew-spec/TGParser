@@ -14,7 +14,8 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from telegram_lead_discovery.detection.seed import catalog_checksum, get_active_ruleset
+from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
+from telegram_lead_discovery.detection.seed import get_active_ruleset
 from telegram_lead_discovery.source_discovery.profile_service import (
     ProfileNotFoundError,
     get_current_profile_version,

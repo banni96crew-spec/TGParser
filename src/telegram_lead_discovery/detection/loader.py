@@ -7,8 +7,9 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from telegram_lead_discovery.detection.catalog import SeedRule
+from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
 from telegram_lead_discovery.detection.errors import RuleSetInvalidError
-from telegram_lead_discovery.detection.seed import SeedRule, catalog_checksum
 from telegram_lead_discovery.storage.models import MonitoringRule, RuleSetVersion
 
 

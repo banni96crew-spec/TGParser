@@ -9,12 +9,9 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from telegram_lead_discovery.detection.catalog import ACTIVE_SEED_RULES, SeedRule
+from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
 from telegram_lead_discovery.detection.engine import detect
-from telegram_lead_discovery.detection.seed import (
-    ACTIVE_SEED_RULES,
-    SeedRule,
-    catalog_checksum,
-)
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.scoring.engine import score_detection
 

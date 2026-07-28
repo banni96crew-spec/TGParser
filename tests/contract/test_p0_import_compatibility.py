@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 import inspect
+from pathlib import Path
 
 KEYWORD_MODULE = "telegram_lead_discovery.source_discovery.keyword_search"
 SERVICE_MODULE = "telegram_lead_discovery.source_discovery.service"
@@ -220,12 +222,193 @@ SIGNATURE_PARAMETERS = {
     ),
 }
 
+MOVED_SYMBOLS = {
+    (
+        SERVICE_MODULE,
+        "telegram_lead_discovery.source_discovery.normalization",
+    ): (
+        "InvalidUsernameError",
+        "USERNAME_RE",
+        "normalize_username",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.identity",
+    ): (
+        "DismissedIdentityMatch",
+        "DismissedKeywordSourceEntry",
+        "DismissedKeywordSourceIndex",
+        "PRESENTATION_COOLDOWN",
+        "PresentationCooldownIndex",
+        "PresentedIdentityMatch",
+        "PresentedKeywordSourceEntry",
+        "PresentedKeywordSourceIndex",
+        "RegistrySourceEntry",
+        "ResolvedSourceIdentity",
+        "SourceRegistryIndex",
+        "dismissed_telegram_ids",
+        "is_registry_suppressed",
+        "presented_telegram_ids",
+        "registry_telegram_ids",
+        "resolve_dismissed_identity",
+        "resolve_presented_identity",
+        "resolve_source_identity",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.evidence",
+    ): (
+        "AnnotatedSearchHit",
+        "DetectFn",
+        "DiscoveryChannel",
+        "EVIDENCE_WINDOW_DAYS",
+        "EvidenceRecord",
+        "HISTORY_SCAN_CAP_PER_RUN",
+        "HISTORY_SCAN_CAP_PER_SOURCE",
+        "MAX_EVIDENCE_PER_RUN",
+        "MAX_MESSAGES_PER_SOURCE",
+        "MAX_NOISE_EVIDENCE_PER_RUN",
+        "MAX_QUALIFIED_EVIDENCE_PER_RUN",
+        "QUALITY_DISTINCT_MIN",
+        "evidence_from_hit",
+        "is_within_evidence_window",
+        "merge_evidence_duplicates",
+        "qualify_excerpt_text",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.opportunities",
+    ): (
+        "ECOMMERCE_SERVICE_CODE",
+        "OpportunitySnapshotRecord",
+        "build_opportunity_from_evidence",
+        "linked_discussion_opportunity",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.ranking",
+    ): (
+        "MAX_DEEP_VERIFICATION_SOURCES",
+        "PreliminarySourceCandidate",
+        "build_preliminary_candidates",
+        "preliminary_rank_key",
+        "select_sources_for_deep_verification",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.aggregation",
+    ): (
+        "AggregationResult",
+        "ReplacementAcquisitionResult",
+        "acquire_with_replacement",
+        "aggregate_search_hits",
+        "sort_opportunity_snapshots",
+    ),
+    (
+        KEYWORD_MODULE,
+        "telegram_lead_discovery.source_discovery.funnel",
+    ): (
+        "POOL_EXHAUSTED_REASON_CODES",
+        "apply_neutral_noise_sample",
+        "merge_funnel_counters",
+    ),
+    (
+        SEED_MODULE,
+        "telegram_lead_discovery.detection.catalog",
+    ): (
+        "ACTIVE_SEED_RULES",
+        "RULE_FLAGS",
+        "SEED_RULES",
+        "SEED_RULES_RU_MVP_2",
+        "SEED_RULES_RU_MVP_3",
+        "SeedRule",
+    ),
+    (
+        SEED_MODULE,
+        "telegram_lead_discovery.detection.catalog_codec",
+    ): (
+        "catalog_canonical_json",
+        "catalog_checksum",
+    ),
+    (
+        GRAPH_MODULE,
+        "telegram_lead_discovery.source_discovery.graph_policy",
+    ): (
+        "ALLOWED_GRAPH_EDGE_TYPES",
+        "GRAPH_MESSAGE_SAMPLE_LIMIT",
+        "GraphBudget",
+        "GraphCandidateResult",
+        "GraphOutcome",
+        "GraphQueueItem",
+        "MAX_GRAPH_DEPTH",
+        "MAX_OUTGOING_EDGES_PER_SEED",
+        "MAX_RESOLVE_OPS",
+        "MAX_UNIQUE_GRAPH_CANDIDATES",
+        "canonical_key_for_snapshot",
+        "canonical_key_for_username",
+        "extract_public_usernames_from_text",
+        "filter_allowed_public_edges",
+        "is_private_invite_ref",
+        "plan_edge_outcome",
+        "truncate_outgoing_edges",
+    ),
+}
+
 
 def test_legacy_modules_keep_required_symbols() -> None:
     for module_name, expected_names in REQUIRED_SYMBOLS.items():
         module = importlib.import_module(module_name)
         missing = [name for name in expected_names if not hasattr(module, name)]
         assert not missing, f"{module_name} lost legacy symbols: {missing}"
+
+
+def test_moved_symbols_keep_object_identity_at_legacy_paths() -> None:
+    for (legacy_module_name, leaf_module_name), names in MOVED_SYMBOLS.items():
+        legacy_module = importlib.import_module(legacy_module_name)
+        leaf_module = importlib.import_module(leaf_module_name)
+        for name in names:
+            assert getattr(legacy_module, name) is getattr(leaf_module, name)
+
+
+def test_detection_engine_and_loader_do_not_import_seed_facade() -> None:
+    detection_dir = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "telegram_lead_discovery"
+        / "detection"
+    )
+    for filename in ("engine.py", "loader.py"):
+        tree = ast.parse((detection_dir / filename).read_text(encoding="utf-8"))
+        imported_modules = {
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+        assert "telegram_lead_discovery.detection.seed" not in imported_modules
+
+
+def test_graph_policy_has_no_stateful_or_facade_imports() -> None:
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "src"
+        / "telegram_lead_discovery"
+        / "source_discovery"
+        / "graph_policy.py"
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    imported_modules = {
+        node.module
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ImportFrom) and node.module
+    }
+    forbidden = {
+        "sqlalchemy",
+        "sqlalchemy.ext.asyncio",
+        "telegram_lead_discovery.source_discovery.graph_discovery",
+        "telegram_lead_discovery.source_discovery.worker",
+        "telegram_lead_discovery.storage.models",
+    }
+    assert forbidden.isdisjoint(imported_modules)
 
 
 def test_explicit_export_lists_remain_stable() -> None:

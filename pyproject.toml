@@ -61,4 +61,5 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.ruff.lint.per-file-ignores]
 # DET-A regex catalogs and seed SQL payloads intentionally keep long pattern literals.
 "src/telegram_lead_discovery/detection/rules_data.py" = ["E501"]
+"src/telegram_lead_discovery/detection/catalog.py" = ["E501"]
 "src/telegram_lead_discovery/detection/seed.py" = ["E501"]

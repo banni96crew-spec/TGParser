@@ -7,8 +7,9 @@ from time import perf_counter
 
 import regex
 
+from telegram_lead_discovery.detection.catalog import ACTIVE_SEED_RULES, SeedRule
+from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
 from telegram_lead_discovery.detection.errors import RuleSetInvalidError
-from telegram_lead_discovery.detection.seed import SeedRule, catalog_checksum
 
 REGEX_TIMEOUT = 0.05
 MATCHED_EXCERPT_MAX = 120
@@ -244,8 +245,6 @@ def stable_detection_payload(result: DetectionResult) -> dict[str, object]:
 
 def seed_catalog_detect(analysis_text: str) -> DetectionResult:
     """Explicit SEED catalog detect for unit/scouting fixtures (not a runtime fallback)."""
-    from telegram_lead_discovery.detection.seed import ACTIVE_SEED_RULES
-
     return detect(
         analysis_text,
         rules=ACTIVE_SEED_RULES,

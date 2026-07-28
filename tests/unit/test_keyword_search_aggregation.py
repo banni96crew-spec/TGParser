@@ -500,32 +500,51 @@ def test_merge_duplicates_helper() -> None:
 
 
 def test_isolation_module_has_no_pipeline_side_effect_imports() -> None:
-    """keyword_search.py must not import Lead/outbox/checkpoint writers."""
-    path = (
+    """Keyword facade and leaf modules must not import pipeline side effects."""
+    module_dir = (
         Path(__file__).resolve().parents[2]
         / "src"
         / "telegram_lead_discovery"
         / "source_discovery"
-        / "keyword_search.py"
     )
-    tree = ast.parse(path.read_text(encoding="utf-8"))
-    imported: set[str] = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imported.add(alias.name)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module)
+    imported_by_module: dict[str, set[str]] = {}
+    for module_name in (
+        "keyword_search",
+        "identity",
+        "evidence",
+        "opportunities",
+        "ranking",
+        "aggregation",
+        "funnel",
+    ):
+        tree = ast.parse(
+            (module_dir / f"{module_name}.py").read_text(encoding="utf-8")
+        )
+        imported: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported.update(alias.name for alias in node.names)
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                imported.add(node.module)
+        imported_by_module[module_name] = imported
     forbidden = {
         "telegram_lead_discovery.storage.models",
         "telegram_lead_discovery.storage.outbox",
         "telegram_lead_discovery.collector.service",
         "telegram_lead_discovery.processing.pipeline",
     }
-    assert forbidden.isdisjoint(imported)
-    # Positive: reuses pure detect + score helpers.
-    assert "telegram_lead_discovery.detection.engine" in imported
-    assert "telegram_lead_discovery.source_discovery.opportunity_score" in imported
+    assert all(
+        forbidden.isdisjoint(imported)
+        for imported in imported_by_module.values()
+    )
+    assert (
+        "telegram_lead_discovery.detection.engine"
+        in imported_by_module["evidence"]
+    )
+    assert (
+        "telegram_lead_discovery.source_discovery.opportunity_score"
+        in imported_by_module["opportunities"]
+    )
 
 
 def test_real_detect_qualifies_ecommerce_order() -> None:

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import io
-import re
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -14,6 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.collector.ports import PublicSourceRef, TelegramGateway
 from telegram_lead_discovery.collector.service import enqueue_initial_backfill
+from telegram_lead_discovery.source_discovery.normalization import (
+    USERNAME_RE as _USERNAME_RE,
+)
+from telegram_lead_discovery.source_discovery.normalization import (
+    InvalidUsernameError,
+    normalize_username,
+)
 from telegram_lead_discovery.storage.models import (
     CollectorCheckpoint,
     DiscoveryRun,
@@ -22,15 +28,11 @@ from telegram_lead_discovery.storage.models import (
     TelegramSource,
 )
 
-USERNAME_RE = re.compile(r"^[a-z0-9_]{5,32}$")
+USERNAME_RE = _USERNAME_RE
 
 REJECT_REASON_CODES = frozenset(
     {"off_topic", "low_signal", "duplicate_manual", "not_needed"}
 )
-
-
-class InvalidUsernameError(ValueError):
-    pass
 
 
 class SourceLifecycleError(ValueError):
@@ -45,22 +47,6 @@ class CsvImportRowResult:
     ok: bool
     error_code: str | None = None
     source_id: int | None = None
-
-
-def normalize_username(value: str) -> str:
-    text = value.strip()
-    lower = text.lower()
-    for prefix in ("https://t.me/", "http://t.me/", "t.me/"):
-        if lower.startswith(prefix):
-            text = text[len(prefix) :]
-            lower = text.lower()
-            break
-    text = text.lstrip("@")
-    text = text.split("?", 1)[0].split("#", 1)[0].rstrip("/")
-    text = text.lower()
-    if not USERNAME_RE.fullmatch(text):
-        raise InvalidUsernameError(f"invalid_username:{value!r}")
-    return text
 
 
 async def add_manual_candidate(

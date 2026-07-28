@@ -117,7 +117,8 @@ def _backfill_from_opportunities() -> None:
         presented_at = created_at or now
         existing = bind.execute(
             text(
-                "SELECT id FROM presented_keyword_sources WHERE canonical_key = :ck OR source_telegram_id = :tid"
+                "SELECT id FROM presented_keyword_sources "
+                "WHERE canonical_key = :ck OR source_telegram_id = :tid"
             ),
             {"ck": canonical, "tid": tid_i},
         ).fetchone()

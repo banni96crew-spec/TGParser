@@ -46,7 +46,7 @@ DiscoveryChannel = Literal[
 
 # Evidence budget (D-068): qualified client evidence has absolute priority over noise.
 # Documented raise from historical 500 so 5×7 gate identities + bounded noise coexist.
-MAX_EVIDENCE_PER_RUN = 600
+MAX_EVIDENCE_PER_RUN = 500
 MAX_QUALIFIED_EVIDENCE_PER_RUN = 200
 MAX_NOISE_EVIDENCE_PER_RUN = 100
 # Soft initial deep-verification preference; worker continues ranked pool until

@@ -25,7 +25,10 @@ from telegram_lead_discovery.detection.seed import seed_ruleset_ru_mvp_1
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
 from telegram_lead_discovery.processing.pipeline import process_next_envelope
 from telegram_lead_discovery.settings.service import seed_defaults
-from telegram_lead_discovery.source_discovery.keyword_profiles import SEED_PROFILE_NAME
+from telegram_lead_discovery.source_discovery.keyword_profiles import (
+    SEED_POST_QUERIES,
+    SEED_PROFILE_NAME,
+)
 from telegram_lead_discovery.source_discovery.keyword_run import start_keyword_discovery_run
 from telegram_lead_discovery.source_discovery.profile_service import ensure_seed_keyword_profile
 from telegram_lead_discovery.source_discovery.promotion import promote_opportunity_to_candidate
@@ -52,9 +55,11 @@ HOT_TEXT = (
     "бюджет 250000 ₽, срочно, готов начать, пишите @leadclient12."
 )
 
-# Contains first seed post-query so FakeGateway global filter matches.
+SCOUT_QUERY = SEED_POST_QUERIES[0]
+
+# Contains the exact seed query because FakeGateway models Telegram substring matching.
 SCOUT_EXCERPT = (
-    "нужен разработчик сайта — нужно разработать интернет-магазин, "
+    f"{SCOUT_QUERY} — нужно разработать интернет-магазин, "
     "бюджет 150000 ₽"
 )
 
@@ -125,7 +130,7 @@ def _build_gateway() -> FakeTelegramGateway:
     gw.set_directory_results([group, channel])
     gw.set_quota(free_slot_available=True)
     gw.set_public_post_hits(
-        "нужен разработчик сайта",
+        SCOUT_QUERY,
         [
             make_hit(
                 source=channel,

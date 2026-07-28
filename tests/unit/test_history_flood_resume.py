@@ -14,8 +14,8 @@ from telegram_lead_discovery.collector.ports import (
     TelegramPeerRef,
 )
 from telegram_lead_discovery.source_discovery.worker import (
-    HISTORY_SCAN_QUERY_TEXT,
     _TERMINAL_VERIFICATION_STATES,
+    HISTORY_SCAN_QUERY_TEXT,
     _load_history_cursor,
 )
 

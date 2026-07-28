@@ -339,7 +339,6 @@ def test_seed_directory_covers_service_families_and_client_communities() -> None
     from telegram_lead_discovery.source_discovery.keyword_profiles import (
         SEED_DIRECTORY_QUERIES,
         SEED_DIRECTORY_REPLACEMENT_QUERIES,
-        SEED_POST_QUERIES,
         SEED_PROFILE_VERSION,
         build_seed_normalized_profile,
     )

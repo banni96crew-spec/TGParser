@@ -79,7 +79,7 @@ async def _start_run(client: TestClient, profile_id: int) -> int:
 
 
 @pytest.mark.asyncio
-async def test_at_ui_021_default_hides_weak(wave08_ui_env) -> None:
+async def test_at_ui_025_default_shows_all_truth_buckets(wave08_ui_env) -> None:
     _paths, seed, app = wave08_ui_env
     with TestClient(app) as client:
         run_id = await _start_run(client, seed.profile.id)
@@ -123,8 +123,14 @@ async def test_at_ui_021_default_hides_weak(wave08_ui_env) -> None:
         assert detail.status_code == 200
         default_frag = client.get(f"/discovery/runs/{run_id}/results-fragment")
         assert "W08 Promising" in default_frag.text
-        assert "W08 Weak" not in default_frag.text
-        assert "review + promising" in default_frag.text
+        assert "W08 Weak" in default_frag.text
+        assert '<option value="all" selected>все (правда)</option>' in default_frag.text
+        promising = client.get(
+            f"/discovery/runs/{run_id}/results-fragment",
+            params={"band": "promising"},
+        )
+        assert "W08 Promising" in promising.text
+        assert "W08 Weak" not in promising.text
         weak = client.get(
             f"/discovery/runs/{run_id}/results-fragment", params={"band": "weak"}
         )

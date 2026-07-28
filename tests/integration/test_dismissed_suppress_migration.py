@@ -22,7 +22,7 @@ from telegram_lead_discovery.storage.migrate import (
     upgrade_head,
 )
 
-HEAD_REVISION = "003_dismissed_keyword_suppress"
+HEAD_REVISION = "005_presented_keyword_suppress"
 PREV_REVISION = "002_keyword_source_discovery"
 
 
@@ -126,13 +126,14 @@ def _seed_dismissed_snapshots(database_path: Path) -> dict[str, int]:
                     run_id, source_telegram_id, username, title, source_type,
                     public_url, qualified_count, excluded_count, active_week_count,
                     ecommerce_qualified_count, sample_message_count, sample_timestamps,
-                    score, band, score_components_json, discovery_channels_json,
+                    score, band, truth_status, verification_scanned_count,
+                    score_components_json, discovery_channels_json,
                     review_state, dismiss_reason, version, created_at, updated_at
                 ) VALUES (
                     ?, ?, ?, ?, ?,
                     ?, 0, 0, 0,
                     0, 0, '[]',
-                    10, 'weak', '{}', '["global_message"]',
+                    10, 'weak', 'inconclusive', 0, '{}', '["global_message"]',
                     ?, ?, 1, ?, ?
                 )
                 """,

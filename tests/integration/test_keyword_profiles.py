@@ -51,7 +51,8 @@ async def test_at_src_017_seed_ecommerce_development_ru(db_env) -> None:
     assert first.version.id == second.version.id
     assert first.profile.name == SEED_PROFILE_NAME
     assert first.profile.state == "active"
-    # Fresh install: DB version starts at 1 with current seed catalog (SEED_PROFILE_VERSION is catalog id).
+    # Fresh install starts DB version 1 with the current seed catalog.
+    # SEED_PROFILE_VERSION is the catalog identifier.
     assert first.profile.current_version == 1
     assert first.version.version == 1
     assert SEED_PROFILE_VERSION >= 2

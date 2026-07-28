@@ -11,13 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
     SEED_PROFILE_NAME,
-    SEED_PROFILE_VERSION,
     NormalizedProfileQueries,
     ProfileValidationError,
     SourceScope,
     build_seed_normalized_profile,
     normalize_profile_queries,
-    seed_profile_checksum,
     validate_profile_name,
 )
 from telegram_lead_discovery.storage.models import (

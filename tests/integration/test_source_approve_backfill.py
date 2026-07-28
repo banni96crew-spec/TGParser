@@ -136,7 +136,6 @@ async def test_approve_commits_before_telegram_validate(db_env) -> None:
         public_url="https://t.me/lock_test",
         accessible=True,
     )
-    gateway = FakeTelegramGateway(sources={"lock_test": snap})
     order: list[str] = []
 
     async def _add(session):

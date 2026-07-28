@@ -83,7 +83,7 @@ async def test_unresolved_username_merges_into_resolved_peer_src034(db_env) -> N
             reason="dismissed_before_resolve",
             operator_trigger="DismissOpportunity",
         )
-        assert getattr(row, "canonical_key") == provisional_key
+        assert row.canonical_key == provisional_key
         assert getattr(row, "telegram_id", None) is None or getattr(
             row, "source_telegram_id", None
         ) in (None, 0)
@@ -100,7 +100,7 @@ async def test_unresolved_username_merges_into_resolved_peer_src034(db_env) -> N
     async with session_scope() as session:
         rows = list((await session.execute(select(DismissedKeywordSource))).scalars().all())
         assert len(rows) == 1
-        assert getattr(rows[0], "canonical_key") == "peer:910001"
+        assert rows[0].canonical_key == "peer:910001"
         # Dismiss provenance retained across merge.
         assert rows[0].dismiss_reason == "dismissed_before_resolve"
         aliases = json.loads(rows[0].aliases_json or "[]")

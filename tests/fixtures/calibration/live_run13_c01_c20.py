@@ -227,7 +227,8 @@ CORPUS_MANIFEST = {
     "schema_version": "det-live-c01-c20.v2",
     "sample_size_note": (
         "Locked calibration sample; not a population estimate. "
-        "C01–C20 = live run13 sanitized derivatives with owner labels (3 positives / 17 negatives). "
+        "C01–C20 = live run13 sanitized derivatives with owner labels "
+        "(3 positives / 17 negatives). "
         "T1–T5 = DET-A synthetic golden positives (not run13)."
     ),
     "live_run_id": 13,
@@ -264,7 +265,10 @@ def iter_golden_samples() -> list[tuple[str, str, bool, str]]:
 
 def iter_labeled_samples() -> list[tuple[str, str, bool]]:
     """Combined corpus: live C* + DET-A T* (compat 3-tuple API)."""
-    return [(sid, text, is_client) for sid, text, is_client, _ in iter_labeled_samples_with_provenance()]
+    return [
+        (sid, text, is_client)
+        for sid, text, is_client, _ in iter_labeled_samples_with_provenance()
+    ]
 
 
 def iter_labeled_samples_with_provenance() -> list[tuple[str, str, bool, str]]:

@@ -18,17 +18,16 @@ from telegram_lead_discovery.collector.ports import TelegramMessageDTO
 from telegram_lead_discovery.infrastructure.paths import database_path, ensure_directories
 from telegram_lead_discovery.source_discovery.keyword_run import start_keyword_discovery_run
 from telegram_lead_discovery.source_discovery.keyword_search import (
-    MAX_EVIDENCE_PER_RUN,
     MAX_NOISE_EVIDENCE_PER_RUN,
 )
 from telegram_lead_discovery.source_discovery.profile_service import (
     create_keyword_discovery_profile,
 )
 from telegram_lead_discovery.source_discovery.worker import (
+    _TERMINAL_VERIFICATION_STATES,
     HISTORY_SCAN_QUERY_TEXT,
     _finished_verification_sources,
     _load_history_cursor,
-    _TERMINAL_VERIFICATION_STATES,
     claim_and_process_keyword_job,
     process_keyword_discovery_job,
 )
@@ -472,7 +471,10 @@ async def test_noise_filled_quota_still_persists_later_qualified(db_env) -> None
 
 
 @pytest.mark.asyncio
-async def test_pool_continues_past_first_25_until_gate(db_env, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_pool_continues_past_first_25_until_gate(
+    db_env,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from telegram_lead_discovery.source_discovery import worker as worker_mod
 
     monkeypatch.setattr(worker_mod, "DIRECTORY_PEER_LIMIT", 40)

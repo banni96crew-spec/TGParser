@@ -331,6 +331,43 @@ MOVED_SYMBOLS = {
         "catalog_checksum",
     ),
     (
+        SEED_MODULE,
+        "telegram_lead_discovery.detection.catalog_persistence",
+    ): (
+        "get_active_ruleset",
+        "seed_active_ruleset",
+        "seed_ruleset_ru_mvp_1",
+        "seed_ruleset_ru_mvp_2",
+        "seed_ruleset_ru_mvp_3",
+    ),
+    (
+        SERVICE_MODULE,
+        "telegram_lead_discovery.source_discovery.source_candidates",
+    ): (
+        "add_manual_candidate",
+        "list_sources",
+    ),
+    (
+        SERVICE_MODULE,
+        "telegram_lead_discovery.source_discovery.csv_import",
+    ): (
+        "CsvImportRowResult",
+        "import_csv",
+    ),
+    (
+        SERVICE_MODULE,
+        "telegram_lead_discovery.source_discovery.source_lifecycle",
+    ): (
+        "REJECT_REASON_CODES",
+        "SourceLifecycleError",
+        "approve_source",
+        "disable_source",
+        "pause_source",
+        "reconsider_source",
+        "reject_source",
+        "resume_source",
+    ),
+    (
         GRAPH_MODULE,
         "telegram_lead_discovery.source_discovery.graph_policy",
     ): (
@@ -351,6 +388,81 @@ MOVED_SYMBOLS = {
         "is_private_invite_ref",
         "plan_edge_outcome",
         "truncate_outgoing_edges",
+    ),
+    (
+        GRAPH_MODULE,
+        "telegram_lead_discovery.source_discovery.graph_repository",
+    ): (
+        "ACTIVE_GRAPH_RUN_STATES",
+        "find_active_graph_run",
+        "load_graph_seeds",
+        "load_registry_index",
+    ),
+    (
+        GRAPH_MODULE,
+        "telegram_lead_discovery.source_discovery.graph_service",
+    ): (
+        "JOB_TYPE_GRAPH_DISCOVERY",
+        "TERMINAL_GRAPH_RUN_STATES",
+        "GraphRunStartError",
+        "StartGraphDiscoveryResult",
+        "collect_edges_for_seed",
+        "persist_graph_candidate",
+        "start_graph_discovery_run",
+    ),
+    (
+        OBSERVABILITY_MODULE,
+        "telegram_lead_discovery.observability.discovery_metrics",
+    ): (
+        "FORBIDDEN_METRIC_LABEL_KEYS",
+        "NOVELTY_METRIC_NAMES",
+        "ForbiddenMetricLabelError",
+        "observe_discovery",
+        "record_cooldown_suppressed",
+        "record_dismissed_suppressed",
+        "record_flood_wait_seconds",
+        "record_funnel_observability",
+        "record_novel_presented",
+        "record_novelty_ratio",
+        "record_pool_exhausted",
+        "record_promotion",
+        "record_qualified_evidence",
+        "record_query_total",
+        "record_quota_skipped",
+        "record_registry_suppressed",
+        "record_run_duration_seconds",
+        "record_run_total",
+        "record_score",
+        "record_search_hits",
+        "record_unique_sources",
+        "record_verified_sources",
+    ),
+    (
+        OBSERVABILITY_MODULE,
+        "telegram_lead_discovery.observability.discovery_health",
+    ): (
+        "ALLOWED_DISCOVERY_STATES",
+        "COMPONENT",
+        "mark_discovery_blocked",
+        "mark_discovery_degraded",
+        "mark_discovery_healthy",
+        "mark_discovery_stopped",
+        "note_flood_wait",
+        "note_quota_skipped",
+        "note_run_recovered",
+        "note_session_fatal",
+        "note_transient_error",
+        "reset_discovery_observability",
+        "set_discovery_health",
+    ),
+    (
+        OBSERVABILITY_MODULE,
+        "telegram_lead_discovery.observability.discovery_logging",
+    ): (
+        "_sanitize_log_fields",
+        "log_discovery",
+        "log_query_progress",
+        "log_run_finished",
     ),
 }
 
@@ -409,6 +521,38 @@ def test_graph_policy_has_no_stateful_or_facade_imports() -> None:
         "telegram_lead_discovery.storage.models",
     }
     assert forbidden.isdisjoint(imported_modules)
+
+
+def test_new_stateful_leaf_modules_do_not_import_legacy_facades() -> None:
+    root = Path(__file__).resolve().parents[2] / "src" / "telegram_lead_discovery"
+    checks = {
+        root / "detection" / "catalog_persistence.py":
+            "telegram_lead_discovery.detection.seed",
+        root / "source_discovery" / "csv_import.py":
+            "telegram_lead_discovery.source_discovery.service",
+        root / "source_discovery" / "source_candidates.py":
+            "telegram_lead_discovery.source_discovery.service",
+        root / "source_discovery" / "source_lifecycle.py":
+            "telegram_lead_discovery.source_discovery.service",
+        root / "source_discovery" / "graph_repository.py":
+            "telegram_lead_discovery.source_discovery.graph_discovery",
+        root / "source_discovery" / "graph_service.py":
+            "telegram_lead_discovery.source_discovery.graph_discovery",
+        root / "observability" / "discovery_health.py":
+            "telegram_lead_discovery.observability.discovery",
+        root / "observability" / "discovery_logging.py":
+            "telegram_lead_discovery.observability.discovery",
+        root / "observability" / "discovery_metrics.py":
+            "telegram_lead_discovery.observability.discovery",
+    }
+    for path, forbidden_module in checks.items():
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        imported_modules = {
+            node.module
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module
+        }
+        assert forbidden_module not in imported_modules
 
 
 def test_explicit_export_lists_remain_stable() -> None:

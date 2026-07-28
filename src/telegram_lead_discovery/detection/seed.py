@@ -1,153 +1,22 @@
-"""DET-A seed catalogs: ru-mvp-1 / ru-mvp-2 historical; ru-mvp-3 active (D-068 run14)."""
+"""Compatibility facade for detection catalogs and their persistence."""
 
-from __future__ import annotations
+from telegram_lead_discovery.detection import catalog as _catalog
+from telegram_lead_discovery.detection import catalog_codec as _codec
+from telegram_lead_discovery.detection import catalog_persistence as _persistence
 
-import hashlib
-import json
-from dataclasses import asdict
-from datetime import UTC, datetime
+ACTIVE_SEED_RULES = _catalog.ACTIVE_SEED_RULES
+RULE_FLAGS = _catalog.RULE_FLAGS
+SEED_RULES = _catalog.SEED_RULES
+SEED_RULES_RU_MVP_2 = _catalog.SEED_RULES_RU_MVP_2
+SEED_RULES_RU_MVP_3 = _catalog.SEED_RULES_RU_MVP_3
+SeedRule = _catalog.SeedRule
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+catalog_canonical_json = _codec.catalog_canonical_json
+catalog_checksum = _codec.catalog_checksum
 
-from telegram_lead_discovery.detection.catalog import (
-    ACTIVE_SEED_RULES as _ACTIVE_SEED_RULES,
-)
-from telegram_lead_discovery.detection.catalog import (
-    RULE_FLAGS,
-    SEED_RULES,
-    SEED_RULES_RU_MVP_2,
-    SEED_RULES_RU_MVP_3,
-    SeedRule,
-)
-from telegram_lead_discovery.detection.catalog_codec import (
-    catalog_canonical_json as _catalog_canonical_json,
-)
-from telegram_lead_discovery.detection.catalog_codec import (
-    catalog_checksum,
-)
-from telegram_lead_discovery.storage.models import MonitoringRule, RuleSetVersion
-
-ACTIVE_SEED_RULES = _ACTIVE_SEED_RULES
-catalog_canonical_json = _catalog_canonical_json
-
-
-async def _insert_ruleset(
-    session: AsyncSession,
-    *,
-    version: int,
-    slug: str,
-    rules: tuple[SeedRule, ...],
-    activate: bool,
-) -> RuleSetVersion:
-    checksum = catalog_checksum(rules)
-    existing = await session.execute(select(RuleSetVersion).where(RuleSetVersion.slug == slug))
-    row = existing.scalar_one_or_none()
-    if row is not None:
-        if row.checksum != checksum:
-            raise RuntimeError(f"ruleset_checksum_mismatch:{slug}")
-        if activate and row.state != "active":
-            await session.execute(
-                update(RuleSetVersion).where(RuleSetVersion.state == "active").values(state="retired")
-            )
-            row.state = "active"
-            row.activated_at = datetime.now(UTC)
-            await session.flush()
-        return row
-
-    if activate:
-        await session.execute(
-            update(RuleSetVersion).where(RuleSetVersion.state == "active").values(state="retired")
-        )
-    now = datetime.now(UTC)
-    version_row = RuleSetVersion(
-        version=version,
-        slug=slug,
-        locale="ru",
-        state="active" if activate else "retired",
-        checksum=checksum,
-        hot_min=70,
-        warm_min=50,
-        cold_min=30,
-        activated_at=now if activate else None,
-    )
-    session.add(version_row)
-    await session.flush()
-    for rule in rules:
-        rule_checksum = hashlib.sha256(
-            json.dumps(
-                asdict(rule), ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            ).encode("utf-8")
-        ).hexdigest()
-        session.add(
-            MonitoringRule(
-                rule_set_version_id=version_row.id,
-                stable_rule_id=rule.stable_rule_id,
-                kind=rule.kind,
-                target=rule.target,
-                dimension=rule.dimension,
-                weight=rule.weight,
-                pattern=rule.pattern,
-                flags=RULE_FLAGS,
-                priority=rule.priority,
-                explanation_code=rule.explanation_code,
-                enabled=True,
-                checksum=rule_checksum,
-            )
-        )
-    await session.flush()
-    return version_row
-
-
-async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:
-    """Bootstrap historical ru-mvp-1 without forcing it active after newer catalogs exist."""
-    newer = await session.execute(
-        select(RuleSetVersion).where(RuleSetVersion.slug.in_(("ru-mvp-2", "ru-mvp-3")))
-    )
-    activate = newer.scalars().first() is None
-    return await _insert_ruleset(
-        session,
-        version=1,
-        slug="ru-mvp-1",
-        rules=SEED_RULES,
-        activate=activate,
-    )
-
-
-async def seed_ruleset_ru_mvp_2(session: AsyncSession) -> RuleSetVersion:
-    """Bootstrap immutable ru-mvp-2; do not force active when ru-mvp-3 exists."""
-    await seed_ruleset_ru_mvp_1(session)
-    existing_v3 = await session.execute(
-        select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-3")
-    )
-    activate = existing_v3.scalar_one_or_none() is None
-    return await _insert_ruleset(
-        session,
-        version=2,
-        slug="ru-mvp-2",
-        rules=SEED_RULES_RU_MVP_2,
-        activate=activate,
-    )
-
-
-async def seed_ruleset_ru_mvp_3(session: AsyncSession) -> RuleSetVersion:
-    await seed_ruleset_ru_mvp_2(session)
-    return await _insert_ruleset(
-        session,
-        version=3,
-        slug="ru-mvp-3",
-        rules=SEED_RULES_RU_MVP_3,
-        activate=True,
-    )
-
-
-async def get_active_ruleset(session: AsyncSession) -> RuleSetVersion | None:
-    result = await session.execute(
-        select(RuleSetVersion).where(RuleSetVersion.state == "active").limit(1)
-    )
-    return result.scalar_one_or_none()
-
-
-async def seed_active_ruleset(session: AsyncSession) -> RuleSetVersion:
-    """Ensure active catalog ru-mvp-3 (DET-018 / run14 precision)."""
-    return await seed_ruleset_ru_mvp_3(session)
+_insert_ruleset = _persistence._insert_ruleset
+seed_ruleset_ru_mvp_1 = _persistence.seed_ruleset_ru_mvp_1
+seed_ruleset_ru_mvp_2 = _persistence.seed_ruleset_ru_mvp_2
+seed_ruleset_ru_mvp_3 = _persistence.seed_ruleset_ru_mvp_3
+get_active_ruleset = _persistence.get_active_ruleset
+seed_active_ruleset = _persistence.seed_active_ruleset

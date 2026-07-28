@@ -13,13 +13,26 @@ from telegram_lead_discovery.collector.service import handle_backfill_job
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
 from telegram_lead_discovery.settings.service import seed_defaults
 from telegram_lead_discovery.source_discovery.service import (
+    SourceLifecycleError,
     add_manual_candidate,
     approve_source,
+    disable_source,
+    import_csv,
     normalize_username,
+    pause_source,
+    reconsider_source,
+    reject_source,
+    resume_source,
 )
 from telegram_lead_discovery.storage.db import dispose_engine, init_engine
 from telegram_lead_discovery.storage.migrate import upgrade_head
-from telegram_lead_discovery.storage.models import Job, TelegramEventEnvelope, TelegramSource
+from telegram_lead_discovery.storage.models import (
+    Job,
+    SourceApprovalEvent,
+    SourceDiscoveryEvent,
+    TelegramEventEnvelope,
+    TelegramSource,
+)
 from telegram_lead_discovery.storage.session import configure_session_factory, run_write
 
 
@@ -37,6 +50,129 @@ async def db_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 def test_src_001_normalize_username() -> None:
     assert normalize_username("https://t.me/Test_Channel/?x=1") == "test_channel"
+
+
+@pytest.mark.asyncio
+async def test_csv_import_preserves_partial_results_and_rows(db_env) -> None:
+    async def _import(session):
+        run, results = await import_csv(
+            session,
+            csv_text=(
+                "source_ref\n"
+                "@alpha_channel\n"
+                "bad!\n"
+                "\n"
+                "https://t.me/beta_channel\n"
+            ),
+        )
+        return run.id, run.root_source_ids_json, results
+
+    run_id, root_ids_json, results = await run_write(_import)
+    assert [(row.line_no, row.raw, row.ok, row.error_code) for row in results] == [
+        (2, "@alpha_channel", True, None),
+        (3, "bad!", False, "invalid_username"),
+        (4, "https://t.me/beta_channel", True, None),
+    ]
+    assert root_ids_json == str([results[0].source_id, results[2].source_id])
+
+    async def _events(session):
+        rows = await session.execute(
+            select(SourceDiscoveryEvent)
+            .where(SourceDiscoveryEvent.run_id == run_id)
+            .order_by(SourceDiscoveryEvent.id.asc())
+        )
+        return list(rows.scalars().all())
+
+    events = await run_write(_events)
+    assert [event.method for event in events] == ["seed_import", "seed_import"]
+    assert [event.raw_reference for event in events] == [
+        "@alpha_channel",
+        "https://t.me/beta_channel",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_csv_import_preserves_validation_and_row_cap(db_env) -> None:
+    async def _missing_header(session):
+        with pytest.raises(ValueError, match="^csv_missing_source_ref$"):
+            await import_csv(session, csv_text="wrong\n@alpha_channel\n")
+
+    await run_write(_missing_header)
+
+    async def _too_large(session):
+        with pytest.raises(ValueError, match="^csv_too_large$"):
+            await import_csv(session, csv_text="source_ref\n" + "x" * (1024 * 1024))
+
+    await run_write(_too_large)
+
+    csv_text = "source_ref\n" + "\n".join("bad!" for _ in range(1001))
+
+    async def _row_cap(session):
+        _run, results = await import_csv(session, csv_text=csv_text)
+        return results
+
+    results = await run_write(_row_cap)
+    assert len(results) == 1001
+    assert results[-1].line_no == 1002
+    assert results[-1].error_code == "row_cap"
+
+
+@pytest.mark.asyncio
+async def test_source_lifecycle_preserves_state_events_and_idempotency(db_env) -> None:
+    snap = SourceSnapshot(
+        schema_version=1,
+        telegram_id=3003,
+        username="lifecycle_test",
+        title="Lifecycle Test",
+        source_type="channel",
+        public_url="https://t.me/lifecycle_test",
+        accessible=True,
+    )
+    gateway = FakeTelegramGateway(sources={"lifecycle_test": snap})
+
+    async def _exercise(session):
+        source, _run = await add_manual_candidate(
+            session,
+            username_or_url="@lifecycle_test",
+        )
+        source_id = source.id
+        await reject_source(session, source_id=source_id, reason_code="low_signal")
+        await reject_source(session, source_id=source_id, reason_code="low_signal")
+        await reconsider_source(session, source_id=source_id)
+        await approve_source(session, source_id=source_id, gateway=gateway)
+        await pause_source(session, source_id=source_id)
+        await pause_source(session, source_id=source_id)
+        await resume_source(session, source_id=source_id)
+        await disable_source(session, source_id=source_id)
+        with pytest.raises(SourceLifecycleError, match="invalid_transition"):
+            await resume_source(session, source_id=source_id)
+        with pytest.raises(SourceLifecycleError, match="invalid_reject_reason"):
+            await reject_source(session, source_id=source_id, reason_code="unknown")
+        return source_id
+
+    source_id = await run_write(_exercise)
+
+    async def _state(session):
+        source = await session.get(TelegramSource, source_id)
+        rows = await session.execute(
+            select(SourceApprovalEvent)
+            .where(SourceApprovalEvent.source_id == source_id)
+            .order_by(SourceApprovalEvent.id.asc())
+        )
+        return source, list(rows.scalars().all())
+
+    source, events = await run_write(_state)
+    assert source is not None
+    assert source.lifecycle_state == "disabled"
+    assert source.disabled_at is not None
+    assert [event.to_state for event in events] == [
+        "rejected",
+        "candidate",
+        "monitoring",
+        "paused",
+        "monitoring",
+        "disabled",
+    ]
 
 
 @pytest.mark.asyncio

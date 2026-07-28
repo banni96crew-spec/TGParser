@@ -244,10 +244,10 @@ def stable_detection_payload(result: DetectionResult) -> dict[str, object]:
 
 def seed_catalog_detect(analysis_text: str) -> DetectionResult:
     """Explicit SEED catalog detect for unit/scouting fixtures (not a runtime fallback)."""
-    from telegram_lead_discovery.detection.seed import SEED_RULES
+    from telegram_lead_discovery.detection.seed import ACTIVE_SEED_RULES
 
     return detect(
         analysis_text,
-        rules=SEED_RULES,
-        rule_set_checksum=catalog_checksum(SEED_RULES),
+        rules=ACTIVE_SEED_RULES,
+        rule_set_checksum=catalog_checksum(ACTIVE_SEED_RULES),
     )

@@ -189,7 +189,7 @@ Adapter MUST всегда передавать `allow_paid_stars=None` в Teleth
 
 ### COL-023 — TelegramPeerRef mandatory for Telegram I/O
 
-All Gateway history/live/search entity resolution MUST use `TelegramPeerRef` (`schema_version=1`: `telegram_peer_id`, `access_hash`, `username_normalized` — at least one of peer_id or username required) (D-064). `HistoryRequest` carries DB `source_id` for jobs **plus** `peer: TelegramPeerRef`. Gateway MUST use `peer`, never raw DB `source_id`, as Telethon entity.
+All Gateway history/live/search entity resolution MUST use `TelegramPeerRef` (`schema_version=1`: `telegram_peer_id`, `access_hash`, `username_normalized` — at least one of peer_id or username required) (D-064). `HistoryRequest` carries DB `source_id` for jobs **plus** `peer: TelegramPeerRef`. Gateway MUST use `peer`, never raw DB `source_id`, as Telethon entity. `purpose` includes `scouting_verification` for SRC keyword history scans (D-068); scouting MUST NOT create Collector checkpoints or TelegramMessage rows.
 
 ### COL-024 — Backfill continuation beyond single page
 

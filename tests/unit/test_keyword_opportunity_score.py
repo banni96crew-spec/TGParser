@@ -99,10 +99,10 @@ def test_profile_query_length_bounds() -> None:
 def test_seed_profile_checksum_stable_and_valid() -> None:
     seed = build_seed_normalized_profile()
     assert SEED_PROFILE_NAME == "ecommerce-development-ru"
-    assert SEED_PROFILE_VERSION == 1
+    assert SEED_PROFILE_VERSION == 2
     assert len(SEED_POST_QUERIES) == 18
     assert MIN_POST_QUERIES <= len(seed.post_queries) <= MAX_POST_QUERIES
-    assert len(SEED_DIRECTORY_QUERIES) == len(seed.directory_queries)
+    assert len(SEED_DIRECTORY_QUERIES) == len(seed.directory_queries) == 10
     assert len(SEED_ADDITIONAL_EXCLUSIONS) == len(seed.additional_exclusions)
     checksum = seed_profile_checksum()
     assert len(checksum) == 64

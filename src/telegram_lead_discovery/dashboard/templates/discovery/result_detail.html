@@ -33,6 +33,11 @@
   <ul class="meta-list">
     <li>Score: <span class="mono">{{ result.score }}</span>
       (<span class="band-chip band-{{ result.band }}">{{ result.band }}</span>)</li>
+    <li>Truth:
+      <span class="mono">{{ result.truth_label or result.truth_status or "—" }}</span>
+      · scanned <span class="mono">{{ result.verification_scanned_count or 0 }}</span>
+      · stop <span class="mono">{{ result.verification_stop_reason or "—" }}</span>
+    </li>
     <li>Review: {{ result.review_state }}</li>
     <li>Version: <span class="mono">{{ result.version }}</span></li>
     <li>Lifecycle: <span class="mono">{{ result.lifecycle_state }}</span></li>
@@ -95,7 +100,7 @@
     {% endfor %}
   </ul>
 
-  <h2 class="section-title">Evidence (до 5)</h2>
+  <h2 class="section-title">Evidence (до 7+ для quality)</h2>
   {% if evidence_message %}
   <p class="retention-message">{{ evidence_message }}</p>
   {% elif evidence_items %}
@@ -110,6 +115,9 @@
       <ul class="meta-list">
         <li>Category: <span class="mono">{{ item.category or "—" }}</span></li>
         <li>Qualified: {% if item.is_qualified %}да{% else %}нет{% endif %}</li>
+        <li>Published: <span class="mono">{{ item.published_at or "—" }}</span></li>
+        <li>Services: <span class="mono">{% if item.service_profiles %}{{ item.service_profiles|join(", ") }}{% else %}—{% endif %}</span></li>
+        <li>Rule IDs: <span class="mono">{% if item.matched_rule_ids %}{{ item.matched_rule_ids|join(", ") }}{% else %}—{% endif %}</span></li>
         <li>Queries: <span class="mono">{% if item.matched_query_ordinals %}{{ item.matched_query_ordinals|join(", ") }}{% else %}—{% endif %}</span></li>
         {% if item.permalink %}
         <li>Permalink:
@@ -125,11 +133,14 @@
   {% endif %}
 
   <div class="discovery-actions-row">
+    {% if result.public_url %}
+    <a class="btn btn-secondary" href="{{ result.public_url }}" rel="noopener noreferrer" target="_blank">Открыть в Telegram</a>
+    {% endif %}
     {% if result.review_state == "unreviewed" %}
     <form method="post" action="/discovery/results/{{ result.id }}/promote">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
       <input type="hidden" name="expected_version" value="{{ result.version }}" />
-      <button type="submit">Добавить в кандидаты</button>
+      <button type="submit">Добавить в кандидаты → мониторинг вручную</button>
     </form>
     <form method="post" action="/discovery/results/{{ result.id }}/dismiss">
       <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
@@ -141,9 +152,9 @@
     {% if result.review_state == "promoted" %}
       {% set handoff_source_id = result.promoted_source_id or result.source_id %}
       {% if handoff_source_id %}
-      <a class="btn" href="/sources#source-{{ handoff_source_id }}">Одобрить в Источниках</a>
+      <a class="btn" href="/sources#source-{{ handoff_source_id }}">Одобрить в Источниках → мониторинг</a>
       {% else %}
-      <a class="btn" href="/sources">Одобрить в Источниках</a>
+      <a class="btn" href="/sources">Одобрить в Источниках → мониторинг</a>
       {% endif %}
     {% elif result.source_id %}
     <a class="btn btn-secondary" href="/sources#source-{{ result.source_id }}">Открыть источник #{{ result.source_id }}</a>

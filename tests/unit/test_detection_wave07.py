@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from telegram_lead_discovery.detection.engine import (
 from telegram_lead_discovery.detection.errors import RuleSetInvalidError
 from telegram_lead_discovery.detection.loader import RuleCatalogLoader, get_default_loader
 from telegram_lead_discovery.detection.seed import (
+    ACTIVE_SEED_RULES,
     SEED_RULES,
     SeedRule,
     catalog_checksum,
@@ -56,6 +58,7 @@ from telegram_lead_discovery.storage.session import configure_session_factory, r
 CORPUS_PATH = (
     Path(__file__).resolve().parents[1] / "fixtures" / "calibration" / "locked_corpus.jsonl"
 )
+CORPUS_MANIFEST_PATH = CORPUS_PATH.with_name("locked_corpus_manifest.json")
 ARTIFACT_DIR = (
     Path(__file__).resolve().parents[2]
     / ".omc"
@@ -379,7 +382,13 @@ async def test_rescore_new_trace_preserves_old(db_env) -> None:
 
 def test_locked_corpus_calibration_gates() -> None:
     assert CORPUS_PATH.is_file()
+    assert CORPUS_MANIFEST_PATH.is_file()
     samples = load_corpus_jsonl(CORPUS_PATH)
+    manifest = json.loads(CORPUS_MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert manifest["schema_version"] == "det-calibration-corpus.v2"
+    assert manifest["catalog_slug"] == "ru-mvp-3"
+    assert manifest["sample_count"] == len(samples)
+    assert manifest["corpus_sha256"] == hashlib.sha256(CORPUS_PATH.read_bytes()).hexdigest()
     assert_corpus_invariants(samples)
     report = run_calibration(samples, split="val")
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
@@ -387,6 +396,8 @@ def test_locked_corpus_calibration_gates() -> None:
     assert report.hot_precision >= HOT_PRECISION_MIN
     assert report.hot_warm_precision >= HOT_WARM_PRECISION_MIN
     assert report.purchase_intent_recall >= PURCHASE_INTENT_RECALL_MIN
+    assert report.client_precision >= 0.80
+    assert report.client_recall >= 0.80
     assert report.gates_passed is True
     assert report.train_size > 0
     assert report.val_size > 0
@@ -398,4 +409,4 @@ def test_seed_catalog_detect_helper() -> None:
     analysis = normalize_message_text("Сегодня отличная погода.").analysis_text
     result = seed_catalog_detect(analysis)
     assert result.category == "irrelevant"
-    assert result.rule_set_checksum == catalog_checksum(SEED_RULES)
+    assert result.rule_set_checksum == catalog_checksum(ACTIVE_SEED_RULES)

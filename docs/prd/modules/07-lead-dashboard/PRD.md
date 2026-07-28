@@ -284,10 +284,12 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-018 | Discovery UI соблюдает Zero Stars и CSRF | MUST | Текст `0 Stars` виден; paid controls отсутствуют; POST без CSRF отклонён; promote/cancel используют optimistic version и `303` |
 | UI-019 | Reconsider dismiss-suppress UI with confirmation | MUST | Action requires CSRF + confirmation; calls `ReconsiderDismissSuppress`; distinct from `ReconsiderSource` |
 | UI-020 | Run detail shows funnel counters | MUST | Displays acquired/canonicalized/suppressed/qualified/presented/novel, `pool_exhausted`, reason, `novelty_ratio` |
-| UI-021 | Discovery default band filter `promising,review` | MUST | Default candidate/opportunity queue shows bands `promising,review` only; `weak` only via explicit filter (D-067) |
+| UI-021 | Discovery default band filter `promising,review` | MUST | **Superseded for keyword scouting run page by UI-025 (D-068).** Historical default for non-truth views may keep promising+review. |
 | UI-022 | Source/opportunity card fields | MUST | Card shows identity, aliases, provenance, evidence, score components, eligibility reason codes |
 | UI-023 | Lifecycle actions including reconsider-suppress | MUST | Opportunity: promote / dismiss / `ReconsiderDismissSuppress`; source: approve/reject/reconsider/pause/resume/disable; no auto-approve, send-to-author, or Stars controls |
 | UI-024 | Monitoring coverage page signals | MUST | Checkpoint/backlog/errors visible for up to `100` monitoring sources |
+| UI-025 | Keyword run truth UI (D-068) | MUST | Run page defaults to all truth buckets: качественные / почти (1–6) / недоказанные / отклонённые; shows `gate_status` and real counters (`quality_sources/5`, scanned/run cap, current source, flood wait until); MUST NOT hide weak/non-quality by default |
+| UI-026 | Open in Telegram + manual monitoring (D-068) | MUST | Opportunity detail: «Открыть в Telegram» (public_url/permalink); promote→candidate then existing Sources approve→monitoring path (CSRF + optimistic version); no direct SQL; no outreach |
 
 ## 15. Observability
 
@@ -334,10 +336,12 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-018 | POST discovery без CSRF; UI без Stars controls | State не изменён; `0 Stars` текст присутствует; paid input отсутствует |
 | AT-UI-019 | Reconsider dismiss-suppress with/without confirmation | Without confirmation blocked; with CSRF+confirm membership removed |
 | AT-UI-020 | Completed keyword run detail | Funnel counters, pool_exhausted, novelty_ratio visible |
-| AT-UI-021 | Open discovery results without changing filter | Default bands promising+review; weak hidden until explicit filter |
+| AT-UI-021 | Open discovery results without changing filter | Historical promising+review default where UI-025 not applicable |
 | AT-UI-022 | Opportunity card for verified and directory-only | Identity/aliases/provenance/evidence/components/reasons present |
 | AT-UI-023 | Lifecycle action matrix on opportunity and source | Promote/dismiss/reconsider-suppress and source lifecycle actions present; no send-to-author/Stars |
 | AT-UI-024 | Monitoring coverage with ≤100 sources | Checkpoint/backlog/error signals rendered per source |
+| AT-UI-025 | Keyword run page default | All truth buckets visible; gate pass/fail and counters shown |
+| AT-UI-026 | Opportunity detail actions | Open-in-Telegram link present; promote + Sources monitoring handoff with CSRF |
 
 ## 18. DEFERRED
 

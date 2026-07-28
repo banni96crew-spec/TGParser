@@ -84,7 +84,7 @@ _ACTIVE_RUN_STATES = frozenset(
 _SEED_QUERY_KINDS = frozenset({"global_message", "directory", "public_posts"})
 # Default queue: review + promising (plan moderate/strong aliases). weak is opt-in.
 _DEFAULT_BANDS = frozenset({"review", "promising"})
-_BAND_FILTER_DEFAULT = "default"
+_BAND_FILTER_DEFAULT = "all"  # UI-025 / D-068: show all truth buckets by default
 
 _POOL_REASON_BY_CODE = {v: k for k, v in POOL_EXHAUSTED_REASON_CODES.items()}
 _FUNNEL_KEYS = (
@@ -93,6 +93,7 @@ _FUNNEL_KEYS = (
     "registry_suppressed",
     "dismissed_suppressed",
     "cooldown_suppressed",
+    "presented_suppressed",
     "suppressed_total",
     "qualified_total",
     "presented_total",
@@ -160,15 +161,18 @@ async def _quota_summary(request: Request) -> dict[str, Any]:
         }
     try:
         quota = await gateway.check_public_post_search_quota("нужен разработчик сайта")
+        if quota.premium_required:
+            label = "требуется Premium (Stars не используются)"
+        elif quota.free_slot_available:
+            # Check alone is inconclusive — SearchPosts may still raise Premium.
+            label = "квота reported free; eligibility confirms on search"
+        else:
+            label = "бесплатный слот исчерпан / недоступен"
         return {
             "available": True,
             "free_slot_available": quota.free_slot_available,
             "premium_required": quota.premium_required,
-            "label": (
-                "бесплатный слот доступен"
-                if quota.free_slot_available
-                else "бесплатный слот исчерпан"
-            ),
+            "label": label,
         }
     except Exception:  # noqa: BLE001 — UI must not expose gateway internals
         return {
@@ -204,12 +208,18 @@ def _run_view(
         pool_reason = _POOL_REASON_BY_CODE.get(reason_code, f"code_{reason_code}")
     novelty_bp = int(counters.get("novelty_ratio_bp") or 0)
     funnel = {key: int(counters.get(key) or 0) for key in _FUNNEL_KEYS}
+    # D-069: cooldown_suppressed is alias of presented_suppressed (unique peers).
+    presented_unique = max(
+        funnel["presented_suppressed"], funnel["cooldown_suppressed"]
+    )
+    funnel["presented_suppressed"] = presented_unique
+    funnel["cooldown_suppressed"] = presented_unique
     # Aggregate suppressed for UI-020 "suppressed" line when total missing.
     if funnel["suppressed_total"] == 0:
         funnel["suppressed_total"] = (
             funnel["registry_suppressed"]
             + funnel["dismissed_suppressed"]
-            + funnel["cooldown_suppressed"]
+            + funnel["presented_suppressed"]
             + funnel["duplicate_in_run"]
         )
     return {
@@ -235,6 +245,15 @@ def _run_view(
         "seed_hits": int(prog.get("seed_hits", 0)),
         "verified_sources": int(prog.get("verified_sources", 0)),
         "flood_wait_until": prog.get("flood_wait_until"),
+        "gate_status": counters.get("gate_status", "fail"),
+        "quality_sources": int(counters.get("quality_sources") or 0),
+        "near_sources": int(counters.get("near_sources") or 0),
+        "inconclusive_sources": int(counters.get("inconclusive_sources") or 0),
+        "rejected_sources": int(counters.get("rejected_sources") or 0),
+        "globally_distinct_client_requests": int(
+            counters.get("globally_distinct_client_requests") or 0
+        ),
+        "history_scanned_total": int(counters.get("history_scanned_total") or 0),
         "is_active": bool(prog.get("is_active", run.state in _ACTIVE_RUN_STATES)),
         "is_loading": run.state in _ACTIVE_RUN_STATES,
         "is_degraded": run.state == "retry_wait_flood" or bool(run.last_error_code),
@@ -306,8 +325,8 @@ def _eligibility_reasons(components: dict[str, Any]) -> list[str]:
 
 
 def _normalize_band_filter(band: str | None) -> str:
-    """Map query param to filter mode. Missing/empty → default (hide weak)."""
-    if band is None or band == "" or band == _BAND_FILTER_DEFAULT:
+    """Map query param to filter mode. Missing/empty → all truth buckets (UI-025)."""
+    if band is None or band == "" or band == "default":
         return _BAND_FILTER_DEFAULT
     if band == "all":
         return "all"
@@ -317,11 +336,23 @@ def _normalize_band_filter(band: str | None) -> str:
 
 
 def _apply_band_filter(stmt: Any, band_mode: str) -> Any:
-    if band_mode == "all":
+    if band_mode == "all" or band_mode == "default":
         return stmt
-    if band_mode == _BAND_FILTER_DEFAULT:
-        return stmt.where(SourceOpportunitySnapshot.band.in_(tuple(_DEFAULT_BANDS)))
-    return stmt.where(SourceOpportunitySnapshot.band == band_mode)
+    if band_mode == "promising" or band_mode == "review" or band_mode == "weak":
+        return stmt.where(SourceOpportunitySnapshot.band == band_mode)
+    return stmt
+
+
+_TRUTH_LABELS = {
+    "quality": "Качественные",
+    "near": "Почти (1–6)",
+    "inconclusive": "Недоказанные",
+    "rejected": "Отклонённые",
+}
+
+
+def _truth_label(status: str | None) -> str:
+    return _TRUTH_LABELS.get(status or "inconclusive", status or "inconclusive")
 
 
 def _sampling_label(sample_message_count: int) -> str:
@@ -346,6 +377,7 @@ def _opportunity_view(
     existing = row.source_id is not None
     lifecycle = lifecycle_state or ("existing" if existing else "new")
     noise = components.get("noise_penalty", row.excluded_count)
+    truth_status = getattr(row, "truth_status", None) or "inconclusive"
     identity = {
         "telegram_id": row.source_telegram_id,
         "username": row.username,
@@ -384,6 +416,10 @@ def _opportunity_view(
         "sampling_label": _sampling_label(row.sample_message_count),
         "score": row.score,
         "band": row.band,
+        "truth_status": truth_status,
+        "truth_label": _truth_label(truth_status),
+        "verification_scanned_count": getattr(row, "verification_scanned_count", 0) or 0,
+        "verification_stop_reason": getattr(row, "verification_stop_reason", None),
         "score_components": components,
         "eligibility_reasons": _eligibility_reasons(components),
         "discovery_channels": channels,
@@ -414,12 +450,14 @@ def _opportunity_view(
 def _evidence_item(row: SourceDiscoveryEvidence) -> dict[str, Any]:
     ordinals = _loads_json_obj(row.matched_query_ordinals_json, [])
     profiles = _loads_json_obj(row.service_profiles_json, [])
+    rule_ids = _loads_json_obj(getattr(row, "matched_rule_ids_json", None), [])
     return {
         "excerpt": row.excerpt or "",
         "permalink": row.permalink,
         "category": row.detection_category,
         "service_profiles": profiles if isinstance(profiles, list) else [],
         "matched_query_ordinals": ordinals if isinstance(ordinals, list) else [],
+        "matched_rule_ids": rule_ids if isinstance(rule_ids, list) else [],
         "is_qualified": row.is_qualified,
         "published_at": row.published_at,
     }
@@ -543,7 +581,7 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                 "limits": {
                     "max_post_queries": MAX_POST_QUERIES,
                     "max_directory_queries": MAX_DIRECTORY_QUERIES,
-                    "window_days": 30,
+                    "window_days": 14,
                 },
                 "telegram_connection_state": _telegram_connection_state(request),
                 "credentials_present": _credentials_present(request),
@@ -971,7 +1009,7 @@ def create_discovery_router(templates: Jinja2Templates) -> APIRouter:
                         == row.source_telegram_id,
                     )
                     .order_by(SourceDiscoveryEvidence.id.asc())
-                    .limit(5)
+                    .limit(20)
                 )
             ).scalars().all()
             evidence_items = [_evidence_item(e) for e in evidence_rows]

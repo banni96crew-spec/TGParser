@@ -28,6 +28,12 @@ from telegram_lead_discovery.source_discovery.opportunity_score import (
     score_opportunity,
     sort_opportunities,
 )
+from telegram_lead_discovery.source_discovery.quality_truth import (
+    HISTORY_CAP_PER_RUN,
+    HISTORY_CAP_PER_SOURCE,
+    QUALITY_MIN_DISTINCT_CLIENT_REQUESTS,
+    QUALITY_WINDOW_DAYS,
+)
 from telegram_lead_discovery.source_discovery.service import normalize_username
 
 DiscoveryChannel = Literal[
@@ -38,10 +44,20 @@ DiscoveryChannel = Literal[
     "linked_discussion",
 ]
 
-MAX_EVIDENCE_PER_RUN = 500
+# Evidence budget (D-068): qualified client evidence has absolute priority over noise.
+# Documented raise from historical 500 so 5×7 gate identities + bounded noise coexist.
+MAX_EVIDENCE_PER_RUN = 600
+MAX_QUALIFIED_EVIDENCE_PER_RUN = 200
+MAX_NOISE_EVIDENCE_PER_RUN = 100
+# Soft initial deep-verification preference; worker continues ranked pool until
+# gate (5×35) OR pool exhausted OR run history cap 7500 (SRC-040 / D-068).
 MAX_DEEP_VERIFICATION_SOURCES = 25
+# Legacy phrase-search cap (compat); history scan uses HISTORY_SCAN_CAP_*.
 MAX_MESSAGES_PER_SOURCE = 20
-EVIDENCE_WINDOW_DAYS = 30
+EVIDENCE_WINDOW_DAYS = QUALITY_WINDOW_DAYS
+HISTORY_SCAN_CAP_PER_SOURCE = HISTORY_CAP_PER_SOURCE
+HISTORY_SCAN_CAP_PER_RUN = HISTORY_CAP_PER_RUN
+QUALITY_DISTINCT_MIN = QUALITY_MIN_DISTINCT_CLIENT_REQUESTS
 ECOMMERCE_SERVICE_CODE = "ecommerce"
 PRESENTATION_COOLDOWN = timedelta(hours=24)
 
@@ -156,6 +172,93 @@ def dismissed_telegram_ids(index: DismissedKeywordSourceIndex) -> frozenset[int]
     return frozenset(index.by_telegram_id.keys())
 
 
+@dataclass(frozen=True, slots=True)
+class PresentedKeywordSourceEntry:
+    """Durable already-shown suppress row (SRC-041 / D-069)."""
+
+    telegram_id: int
+    username_normalized: str | None
+    aliases: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedKeywordSourceIndex:
+    """Lookup indexes for durable presented-source suppress."""
+
+    by_telegram_id: Mapping[int, PresentedKeywordSourceEntry] = field(default_factory=dict)
+    by_username: Mapping[str, PresentedKeywordSourceEntry] = field(default_factory=dict)
+    by_alias: Mapping[str, PresentedKeywordSourceEntry] = field(default_factory=dict)
+
+    @classmethod
+    def from_entries(
+        cls, entries: Sequence[PresentedKeywordSourceEntry]
+    ) -> PresentedKeywordSourceIndex:
+        by_tid: dict[int, PresentedKeywordSourceEntry] = {}
+        by_user: dict[str, PresentedKeywordSourceEntry] = {}
+        by_alias: dict[str, PresentedKeywordSourceEntry] = {}
+        for entry in entries:
+            by_tid[entry.telegram_id] = entry
+            if entry.username_normalized:
+                by_user[entry.username_normalized] = entry
+            for alias in entry.aliases:
+                by_alias[alias] = entry
+        return cls(by_telegram_id=by_tid, by_username=by_user, by_alias=by_alias)
+
+    def contains_telegram_id(self, telegram_id: int) -> bool:
+        return telegram_id in self.by_telegram_id
+
+
+@dataclass(frozen=True, slots=True)
+class PresentedIdentityMatch:
+    canonical_telegram_id: int
+    username_normalized: str | None
+    matched_via: Literal["presented_telegram_id", "username", "alias"]
+
+
+def presented_telegram_ids(index: PresentedKeywordSourceIndex) -> frozenset[int]:
+    return frozenset(index.by_telegram_id.keys())
+
+
+def resolve_presented_identity(
+    *,
+    telegram_id: int,
+    username: str | None,
+    presented: PresentedKeywordSourceIndex | None = None,
+) -> PresentedIdentityMatch | None:
+    """Resolve whether a source matches the durable presented suppress set."""
+    if presented is None:
+        return None
+    username_normalized: str | None = None
+    if username:
+        try:
+            username_normalized = normalize_username(username)
+        except ValueError:
+            username_normalized = username.strip().lstrip("@").lower() or None
+    by_tid = presented.by_telegram_id.get(telegram_id)
+    if by_tid is not None:
+        return PresentedIdentityMatch(
+            canonical_telegram_id=by_tid.telegram_id,
+            username_normalized=username_normalized or by_tid.username_normalized,
+            matched_via="presented_telegram_id",
+        )
+    if username_normalized:
+        by_user = presented.by_username.get(username_normalized)
+        if by_user is not None:
+            return PresentedIdentityMatch(
+                canonical_telegram_id=by_user.telegram_id,
+                username_normalized=username_normalized,
+                matched_via="username",
+            )
+        by_alias = presented.by_alias.get(username_normalized)
+        if by_alias is not None:
+            return PresentedIdentityMatch(
+                canonical_telegram_id=by_alias.telegram_id,
+                username_normalized=username_normalized,
+                matched_via="alias",
+            )
+    return None
+
+
 def is_registry_suppressed(
     identity: ResolvedSourceIdentity,
     *,
@@ -241,6 +344,7 @@ class EvidenceRecord:
     hard_exclusion_rule_id: str | None
     service_profiles: tuple[str, ...]
     rule_set_checksum: str
+    matched_rule_ids: tuple[str, ...] = ()
 
     def matched_query_ordinals_json(self) -> str:
         return json.dumps(list(self.matched_query_ordinals), ensure_ascii=False)
@@ -250,6 +354,9 @@ class EvidenceRecord:
 
     def service_profiles_json(self) -> str:
         return json.dumps(list(self.service_profiles), ensure_ascii=False)
+
+    def matched_rule_ids_json(self) -> str:
+        return json.dumps(list(self.matched_rule_ids), ensure_ascii=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -279,6 +386,9 @@ class OpportunitySnapshotRecord:
     promoted_source_id: int | None = None
     dismiss_reason: str | None = None
     version: int = 1
+    truth_status: Literal["quality", "near", "inconclusive", "rejected"] = "inconclusive"
+    verification_scanned_count: int = 0
+    verification_stop_reason: str | None = None
 
     def sample_timestamps_json(self) -> str:
         return json.dumps(
@@ -328,6 +438,7 @@ class AggregationResult:
     window_skipped_count: int
     registry_suppressed_ids: frozenset[int] = frozenset()
     dismissed_suppressed_ids: frozenset[int] = frozenset()
+    presented_suppressed_ids: frozenset[int] = frozenset()
 
 
 def resolve_source_identity(
@@ -445,6 +556,7 @@ def evidence_from_hit(
         hard_exclusion_rule_id=detection.hard_exclusion_rule_id,
         service_profiles=detection.service_profiles,
         rule_set_checksum=detection.rule_set_checksum,
+        matched_rule_ids=tuple(m.stable_rule_id for m in detection.matched_rules),
     )
 
 
@@ -491,6 +603,9 @@ def merge_evidence_duplicates(
                 sorted(set(existing.service_profiles) | set(record.service_profiles))
             ),
             rule_set_checksum=existing.rule_set_checksum or record.rule_set_checksum,
+            matched_rule_ids=tuple(
+                sorted(set(existing.matched_rule_ids) | set(record.matched_rule_ids))
+            ),
         )
     return list(merged.values())
 
@@ -666,11 +781,14 @@ def build_preliminary_candidates(
     linked_parent_ids: Mapping[int, int] | None = None,
     registry: SourceRegistryIndex | None = None,
     dismissed: DismissedKeywordSourceIndex | None = None,
+    presented: PresentedKeywordSourceIndex | None = None,
 ) -> list[PreliminarySourceCandidate]:
     """Derive phase-G candidates from seed evidence + directory hits."""
     suppressed = set(registry_telegram_ids(registry)) if registry is not None else set()
     if dismissed is not None:
         suppressed.update(dismissed_telegram_ids(dismissed))
+    if presented is not None:
+        suppressed.update(presented_telegram_ids(presented))
     by_source: dict[int, list[EvidenceRecord]] = {}
     for row in evidence:
         if row.source_telegram_id in suppressed:
@@ -735,6 +853,7 @@ def aggregate_search_hits(
     scored_at: datetime,
     registry: SourceRegistryIndex | None = None,
     dismissed: DismissedKeywordSourceIndex | None = None,
+    presented: PresentedKeywordSourceIndex | None = None,
     detect_fn: DetectFn = seed_catalog_detect,
     evidence_cap: int = MAX_EVIDENCE_PER_RUN,
     existing_evidence_count: int = 0,
@@ -751,6 +870,7 @@ def aggregate_search_hits(
     identities: dict[int, ResolvedSourceIdentity] = {}
     suppressed_ids: set[int] = set()
     dismissed_ids: set[int] = set()
+    presented_ids: set[int] = set()
 
     for annotated in annotated_hits:
         hit = annotated.hit
@@ -772,6 +892,14 @@ def aggregate_search_hits(
         )
         if dismissed_match is not None:
             dismissed_ids.add(dismissed_match.canonical_telegram_id)
+            continue
+        presented_match = resolve_presented_identity(
+            telegram_id=identity.canonical_telegram_id,
+            username=identity.username_normalized or hit.source.username,
+            presented=presented,
+        )
+        if presented_match is not None:
+            presented_ids.add(presented_match.canonical_telegram_id)
             continue
         identities[identity.canonical_telegram_id] = identity
         # Remap snapshot telegram_id to canonical for grouping.
@@ -836,6 +964,7 @@ def aggregate_search_hits(
         window_skipped_count=window_skipped,
         registry_suppressed_ids=frozenset(suppressed_ids),
         dismissed_suppressed_ids=frozenset(dismissed_ids),
+        presented_suppressed_ids=frozenset(presented_ids),
     )
 
 
@@ -921,7 +1050,11 @@ def acquire_with_replacement(
 
 @dataclass(frozen=True, slots=True)
 class PresentationCooldownIndex:
-    """Cross-run 24h cooldown for already-presented non-dismissed peers (SRC-041)."""
+    """Deprecated 24h helper — durable presented ledger (SRC-041 / D-069) is authoritative.
+
+    Kept for test compatibility: ``is_cooled_down`` is True iff peer is in
+    ``presented_at_by_id`` (treated as permanently presented for suppress checks).
+    """
 
     presented_at_by_id: Mapping[int, datetime] = field(default_factory=dict)
 
@@ -941,10 +1074,8 @@ class PresentationCooldownIndex:
         now: datetime,
         window: timedelta = PRESENTATION_COOLDOWN,
     ) -> bool:
-        presented_at = self.presented_at_by_id.get(telegram_id)
-        if presented_at is None:
-            return False
-        return (_ensure_utc(now) - _ensure_utc(presented_at)) < window
+        _ = now, window
+        return telegram_id in self.presented_at_by_id
 
 
 def apply_neutral_noise_sample(
@@ -989,7 +1120,7 @@ def apply_neutral_noise_sample(
 
 
 def merge_funnel_counters(
-    base: Mapping[str, int] | None = None,
+    base: Mapping[str, int | str] | None = None,
     *,
     acquired_total: int | None = None,
     canonicalized_total: int | None = None,
@@ -997,6 +1128,7 @@ def merge_funnel_counters(
     dismissed_suppressed: int | None = None,
     duplicate_in_run: int | None = None,
     cooldown_suppressed: int | None = None,
+    presented_suppressed: int | None = None,
     suppressed_total: int | None = None,
     qualified_total: int | None = None,
     presented_total: int | None = None,
@@ -1004,9 +1136,15 @@ def merge_funnel_counters(
     replacement_fetches_total: int | None = None,
     pool_exhausted: bool | None = None,
     pool_exhausted_reason: str | None = None,
-) -> dict[str, int]:
+) -> dict[str, int | str]:
     """Merge SRC-037 funnel counters; novelty in basis points (×10000)."""
-    out: dict[str, int] = {str(k): int(v) for k, v in (base or {}).items()}
+    out: dict[str, int | str] = {}
+    for k, v in (base or {}).items():
+        key = str(k)
+        if isinstance(v, str):
+            out[key] = v
+        else:
+            out[key] = int(v)
     updates = {
         "acquired_total": acquired_total,
         "canonicalized_total": canonicalized_total,
@@ -1014,6 +1152,7 @@ def merge_funnel_counters(
         "dismissed_suppressed": dismissed_suppressed,
         "duplicate_in_run": duplicate_in_run,
         "cooldown_suppressed": cooldown_suppressed,
+        "presented_suppressed": presented_suppressed,
         "suppressed_total": suppressed_total,
         "qualified_total": qualified_total,
         "presented_total": presented_total,
@@ -1023,14 +1162,24 @@ def merge_funnel_counters(
     for key, value in updates.items():
         if value is not None:
             out[key] = int(value)
+    # D-069: cooldown_suppressed is historical alias of presented_suppressed (unique peers).
+    if presented_suppressed is not None and cooldown_suppressed is None:
+        out["cooldown_suppressed"] = int(presented_suppressed)
+    elif cooldown_suppressed is not None and presented_suppressed is None:
+        out["presented_suppressed"] = int(cooldown_suppressed)
+    elif presented_suppressed is not None and cooldown_suppressed is not None:
+        # Prefer presented; keep both equal to the same unique count.
+        synced = int(presented_suppressed)
+        out["presented_suppressed"] = synced
+        out["cooldown_suppressed"] = synced
     if pool_exhausted is not None:
         out["pool_exhausted"] = 1 if pool_exhausted else 0
     if pool_exhausted_reason is not None:
         out["pool_exhausted_reason_code"] = POOL_EXHAUSTED_REASON_CODES.get(
             pool_exhausted_reason, -1
         )
-    presented = out.get("presented_total", 0)
-    novel = out.get("novel_presented_total", 0)
+    presented = int(out.get("presented_total", 0) or 0)
+    novel = int(out.get("novel_presented_total", 0) or 0)
     out["novelty_ratio_bp"] = int(10000 * novel / max(1, presented))
     return out
 
@@ -1072,14 +1221,23 @@ __all__ = [
     "ECOMMERCE_SERVICE_CODE",
     "EVIDENCE_WINDOW_DAYS",
     "EvidenceRecord",
+    "HISTORY_SCAN_CAP_PER_RUN",
+    "HISTORY_SCAN_CAP_PER_SOURCE",
     "MAX_DEEP_VERIFICATION_SOURCES",
     "MAX_EVIDENCE_PER_RUN",
+    "MAX_NOISE_EVIDENCE_PER_RUN",
+    "MAX_QUALIFIED_EVIDENCE_PER_RUN",
     "MAX_MESSAGES_PER_SOURCE",
+    "QUALITY_DISTINCT_MIN",
+    "QUALITY_WINDOW_DAYS",
     "OpportunitySnapshotRecord",
     "POOL_EXHAUSTED_REASON_CODES",
     "PRESENTATION_COOLDOWN",
     "PreliminarySourceCandidate",
     "PresentationCooldownIndex",
+    "PresentedIdentityMatch",
+    "PresentedKeywordSourceEntry",
+    "PresentedKeywordSourceIndex",
     "RegistrySourceEntry",
     "ReplacementAcquisitionResult",
     "ResolvedSourceIdentity",
@@ -1097,9 +1255,11 @@ __all__ = [
     "merge_evidence_duplicates",
     "merge_funnel_counters",
     "preliminary_rank_key",
+    "presented_telegram_ids",
     "qualify_excerpt_text",
     "registry_telegram_ids",
     "resolve_dismissed_identity",
+    "resolve_presented_identity",
     "resolve_source_identity",
     "select_sources_for_deep_verification",
     "sort_opportunity_snapshots",

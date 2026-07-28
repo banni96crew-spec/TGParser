@@ -196,6 +196,7 @@ Cleanup запускается ежедневно в `04:00` по timezone `Euro
 | Terminal keyword `DiscoveryRun` | 90 дней | Rows удаляются |
 | `KeywordDiscoveryProfileVersion` | без автоудаления | Сохраняются |
 | `DismissedSource` / dismiss suppress ledger | без автоудаления | Retention MUST NOT purge; immune to SRC-030/STO-016 matrix (D-062 / STO-017) |
+| `PresentedKeywordSource` / presented suppress ledger | без автоудаления | Retention MUST NOT purge; immune to SRC-030/STO-016 (D-069 / STO-020) |
 
 `Lead.last_activity_at` обновляется при message edit, новом score, status transition, note и feedback. Чтение lead и отправка notification его не меняют.
 
@@ -259,6 +260,8 @@ Historical backfill invariant (Wave 02 migration semantics; code not in Wave 01)
 | STO-016 | Retention keyword artifacts по матрице §11 (SRC-030) | MUST | Boundary tests очищают excerpt 30d и rows 90d; profile versions сохраняются |
 | STO-017 | Retention immunity + historical backfill invariant for dismiss suppress table | MUST | Suppress rows never purged by SRC-030/STO-016; every historical dismissed snapshot yields ≥1 suppress row after migrate (idempotent); migration `003` semantics owned by Wave 02 |
 | STO-018 | Unified job lease/idempotency invariants (cross-type) | MUST | Lease 5 min; heartbeat 60 s; expired lease → queued; unique inbox/outbox keys; one unfinished collector job per `(source_id, type)` |
+| STO-019 | Opportunity truth_status + evidence matched_rule_ids (D-068) | MUST | Migration after `003` adds `truth_status`, `verification_scanned_count`, `verification_stop_reason` on `source_opportunity_snapshots` and `matched_rule_ids_json` on `source_discovery_evidence` (default `[]`); rehearsal on copy DB |
+| STO-020 | Presented suppress ledger retention immunity + historical backfill (D-069) | MUST | Table `presented_keyword_sources` never purged by SRC-030/STO-016; every historical opportunity snapshot yields ≥1 presented-suppress row after migrate (idempotent); migration `005` semantics |
 
 ## 15. Observability
 
@@ -306,7 +309,9 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-015 | STO-015 | Apply/upgrade migration 002 на empty и existing DB | Tables/indexes/constraints созданы; downgrade удаляет только новые сущности |
 | AT-STO-016 | STO-016 | Fixture evidence/snapshots/queries/runs с age 31/91 дней | Excerpt/rows purged по матрице; profile versions intact |
 | AT-STO-017 | STO-017 | Dismissed snapshots of all ages + purge after suppress migrate | ≥1 suppress row per dismissed identity; suppress rows remain after retention purge |
+| AT-STO-020 | STO-020 | Opportunity snapshots of all ages + purge after presented-suppress migrate | ≥1 presented-suppress row per presented identity; rows remain after retention purge |
 | AT-STO-018 | STO-018 | Cross-type jobs with expired lease and duplicate dedupe_key | Lease recovery to queued; no parallel duplicate jobs; unique outbox key holds |
+| AT-STO-019 | STO-019 | Apply migration 004 on empty DB and operator DB copy; DROP COLUMN simulate 003 with constraints kept | truth_status + matched_rule_ids_json present; head advances; integrity_check ok; live DB untouched |
 
 ## 18. DEFERRED
 

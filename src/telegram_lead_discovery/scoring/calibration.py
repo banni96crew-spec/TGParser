@@ -10,7 +10,11 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from telegram_lead_discovery.detection.engine import detect
-from telegram_lead_discovery.detection.seed import SEED_RULES, SeedRule, catalog_checksum
+from telegram_lead_discovery.detection.seed import (
+    ACTIVE_SEED_RULES,
+    SeedRule,
+    catalog_checksum,
+)
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.scoring.engine import score_detection
 
@@ -21,9 +25,19 @@ PURCHASE_INTENT_RECALL_MIN = 0.75
 HARD_EXCLUSION_FP_MAX = 0.05
 CORPUS_MIN_MESSAGES = 500
 CORPUS_MIN_SOURCES = 10
+CLIENT_PRECISION_MIN = 0.80
+CLIENT_RECALL_MIN = 0.80
 
 HARD_EXCLUSION_CATEGORIES = frozenset({"vacancy", "advertising", "spam"})
 PURCHASE_INTENT_CATEGORIES = frozenset({"direct_order"})
+CLIENT_CATEGORIES = frozenset(
+    {
+        "direct_order",
+        "contractor_search",
+        "recommendation_request",
+        "potential_need",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +94,8 @@ class CalibrationReport:
     hot_precision: float = 0.0
     hot_warm_precision: float = 0.0
     purchase_intent_recall: float = 0.0
+    client_precision: float = 0.0
+    client_recall: float = 0.0
     hard_exclusion_fp_rate: float = 0.0
     category_metrics: dict[str, dict[str, float | int]] = field(default_factory=dict)
     confusion_table: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -117,7 +133,7 @@ def load_corpus_jsonl(path: Path) -> list[CorpusSample]:
 def predict_sample(
     sample: CorpusSample,
     *,
-    rules: tuple[SeedRule, ...] = SEED_RULES,
+    rules: tuple[SeedRule, ...] = ACTIVE_SEED_RULES,
     checksum: str | None = None,
     published_at: datetime | None = None,
     scored_at: datetime | None = None,
@@ -191,6 +207,15 @@ def evaluate_predictions(predictions: Sequence[SamplePrediction]) -> Calibration
     purchase_tp = sum(1 for p in purchase_gold if p.pred_category in PURCHASE_INTENT_CATEGORIES)
     purchase_recall = (purchase_tp / len(purchase_gold)) if purchase_gold else 0.0
 
+    client_pred = [p for p in predictions if p.pred_category in CLIENT_CATEGORIES]
+    client_tp = sum(1 for p in client_pred if p.gold_category in CLIENT_CATEGORIES)
+    client_precision = client_tp / len(client_pred) if client_pred else 0.0
+    client_gold = [p for p in predictions if p.gold_category in CLIENT_CATEGORIES]
+    client_recalled = sum(
+        1 for p in client_gold if p.pred_category in CLIENT_CATEGORIES
+    )
+    client_recall = client_recalled / len(client_gold) if client_gold else 0.0
+
     non_hard = [p for p in predictions if p.gold_category not in HARD_EXCLUSION_CATEGORIES]
     hard_fp = sum(1 for p in non_hard if p.pred_category in HARD_EXCLUSION_CATEGORIES)
     hard_fp_rate = (hard_fp / len(non_hard)) if non_hard else 0.0
@@ -212,14 +237,18 @@ def evaluate_predictions(predictions: Sequence[SamplePrediction]) -> Calibration
         "hot_precision": hot_precision >= HOT_PRECISION_MIN,
         "hot_warm_precision": hot_warm_precision >= HOT_WARM_PRECISION_MIN,
         "purchase_intent_recall": purchase_recall >= PURCHASE_INTENT_RECALL_MIN,
+        "client_precision": client_precision >= CLIENT_PRECISION_MIN,
+        "client_recall": client_recall >= CLIENT_RECALL_MIN,
         "hard_exclusion_fp_rate": hard_fp_rate <= HARD_EXCLUSION_FP_MAX,
     }
     return CalibrationReport(
-        rule_set_checksum=catalog_checksum(SEED_RULES),
+        rule_set_checksum=catalog_checksum(ACTIVE_SEED_RULES),
         corpus_size=len(predictions),
         hot_precision=round(hot_precision, 4),
         hot_warm_precision=round(hot_warm_precision, 4),
         purchase_intent_recall=round(purchase_recall, 4),
+        client_precision=round(client_precision, 4),
+        client_recall=round(client_recall, 4),
         hard_exclusion_fp_rate=round(hard_fp_rate, 4),
         category_metrics=category_metrics,
         confusion_table=confusion,
@@ -233,7 +262,7 @@ def run_calibration(
     samples: Sequence[CorpusSample],
     *,
     split: str = "val",
-    rules: tuple[SeedRule, ...] = SEED_RULES,
+    rules: tuple[SeedRule, ...] = ACTIVE_SEED_RULES,
 ) -> CalibrationReport:
     selected = [s for s in samples if s.split == split] if split else list(samples)
     checksum = catalog_checksum(rules)

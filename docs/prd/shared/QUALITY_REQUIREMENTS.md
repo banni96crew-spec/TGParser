@@ -36,6 +36,7 @@
 | `NFR-QLT-004` | False-positive rate negative categories ≤ `5%` | Vacancy/advertising/spam labeled subset |
 | `NFR-QLT-005` | Один input + revision + ruleset даёт одинаковый result | `100` повторных runs, byte-equivalent structured result |
 | `NFR-QLT-006` | Remediation calibration / discovery quality gates (single numeric source of truth, D-067 / plan §2) | Fixed corpus + discovery fixtures: hot precision ≥ `0.80`; hot+warm precision ≥ `0.70`; purchase-intent/`direct_order` recall ≥ `0.75`; permanent dismiss suppress recurrence = `0`; in-run canonical dedupe ≤ `1` presentation / canonical / run; novelty_ratio ≥ `0.80` after first run when replacement pool sufficient; live 5 sequential runs median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has `pool_exhausted=true` with reason; UI bind `127.0.0.1` only |
+| `NFR-QLT-007` | Working-client-search DET + discovery outcome gates (D-068) | Versioned labeled corpora with honest provenance: C01–C20 = operator run13 sanitized (owner labels; 3+/17− — not population alone); run14 regression = `operator_run_14_sanitized_excerpt` (not population); T1–T5 = DET-A golden (`det_a_golden`). Report C* / R14 / T* / combined separately; combined ≥ `0.80`/`0.80`. Soft-cap without quality → source `inconclusive`; run cap before pool exhaustion → gate `inconclusive` (not fail). Discovery: `6`≠quality, `7`=quality; `14`d; `1500`/`7500` caps; fair page waterfill; `4` quality → fail; `5×7`/35 → pass; exact-repost once |
 
 ## 4. Security
 

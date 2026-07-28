@@ -49,6 +49,7 @@
 | `NFR-QLT-004` | `DET`, `OBS` | Negative-category confusion matrix |
 | `NFR-QLT-005` | `DET`, `SCR` | Deterministic repeated-run suite |
 | `NFR-QLT-006` | `DET`, `SCR`, `SRC`, `OBS`, `UI` | Remediation calibration + discovery novelty gates (D-067) |
+| `NFR-QLT-007` | `DET`, `SRC`, `UI`, `OBS` | Working-client-search DET 80/80 + quality gate 5×7/35 (D-068) |
 | `NFR-SEC-001` | `SET`, `SEC`, `INF` | Listener inspection |
 | `NFR-SEC-002` | `SEC`, `STO`, `UI`, `INF` | Secret canary scan |
 | `NFR-SEC-003` | `SEC`, `INF` | Windows ACL inspection |
@@ -122,17 +123,18 @@ Release evidence включает:
 
 ## 8. Remediation contract freeze (D-061+)
 
-- Decisions `D-061`–`D-067` freeze remediation without reopening D-059/D-060; см. [DECISION_LOG.md](DECISION_LOG.md).
+- Decisions `D-061`–`D-069` freeze remediation without reopening D-059/D-060; см. [DECISION_LOG.md](DECISION_LOG.md).
 - New/extended MUST 1:1 AT:
-  - `SRC-033..045` ↔ `AT-SRC-033..045` (identity, suppress reconsider, novelty, acquisition, graph edges, eligibility);
-  - `COL-023..026` ↔ `AT-COL-023..026` (`TelegramPeerRef`, continuation, persist batch, live DTO);
-  - `PROC-019` ↔ `AT-PROC-019`; `DET-016` ↔ `AT-DET-016`;
-  - `STO-017..018` ↔ `AT-STO-017..018`;
-  - `UI-019..024` ↔ `AT-UI-019..024`;
+  - `SRC-033..050` ↔ `AT-SRC-033..050` (identity, suppress reconsider, novelty, acquisition, graph edges, eligibility, history quality gate, FloodWait resume, durable presented suppress D-069);
+  - `COL-023..026` ↔ `AT-COL-023..026` (`TelegramPeerRef`, continuation, persist batch, live DTO); HistoryRequest purpose includes `scouting_verification` (D-068);
+  - `PROC-019` ↔ `AT-PROC-019`; `DET-016` ↔ `AT-DET-016`; `DET-017` ↔ `AT-DET-017` (ru-mvp-2 provider-offer exclusions + ecommerce photo-for-site; corpus ≥80/80); `DET-018` ↔ `AT-DET-018` (ru-mvp-3 run14 precision; fair history waterfill; run-cap gate inconclusive);
+  - `STO-017..019` ↔ `AT-STO-017..019` (truth_status columns);
+  - `UI-019..026` ↔ `AT-UI-019..026` (truth buckets default, open Telegram, monitor handoff);
   - `OBS-019..021` ↔ `AT-OBS-019..021`;
   - `INF-022` ↔ `AT-INF-022`.
-- Shared quality: `NFR-PERF-006..008`, `NFR-REL-008`, `NFR-QLT-006` (single remediation numeric source; QLT-002/003 superseded for remediation by D-067).
-- Bands remain `promising|review|weak` (D-054); plan `strong|moderate` are aliases only.
+- Shared quality: `NFR-PERF-006..008`, `NFR-REL-008`, `NFR-QLT-006`, `NFR-QLT-007` (D-068 working-client-search).
+- Bands remain `promising|review|weak` (D-054); plan `strong|moderate` are aliases only; truth_status is orthogonal (D-068).
 - Graph depth remains `2` (D-017 / SRC-004 / SRC-042); plan Wave 04 `depth=1` does not override PRD.
 - Wave 02 remains mandatory for historical suppress backfill + provisional identity schema (STO-017); empty migration head alone is insufficient.
 - Product code for remediation begins only after Wave 01 PRD validator PASS.
+- Live acceptance (2 consecutive ≥5×7 Zero-Stars runs) is outside unit/integration green; build stage MUST NOT claim product ready.

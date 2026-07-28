@@ -312,7 +312,8 @@ def test_query_scheduling_balances_post_directory_service() -> None:
     assert first_dir < last_global
 
 
-def test_cooldown_hides_presented_non_dismissed_not_permanent_dismiss() -> None:
+def test_presented_suppress_is_durable_not_24h_cooldown() -> None:
+    """D-069: membership in presented index suppresses permanently (alias API)."""
     now = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
     cooldown = PresentationCooldownIndex.from_entries(
         [
@@ -321,8 +322,41 @@ def test_cooldown_hides_presented_non_dismissed_not_permanent_dismiss() -> None:
         ]
     )
     assert cooldown.is_cooled_down(42, now=now) is True
-    assert cooldown.is_cooled_down(99, now=now) is False
+    assert cooldown.is_cooled_down(99, now=now) is True
     assert cooldown.is_cooled_down(7, now=now) is False
+
+
+def test_funnel_presented_suppressed_aliases_cooldown() -> None:
+    counters = merge_funnel_counters({}, presented_suppressed=4)
+    assert counters["presented_suppressed"] == 4
+    assert counters["cooldown_suppressed"] == 4
+    counters2 = merge_funnel_counters({}, cooldown_suppressed=3)
+    assert counters2["presented_suppressed"] == 3
+    assert counters2["cooldown_suppressed"] == 3
+
+
+def test_seed_directory_covers_service_families_and_client_communities() -> None:
+    from telegram_lead_discovery.source_discovery.keyword_profiles import (
+        SEED_DIRECTORY_QUERIES,
+        SEED_DIRECTORY_REPLACEMENT_QUERIES,
+        SEED_POST_QUERIES,
+        SEED_PROFILE_VERSION,
+        build_seed_normalized_profile,
+    )
+
+    assert SEED_PROFILE_VERSION >= 2
+    profile = build_seed_normalized_profile()
+    joined_posts = " ".join(profile.post_queries)
+    for token in ("сайт", "бот", "интеграц", "парсер", "магазин"):
+        assert token in joined_posts
+    joined_dirs = " ".join(SEED_DIRECTORY_QUERIES) + " " + " ".join(
+        SEED_DIRECTORY_REPLACEMENT_QUERIES
+    )
+    assert "предпринимател" in joined_dirs or "заказчик" in joined_dirs
+    assert "селлер" not in " ".join(SEED_DIRECTORY_QUERIES)
+    assert "маркетплейс" not in " ".join(SEED_DIRECTORY_QUERIES)
+    assert len(SEED_DIRECTORY_REPLACEMENT_QUERIES) >= 10
+    assert len(set(SEED_DIRECTORY_QUERIES) & set(SEED_DIRECTORY_REPLACEMENT_QUERIES)) == 0
 
 
 def test_five_run_novelty_fixture_ge_80_percent_and_dismissed_zero() -> None:

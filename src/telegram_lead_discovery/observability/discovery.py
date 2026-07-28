@@ -207,7 +207,9 @@ def record_funnel_observability(counters: dict[str, Any]) -> None:
     dismissed = int(counters.get("dismissed_suppressed") or 0)
     if dismissed:
         record_dismissed_suppressed(dismissed)
-    cooldown = int(counters.get("cooldown_suppressed") or 0)
+    cooldown = int(
+        counters.get("presented_suppressed") or counters.get("cooldown_suppressed") or 0
+    )
     if cooldown:
         record_cooldown_suppressed(cooldown)
     if int(counters.get("pool_exhausted") or 0):

@@ -65,6 +65,8 @@
       "tp": 12
     }
   },
+  "client_precision": 1.0,
+  "client_recall": 1.0,
   "confusion_table": {
     "advertising": {
       "advertising": 10
@@ -93,6 +95,8 @@
   },
   "corpus_size": 520,
   "gates": {
+    "client_precision": true,
+    "client_recall": true,
     "corpus_size": true,
     "hard_exclusion_fp_rate": true,
     "hot_precision": true,
@@ -101,12 +105,12 @@
     "source_count": true
   },
   "gates_passed": true,
-  "generated_at": "2026-07-27T15:33:43.416762+00:00",
+  "generated_at": "2026-07-27T21:11:00.825135+00:00",
   "hard_exclusion_fp_rate": 0.0,
   "hot_precision": 1.0,
   "hot_warm_precision": 1.0,
   "purchase_intent_recall": 1.0,
-  "rule_set_checksum": "3f03d70f3577dd55c0df5da65eb877a518ef66e44344978766b2765f4aee7160",
+  "rule_set_checksum": "73efecbf35e0f5f79f20cbdaab8a8c35994e7dbfba2c69522193cec8b2c476e2",
   "schema_version": "calibration_report.v1",
   "source_count": 12,
   "train_size": 416,

@@ -78,7 +78,7 @@ Zero Stars invariant (D-050, D-051): adapter MUST всегда передава�
 - `after_message_id` и/или `after_published_at`;
 - `before_published_at`;
 - `limit`;
-- `purpose: backfill | startup_reconciliation | periodic_reconciliation | continuation`;
+- `purpose: backfill | startup_reconciliation | periodic_reconciliation | continuation | scouting_verification`;
 - `continuation_cursor: opaque | null` — for multi-page backfill beyond a single page.
 
 Gateway MUST use `peer`, never raw DB `source_id`, as the Telethon entity. Persist batch size ≤ `50` envelopes per SQLite write TX; network I/O MUST remain outside long write transactions (COL-025).
@@ -136,7 +136,7 @@ Producer/owner: `SRC`; consumers: `UI`, `OBS`, `STO`; search I/O через `COL
 | Событие | Обязательные поля |
 |---|---|
 | `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
-| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters (`acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`), `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters (`acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` / alias `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`), `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
 | `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method` (`keyword_search`\|`linked_discussion`), `occurred_at` |
 | `DismissSuppressReconsidered` | sole authoritative audit for reconsider (owner `SRC`); `event_id`, `canonical_key` \| `suppress_id`, `note`, `occurred_at` |
 

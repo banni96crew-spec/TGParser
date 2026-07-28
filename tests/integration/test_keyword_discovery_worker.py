@@ -635,7 +635,7 @@ async def test_registry_known_source_suppressed_src031(db_env) -> None:
 
 @pytest.mark.asyncio
 async def test_dismissed_source_suppressed_src032(db_env) -> None:
-    """AT-SRC-032: dismissed opportunity never reappears in future keyword runs."""
+    """AT-SRC-032: dismissed opportunity never reappears; D-069 also hides prior shown peers."""
     import json
 
     gw = FakeTelegramGateway()
@@ -651,6 +651,12 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
         source_type="megagroup",
         title="Fresh",
     )
+    newer = make_source(
+        telegram_id=100,
+        username="newer_chat",
+        source_type="megagroup",
+        title="Newer",
+    )
     hidden_renamed = make_source(
         telegram_id=52,
         username="hidden_alias",
@@ -660,7 +666,8 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
     gw.register_source("hidden_chat", hidden)
     gw.register_source("hidden_alias", hidden_renamed)
     gw.register_source("fresh_chat", fresh)
-    gw.set_directory_results([hidden_renamed, fresh])
+    gw.register_source("newer_chat", newer)
+    gw.set_directory_results([hidden_renamed, fresh, newer])
     gw.set_quota(free_slot_available=True)
     gw.set_public_post_hits("нужен сайт", [])
 
@@ -723,6 +730,12 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
                 excerpt="нужен сайт fresh again",
                 published_at=_fresh(1),
             ),
+            make_hit(
+                source=newer,
+                message_id=13,
+                excerpt="нужен сайт newer",
+                published_at=_fresh(2),
+            ),
         ]
     )
     async with session_scope() as session:
@@ -735,6 +748,11 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
         assert run is not None
         counters = json.loads(run.counters_json or "{}")
         assert int(counters.get("dismissed_suppressed", 0)) >= 1
+        # Peer 99 was presented in run1 → durable presented suppress (D-069).
+        assert int(counters.get("presented_suppressed", 0)) >= 1
+        assert int(counters.get("cooldown_suppressed", 0)) == int(
+            counters.get("presented_suppressed", 0)
+        )
 
         evidence_ids = set(
             (
@@ -748,7 +766,8 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
             .all()
         )
         assert 52 not in evidence_ids
-        assert 99 in evidence_ids
+        assert 99 not in evidence_ids
+        assert 100 in evidence_ids
 
         opp_ids = set(
             (
@@ -762,7 +781,8 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
             .all()
         )
         assert 52 not in opp_ids
-        assert 99 in opp_ids
+        assert 99 not in opp_ids
+        assert 100 in opp_ids
 
         deep_for_hidden = list(
             (

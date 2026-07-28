@@ -51,8 +51,10 @@ async def test_at_src_017_seed_ecommerce_development_ru(db_env) -> None:
     assert first.version.id == second.version.id
     assert first.profile.name == SEED_PROFILE_NAME
     assert first.profile.state == "active"
-    assert first.profile.current_version == SEED_PROFILE_VERSION
-    assert first.version.version == SEED_PROFILE_VERSION
+    # Fresh install: DB version starts at 1 with current seed catalog (SEED_PROFILE_VERSION is catalog id).
+    assert first.profile.current_version == 1
+    assert first.version.version == 1
+    assert SEED_PROFILE_VERSION >= 2
 
     expected = build_seed_normalized_profile()
     actual = version_as_normalized(first.version)
@@ -65,7 +67,7 @@ async def test_at_src_017_seed_ecommerce_development_ru(db_env) -> None:
     )
     assert actual.source_scope == "all"
     assert len(actual.post_queries) == 18
-    assert len(actual.directory_queries) == 8
+    assert len(actual.directory_queries) == 10
     assert len(actual.additional_exclusions) == 6
 
     async with session_scope() as session:

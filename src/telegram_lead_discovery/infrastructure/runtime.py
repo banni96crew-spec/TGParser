@@ -743,6 +743,22 @@ async def run_migrations() -> None:
     await init_engine(path)
 
 
+async def seed_startup_catalog(session: Any) -> None:
+    """Startup catalog seed boundary used by ``run_command`` start/run.
+
+    MUST activate the current remediation catalog (``seed_active_ruleset`` →
+    ``ru-mvp-3``), never historical ``seed_ruleset_ru_mvp_1`` alone. Checksum
+    mismatch fails loudly via ``seed_active_ruleset`` (no silent fallback).
+    """
+    from telegram_lead_discovery.detection.seed import seed_active_ruleset
+    from telegram_lead_discovery.source_discovery.profile_service import (
+        ensure_seed_keyword_profile,
+    )
+
+    await seed_active_ruleset(session)
+    await ensure_seed_keyword_profile(session)
+
+
 async def run_command(
     command: str,
     *,
@@ -825,13 +841,7 @@ async def run_command(
 
         async with session_scope() as session:
             await seed_defaults(session)
-            from telegram_lead_discovery.detection.seed import seed_ruleset_ru_mvp_1
-            from telegram_lead_discovery.source_discovery.profile_service import (
-                ensure_seed_keyword_profile,
-            )
-
-            await seed_ruleset_ru_mvp_1(session)
-            await ensure_seed_keyword_profile(session)
+            await seed_startup_catalog(session)
             recovered = await recover_stale_jobs(session)
             await recover_stale_envelopes(session)
             await recover_stale_outbox(session)

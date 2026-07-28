@@ -409,12 +409,12 @@ async def test_discovery_duplicate_start_conflict_and_filters(discovery_ui_env) 
         assert "Filter Weak" not in filtered.text
         assert 'name="band"' in filtered.text
 
-        # Wave 03: default queue hides weak; weak available via explicit filter.
+        # UI-025 / D-068: keyword run defaults to all truth buckets.
         default_queue = client.get(f"/discovery/runs/{run_id}/results-fragment")
         assert default_queue.status_code == 200
         assert "Filter Strong" in default_queue.text
-        assert "Filter Weak" not in default_queue.text
-        assert "review + promising" in default_queue.text
+        assert "Filter Weak" in default_queue.text
+        assert "все (правда)" in default_queue.text
 
         weak_opt_in = client.get(
             f"/discovery/runs/{run_id}/results-fragment",

@@ -318,6 +318,7 @@ class SourceDiscoveryEvidence(Base):
     hard_exclusion_rule_id: Mapped[str | None] = mapped_column(String(64))
     service_profiles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     rule_set_checksum: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    matched_rule_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -352,6 +353,11 @@ class SourceOpportunitySnapshot(Base):
     sample_timestamps: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     band: Mapped[str] = mapped_column(String(16), nullable=False, default="weak")
+    truth_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="inconclusive"
+    )
+    verification_scanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    verification_stop_reason: Mapped[str | None] = mapped_column(String(64))
     score_components_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     discovery_channels_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     review_state: Mapped[str] = mapped_column(String(16), nullable=False, default="unreviewed")
@@ -392,6 +398,47 @@ class DismissedKeywordSource(Base):
 @event.listens_for(DismissedKeywordSource, "before_update")
 def _dismissed_keyword_source_ensure_canonical_key(mapper, connection, target) -> None:
     """Derive canonical_key for Wave-01 writers that only set source_telegram_id."""
+    del mapper, connection
+    if getattr(target, "canonical_key", None):
+        return
+    tid = getattr(target, "source_telegram_id", None)
+    if tid is not None:
+        target.canonical_key = f"peer:{int(tid)}"
+        return
+    username = getattr(target, "username_normalized", None)
+    if username:
+        target.canonical_key = f"username:{str(username).casefold()}"
+
+
+class PresentedKeywordSource(Base):
+    """Durable already-shown suppress ledger (STO-020 / SRC-041/050 / D-069)."""
+
+    __tablename__ = "presented_keyword_sources"
+    __table_args__ = (
+        UniqueConstraint("canonical_key", name="uq_presented_keyword_sources_canonical_key"),
+        UniqueConstraint("source_telegram_id", name="uq_presented_keyword_source_telegram_id"),
+        Index("ix_presented_keyword_sources_username", "username_normalized"),
+        Index("ix_presented_keyword_sources_first_presented_at", "first_presented_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    canonical_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    source_telegram_id: Mapped[int | None] = mapped_column(Integer)
+    username_normalized: Mapped[str | None] = mapped_column(String(64))
+    aliases_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    origin_run_id: Mapped[int | None] = mapped_column(Integer)
+    origin_opportunity_id: Mapped[int | None] = mapped_column(Integer)
+    first_presented_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+@event.listens_for(PresentedKeywordSource, "before_insert")
+@event.listens_for(PresentedKeywordSource, "before_update")
+def _presented_keyword_source_ensure_canonical_key(mapper, connection, target) -> None:
     del mapper, connection
     if getattr(target, "canonical_key", None):
         return

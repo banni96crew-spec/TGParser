@@ -30,13 +30,15 @@ from telegram_lead_discovery.collector.ports import (
     GatewayTransientError,
     GatewayUnauthorized,
     GlobalSearchRequest,
+    HistoryRequest,
     PublicPostSearchRequest,
     SearchCursor,
-    SourceMessageSearchRequest,
     SourceRef,
     SourceSnapshot,
     TelegramGateway,
+    TelegramPeerRef,
 )
+from telegram_lead_discovery.detection.engine import seed_catalog_detect
 from telegram_lead_discovery.observability.discovery import (
     log_query_progress,
     log_run_finished,
@@ -56,22 +58,27 @@ from telegram_lead_discovery.observability.discovery import (
     record_verified_sources,
 )
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
-    select_deep_verification_queries,
+    SEED_DIRECTORY_REPLACEMENT_QUERIES,
+    normalize_query,
 )
 from telegram_lead_discovery.source_discovery.keyword_run import (
     JOB_TYPE_KEYWORD_DISCOVERY,
 )
 from telegram_lead_discovery.source_discovery.keyword_search import (
+    HISTORY_SCAN_CAP_PER_RUN,
+    HISTORY_SCAN_CAP_PER_SOURCE,
     MAX_DEEP_VERIFICATION_SOURCES,
     MAX_EVIDENCE_PER_RUN,
-    MAX_MESSAGES_PER_SOURCE,
-    PRESENTATION_COOLDOWN,
+    MAX_NOISE_EVIDENCE_PER_RUN,
+    MAX_QUALIFIED_EVIDENCE_PER_RUN,
+    QUALITY_WINDOW_DAYS,
     AnnotatedSearchHit,
     DismissedKeywordSourceEntry,
     DismissedKeywordSourceIndex,
     EvidenceRecord,
     OpportunitySnapshotRecord,
-    PresentationCooldownIndex,
+    PresentedKeywordSourceEntry,
+    PresentedKeywordSourceIndex,
     RegistrySourceEntry,
     SourceRegistryIndex,
     acquire_with_replacement,
@@ -81,12 +88,31 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     is_registry_suppressed,
     linked_discussion_opportunity,
     merge_funnel_counters,
+    preliminary_rank_key,
+    qualify_excerpt_text,
     registry_telegram_ids,
     resolve_dismissed_identity,
+    resolve_presented_identity,
     resolve_source_identity,
-    select_sources_for_deep_verification,
 )
 from telegram_lead_discovery.source_discovery.profile_service import version_as_normalized
+from telegram_lead_discovery.source_discovery.quality_truth import (
+    GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS,
+    GATE_MIN_QUALITY_SOURCES,
+    HISTORY_PAGE_SIZE,
+    ClientRequestIdentity,
+    classify_truth_status,
+    distinct_client_request_count,
+    evaluate_run_gate,
+    is_client_request,
+    is_within_quality_window,
+    pick_next_fair_source,
+    quality_window_start,
+)
+from telegram_lead_discovery.storage.dismissed_suppress import (
+    SuppressIdentity,
+    peer_canonical_key,
+)
 from telegram_lead_discovery.storage.jobs import (
     HEARTBEAT_SECONDS,
     LEASE_SECONDS,
@@ -100,18 +126,22 @@ from telegram_lead_discovery.storage.models import (
     DismissedKeywordSource,
     Job,
     KeywordDiscoveryProfileVersion,
+    PresentedKeywordSource,
     SourceAlias,
     SourceDiscoveryEvidence,
     SourceOpportunitySnapshot,
     TelegramSource,
 )
+from telegram_lead_discovery.storage.presented_suppress import upsert_presented_suppress
 
 GLOBAL_PAGE_SIZE = 50
 GLOBAL_MAX_PAGES = 2
 DIRECTORY_PEER_LIMIT = 20
-DEEP_QUERIES_PER_SOURCE = 5
+DEEP_QUERIES_PER_SOURCE = 5  # legacy; history scan uses one query per source
+HISTORY_SCAN_QUERY_TEXT = "history_scan"
 TRANSIENT_RETRY_DELAYS_S = (30, 120, 600)
 MAX_TRANSIENT_ATTEMPTS = 3
+NOISE_EVIDENCE_CAP_PER_SOURCE = 20
 
 # Re-export lease constants so callers/tests bind to the same job-store values.
 assert LEASE_SECONDS == 300
@@ -154,9 +184,9 @@ class _WorkerContext:
     public_posts_quota_exhausted: bool = False
     registry_suppressed_ids: set[int] = field(default_factory=set)
     dismissed_suppressed_ids: set[int] = field(default_factory=set)
-    cooldown_suppressed_ids: set[int] = field(default_factory=set)
-    presentation_cooldown: PresentationCooldownIndex = field(
-        default_factory=PresentationCooldownIndex
+    presented_suppressed_ids: set[int] = field(default_factory=set)
+    presented: PresentedKeywordSourceIndex = field(
+        default_factory=PresentedKeywordSourceIndex
     )
 
 
@@ -170,15 +200,25 @@ def _ensure_utc(value: datetime) -> datetime:
     return value.astimezone(UTC)
 
 
-def _loads_counters(raw: str | None) -> dict[str, int]:
+def _loads_counters(raw: str | None) -> dict[str, int | str]:
     data = json.loads(raw or "{}")
     if not isinstance(data, dict):
         return {}
-    return {str(k): int(v) for k, v in data.items() if isinstance(v, int | float)}
+    out: dict[str, int | str] = {}
+    for k, v in data.items():
+        key = str(k)
+        if isinstance(v, bool):
+            out[key] = int(v)
+        elif isinstance(v, int | float):
+            out[key] = int(v)
+        elif isinstance(v, str):
+            # Preserve gate/reason labels (D-068); do not coerce to int.
+            out[key] = v
+    return out
 
 
-def _dumps_counters(counters: dict[str, int]) -> str:
-    return json.dumps(counters, ensure_ascii=False)
+def _dumps_counters(counters: dict[str, int | str]) -> str:
+    return json.dumps(counters, ensure_ascii=False, sort_keys=True)
 
 
 def _cursor_payload(raw: str | None) -> dict[str, Any]:
@@ -245,7 +285,7 @@ async def process_keyword_discovery_job(
     normalized = version_as_normalized(version_row)
     registry = await _load_registry(session)
     dismissed = await _load_dismissed_sources(session)
-    cooldown = await _load_presentation_cooldown(session, now=_utcnow())
+    presented = await _load_presented_sources(session)
     now = _utcnow()
     if run.state in ("queued", "retry_wait_flood", "cancelling"):
         if run.state != "cancelling":
@@ -270,10 +310,11 @@ async def process_keyword_discovery_job(
         directory_sources=[],
         linked_parents={},
         last_heartbeat_at=now,
-        presentation_cooldown=cooldown,
+        presented=presented,
     )
 
     try:
+        await _restore_directory_pool(ctx)
         await _check_cancel(ctx)
         await _run_seed_queries(ctx)
         await _check_cancel(ctx)
@@ -536,28 +577,29 @@ async def _load_dismissed_sources(session: AsyncSession) -> DismissedKeywordSour
     return DismissedKeywordSourceIndex.from_entries(entries)
 
 
-async def _load_presentation_cooldown(
+async def _load_presented_sources(
     session: AsyncSession,
-    *,
-    now: datetime,
-) -> PresentationCooldownIndex:
-    """Load non-dismissed opportunities presented within the cooldown window."""
-    cutoff = now - PRESENTATION_COOLDOWN
-    rows = list(
-        (
-            await session.execute(
-                select(SourceOpportunitySnapshot).where(
-                    SourceOpportunitySnapshot.review_state != "dismissed",
-                    SourceOpportunitySnapshot.created_at >= cutoff,
-                )
+) -> PresentedKeywordSourceIndex:
+    """Load durable already-shown suppress ledger (SRC-041 / D-069)."""
+    rows = list((await session.execute(select(PresentedKeywordSource))).scalars().all())
+    entries: list[PresentedKeywordSourceEntry] = []
+    for row in rows:
+        if row.source_telegram_id is None:
+            continue
+        aliases: tuple[str, ...]
+        try:
+            raw = json.loads(row.aliases_json or "[]")
+            aliases = tuple(str(item) for item in raw if isinstance(item, str))
+        except json.JSONDecodeError:
+            aliases = ()
+        entries.append(
+            PresentedKeywordSourceEntry(
+                telegram_id=row.source_telegram_id,
+                username_normalized=row.username_normalized,
+                aliases=aliases,
             )
         )
-        .scalars()
-        .all()
-    )
-    return PresentationCooldownIndex.from_entries(
-        [(row.source_telegram_id, row.created_at) for row in rows]
-    )
+    return PresentedKeywordSourceIndex.from_entries(entries)
 
 
 def _dismissed_canonical_id(
@@ -567,6 +609,17 @@ def _dismissed_canonical_id(
         telegram_id=telegram_id,
         username=username,
         dismissed=ctx.dismissed,
+    )
+    return None if match is None else match.canonical_telegram_id
+
+
+def _presented_canonical_id(
+    ctx: _WorkerContext, *, telegram_id: int, username: str | None
+) -> int | None:
+    match = resolve_presented_identity(
+        telegram_id=telegram_id,
+        username=username,
+        presented=ctx.presented,
     )
     return None if match is None else match.canonical_telegram_id
 
@@ -767,6 +820,7 @@ async def _execute_directory_query(ctx: _WorkerContext, query: DiscoveryRunQuery
         if p.accessible and p.source_type in ("channel", "megagroup", "group") and p.username
     ]
     ctx.directory_sources.extend(accepted)
+    await _persist_directory_pool(ctx)
     query.result_count += len(accepted)
     await _mark_query_terminal(query, "succeeded")
 
@@ -786,6 +840,18 @@ async def _execute_public_posts_query(ctx: _WorkerContext, query: DiscoveryRunQu
         quota = await ctx.gateway.check_public_post_search_quota(query.query_text)
     except GatewayFloodWait as exc:
         raise _FloodWaitControl(exc.until, query) from exc
+    except GatewayPremiumRequired:
+        ctx.run.quota_snapshot_json = json.dumps(
+            {
+                "free_slot_available": False,
+                "premium_required": True,
+                "stars_amount": 0,
+            },
+            ensure_ascii=False,
+        )
+        await _mark_query_terminal(query, "quota_skipped", error_code="premium_required")
+        await _bump_counter(ctx, "quota_skipped_queries", 1)
+        return
     except GatewayUnauthorized as exc:
         raise _SessionFatal("unauthorized") from exc
     except GatewayFrozen as exc:
@@ -844,6 +910,15 @@ async def _execute_public_posts_query(ctx: _WorkerContext, query: DiscoveryRunQu
             raise _FloodWaitControl(exc.until, query) from exc
         except GatewayPremiumRequired:
             ctx.public_posts_quota_exhausted = True
+            ctx.run.quota_snapshot_json = json.dumps(
+                {
+                    "free_slot_available": False,
+                    "premium_required": True,
+                    "stars_amount": 0,
+                    "eligibility": "confirmed_on_search",
+                },
+                ensure_ascii=False,
+            )
             await _mark_query_terminal(query, "quota_skipped", error_code="premium_required")
             await _bump_counter(ctx, "quota_skipped_queries", 1)
             return
@@ -987,6 +1062,15 @@ async def _resume_linked_query(ctx: _WorkerContext, query: DiscoveryRunQuery) ->
         await _note_dismissed_suppressed(ctx, {dismissed_match.canonical_telegram_id})
         await _mark_query_terminal(query, "succeeded", error_code="dismissed_suppressed")
         return
+    presented_match = resolve_presented_identity(
+        telegram_id=identity.canonical_telegram_id,
+        username=identity.username_normalized or discussion.username,
+        presented=ctx.presented,
+    )
+    if presented_match is not None:
+        await _note_presented_suppressed(ctx, {presented_match.canonical_telegram_id})
+        await _mark_query_terminal(query, "succeeded", error_code="presented_suppressed")
+        return
     snap = linked_discussion_opportunity(
         run_id=ctx.run.id,
         parent_telegram_id=telegram_id,
@@ -1002,6 +1086,7 @@ async def _resume_linked_query(ctx: _WorkerContext, query: DiscoveryRunQuery) ->
 async def _phase_deep_verification(ctx: _WorkerContext) -> None:
     ctx.run.phase = "G"
     await ctx.session.flush()
+    await _restore_directory_pool(ctx)
     evidence_rows = await _load_evidence_records(ctx)
     candidates = build_preliminary_candidates(
         evidence_rows,
@@ -1010,8 +1095,8 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         linked_parent_ids=ctx.linked_parents,
         registry=ctx.registry,
         dismissed=ctx.dismissed,
+        presented=ctx.presented,
     )
-    # Count directory-only suppressed ids that never appeared in seed evidence.
     known = registry_telegram_ids(ctx.registry)
     dir_suppressed = {s.telegram_id for s in ctx.directory_sources if s.telegram_id in known}
     await _note_registry_suppressed(ctx, dir_suppressed)
@@ -1028,99 +1113,223 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         is not None
     }
     await _note_dismissed_suppressed(ctx, dir_dismissed)
-    # Replacement after suppress: keep filling deep-verification quota from ranked pool.
-    ranked = sorted(candidates, key=lambda c: c.telegram_id)
-    pages = [
-        tuple(c.telegram_id for c in ranked[:40]),
-        tuple(c.telegram_id for c in ranked[40:80]),
-        tuple(c.telegram_id for c in ranked[80:]),
-    ]
-    suppressed_ids = set(ctx.registry_suppressed_ids) | set(ctx.dismissed_suppressed_ids)
-    now = _utcnow()
-    for tid in list(ctx.presentation_cooldown.presented_at_by_id):
-        if ctx.presentation_cooldown.is_cooled_down(tid, now=now):
-            suppressed_ids.add(tid)
-            ctx.cooldown_suppressed_ids.add(tid)
-    acquisition = acquire_with_replacement(
-        [p for p in pages if p],
-        is_suppressed=lambda tid, _s=suppressed_ids: tid in _s,
-        target_quota=MAX_DEEP_VERIFICATION_SOURCES,
-    )
-    if acquisition.replacement_fetches_total:
-        await _bump_counter(ctx, "replacement_fetches_total", acquisition.replacement_fetches_total)
-    if acquisition.pool_exhausted:
-        counters = _loads_counters(ctx.run.counters_json)
-        merged = merge_funnel_counters(
-            counters,
-            pool_exhausted=True,
-            pool_exhausted_reason=acquisition.pool_exhausted_reason,
-            acquired_total=acquisition.acquired_total,
-            suppressed_total=acquisition.suppressed_total,
-            replacement_fetches_total=acquisition.replacement_fetches_total,
+    dir_presented = {
+        matched_id
+        for s in ctx.directory_sources
+        if (
+            matched_id := _presented_canonical_id(
+                ctx,
+                telegram_id=s.telegram_id,
+                username=s.username,
+            )
         )
-        ctx.run.counters_json = _dumps_counters(merged)
-    if ctx.cooldown_suppressed_ids:
-        counters = _loads_counters(ctx.run.counters_json)
-        counters["cooldown_suppressed"] = len(ctx.cooldown_suppressed_ids)
-        ctx.run.counters_json = _dumps_counters(counters)
-    allowed = set(acquisition.qualified_candidate_ids[:MAX_DEEP_VERIFICATION_SOURCES])
-    filtered = [c for c in candidates if c.telegram_id in allowed]
-    selected = select_sources_for_deep_verification(
-        filtered,
-        limit=MAX_DEEP_VERIFICATION_SOURCES,
+        is not None
+    }
+    await _note_presented_suppressed(ctx, dir_presented)
+    suppressed_ids = (
+        set(ctx.registry_suppressed_ids)
+        | set(ctx.dismissed_suppressed_ids)
+        | set(ctx.presented_suppressed_ids)
     )
-    record_verified_sources(len(selected))
+
+    run_cursor = _load_run_cursor(ctx)
+    existing_pool = run_cursor.get("acquisition_pool")
+    if isinstance(existing_pool, list) and existing_pool:
+        pool = [item for item in existing_pool if isinstance(item, dict)]
+        cursor = int(run_cursor.get("acquisition_pool_cursor") or 0)
+    else:
+        ranked = sorted(candidates, key=preliminary_rank_key)
+        pages = [
+            tuple(c.telegram_id for c in ranked[:40]),
+            tuple(c.telegram_id for c in ranked[40:80]),
+            tuple(c.telegram_id for c in ranked[80:]),
+        ]
+        acquisition = acquire_with_replacement(
+            [p for p in pages if p],
+            is_suppressed=lambda tid, _s=suppressed_ids: tid in _s,
+            target_quota=MAX_DEEP_VERIFICATION_SOURCES,
+        )
+        replacement_fetches = acquisition.replacement_fetches_total
+        pool_ids = [
+            tid
+            for tid in acquisition.qualified_candidate_ids
+            if tid not in suppressed_ids
+        ]
+        meta_by_id = {
+            c.telegram_id: {
+                "telegram_id": c.telegram_id,
+                "username": c.username,
+                "title": c.title,
+                "source_type": c.source_type,
+                "public_url": (f"https://t.me/{c.username}" if c.username else None),
+            }
+            for c in ranked
+        }
+        for snap in ctx.directory_sources:
+            meta_by_id.setdefault(
+                snap.telegram_id,
+                {
+                    "telegram_id": snap.telegram_id,
+                    "username": snap.username,
+                    "title": snap.title,
+                    "source_type": snap.source_type,
+                    "public_url": snap.public_url,
+                },
+            )
+
+        # SRC-040 / D-069: after mass suppress, expand free directory queries
+        # before declaring no_unseen_after_suppress.
+        if len(pool_ids) < MAX_DEEP_VERIFICATION_SOURCES:
+            extra_fetches, expanded_ids = await _expand_directory_replacement(
+                ctx,
+                suppressed_ids=suppressed_ids,
+                target_quota=MAX_DEEP_VERIFICATION_SOURCES,
+                already_qualified=len(pool_ids),
+            )
+            replacement_fetches += extra_fetches
+            for tid in expanded_ids:
+                if tid not in pool_ids and tid not in suppressed_ids:
+                    pool_ids.append(tid)
+                snap = next(
+                    (s for s in ctx.directory_sources if s.telegram_id == tid),
+                    None,
+                )
+                if snap is not None:
+                    meta_by_id.setdefault(
+                        tid,
+                        {
+                            "telegram_id": snap.telegram_id,
+                            "username": snap.username,
+                            "title": snap.title,
+                            "source_type": snap.source_type,
+                            "public_url": snap.public_url,
+                        },
+                    )
+            # Refresh suppress sets after expansion may have noted more.
+            suppressed_ids = (
+                set(ctx.registry_suppressed_ids)
+                | set(ctx.dismissed_suppressed_ids)
+                | set(ctx.presented_suppressed_ids)
+            )
+            pool_ids = [tid for tid in pool_ids if tid not in suppressed_ids]
+
+        if replacement_fetches:
+            await _bump_counter(ctx, "replacement_fetches_total", replacement_fetches)
+
+        pool = [meta_by_id[tid] for tid in pool_ids if tid in meta_by_id]
+        cursor = 0
+        await _persist_acquisition_pool(ctx, pool=pool, pool_cursor=cursor)
+        pool_exhausted = len(pool) < MAX_DEEP_VERIFICATION_SOURCES
+        if pool_exhausted:
+            reason = (
+                "provider_empty"
+                if acquisition.acquired_total == 0 and replacement_fetches == 0
+                else "no_unseen_after_suppress"
+            )
+            counters = _loads_counters(ctx.run.counters_json)
+            merged = merge_funnel_counters(
+                counters,
+                pool_exhausted=True,
+                pool_exhausted_reason=reason,
+                acquired_total=max(
+                    acquisition.acquired_total, len(meta_by_id), len(pool)
+                ),
+                suppressed_total=len(suppressed_ids),
+                replacement_fetches_total=replacement_fetches,
+            )
+            ctx.run.counters_json = _dumps_counters(merged)
+
+    if ctx.presented_suppressed_ids:
+        counters = _loads_counters(ctx.run.counters_json)
+        unique = len(ctx.presented_suppressed_ids)
+        counters["presented_suppressed"] = unique
+        counters["cooldown_suppressed"] = unique
+        ctx.run.counters_json = _dumps_counters(counters)
+    record_verified_sources(len(pool))
     ctx.run.phase = "H"
     await ctx.session.flush()
 
-    deep_queries = list(
-        select_deep_verification_queries(
-            ctx.post_queries,
-            required_service_profiles=ctx.required_service_profiles,
-            limit=DEEP_QUERIES_PER_SOURCE,
-        )
-    )
-    if not deep_queries:
-        return
-    done_keys = await _finished_verification_keys(ctx)
+    done_sources = await _finished_verification_sources(ctx)
     next_ordinal = await _next_ordinal(ctx)
-    now = _utcnow()
-    published_after = now - timedelta(days=30)
+    finished_or_suppressed = set(done_sources) | set(suppressed_ids)
 
-    for query in await _parked_queries(ctx, "source_verification"):
-        await _resume_source_verification(ctx, query, published_after)
-        if query.source_telegram_id is not None:
-            done_keys.add((query.source_telegram_id, query.query_text))
+    # Crash / FloodWait resume: continue the same source (SRC-048), one page, then fair loop.
+    for query in await _resumable_verification_queries(ctx):
+        await _resume_source_verification(ctx, query, max_pages=1)
+        if query.source_telegram_id is not None and query.state == "succeeded":
+            done_sources.add(query.source_telegram_id)
+            finished_or_suppressed.add(query.source_telegram_id)
+        elif query.state == "retry_wait":
+            return
 
-    for candidate in selected:
-        for query_text in deep_queries:
-            key = (candidate.telegram_id, query_text)
-            if key in done_keys:
-                continue
-            await _check_cancel(ctx)
-            await _maybe_heartbeat(ctx)
-            if await _evidence_count(ctx) >= MAX_EVIDENCE_PER_RUN:
-                return
-            query = DiscoveryRunQuery(
-                run_id=ctx.run.id,
-                ordinal=next_ordinal,
-                query_kind="source_verification",
-                query_text=query_text,
-                source_telegram_id=candidate.telegram_id,
-                state="running",
-                started_at=_utcnow(),
+    # Fair page waterfill: probe later candidates before early weak sources hit 1500.
+    while True:
+        await _check_cancel(ctx)
+        await _maybe_heartbeat(ctx)
+        if await _run_history_scanned(ctx) >= HISTORY_SCAN_CAP_PER_RUN:
+            await _finalize_unfinished_on_run_cap(
+                ctx, pool=pool, done_sources=done_sources, suppressed_ids=suppressed_ids
             )
-            next_ordinal += 1
-            ctx.session.add(query)
-            await ctx.session.flush()
-            await _resume_source_verification(ctx, query, published_after)
+            break
+        if await _gate_satisfied_from_persisted(ctx):
+            break
+
+        scanned_by = await _verification_scanned_by_source(ctx)
+        pool_ids = [int(item["telegram_id"]) for item in pool]
+        tid = pick_next_fair_source(
+            pool_telegram_ids=pool_ids,
+            scanned_by_source=scanned_by,
+            finished_sources=finished_or_suppressed,
+            source_cap=HISTORY_SCAN_CAP_PER_SOURCE,
+        )
+        if tid is None:
+            counters = _loads_counters(ctx.run.counters_json)
+            if len(pool) > 0 and not counters.get("pool_exhausted"):
+                merged = merge_funnel_counters(
+                    counters,
+                    pool_exhausted=True,
+                    pool_exhausted_reason="verification_pool_exhausted",
+                    acquired_total=len(pool),
+                    suppressed_total=len(suppressed_ids),
+                    replacement_fetches_total=int(
+                        counters.get("replacement_fetches_total", 0)
+                    ),
+                )
+                ctx.run.counters_json = _dumps_counters(merged)
+            break
+
+        # Observability cursor: furthest pool index touched (not sequential monopoly).
+        try:
+            touched_idx = pool_ids.index(tid)
+        except ValueError:
+            touched_idx = cursor
+        cursor = max(cursor, touched_idx + 1)
+        await _persist_acquisition_pool(ctx, pool=pool, pool_cursor=cursor)
+
+        query = await _get_or_create_verification_query(
+            ctx, telegram_id=tid, next_ordinal=next_ordinal
+        )
+        if query.ordinal >= next_ordinal:
+            next_ordinal = query.ordinal + 1
+        await _resume_source_verification(ctx, query, max_pages=1)
+        if query.state == "succeeded":
+            done_sources.add(tid)
+            finished_or_suppressed.add(tid)
+        elif query.state == "retry_wait":
+            return
 
 
 async def _resume_source_verification(
     ctx: _WorkerContext,
     query: DiscoveryRunQuery,
-    published_after: datetime,
+    *,
+    max_pages: int | None = None,
 ) -> None:
+    """Bounded public history scan newest→older (SRC-024 / D-068).
+
+    ``max_pages`` limits pages for fair waterfill scheduling (technical policy).
+    ``None`` drains until a terminal stop (legacy full-source scan).
+    """
     if (
         query.state == "retry_wait"
         and query.available_at
@@ -1133,53 +1342,281 @@ async def _resume_source_verification(
         return
     query.state = "running"
     await ctx.session.flush()
-    request = SourceMessageSearchRequest(
-        schema_version=1,
-        source=SourceRef(
+
+    cursor = _load_history_cursor(query)
+    scanned = int(cursor.get("scanned", 0))
+    offset_id = int(cursor.get("offset_id", 0) or 0)
+    distinct_hashes: set[str] = set(cursor.get("distinct_hashes", []) or [])
+    noise_kept = int(cursor.get("noise_kept", 0))
+    now = _utcnow()
+    window_start = quality_window_start(now, days=QUALITY_WINDOW_DAYS)
+    stop_reason: str | None = None
+    window_complete = False
+    hit_source_cap = False
+    hit_run_cap = False
+    result_count = int(query.result_count or 0)
+    pages_done = 0
+
+    # Resolve peer metadata from persisted acquisition/directory pool (not hardcoded).
+    source_meta = await _source_meta_for_telegram_id(ctx, telegram_id)
+    username = source_meta.get("username") or await _username_for_telegram_id(ctx, telegram_id)
+
+    while True:
+        await _check_cancel(ctx)
+        await _maybe_heartbeat(ctx)
+        run_scanned = await _run_history_scanned(ctx)
+        if scanned >= HISTORY_SCAN_CAP_PER_SOURCE:
+            hit_source_cap = True
+            stop_reason = "source_cap"
+            break
+        if run_scanned >= HISTORY_SCAN_CAP_PER_RUN:
+            hit_run_cap = True
+            stop_reason = "run_cap"
+            break
+        if len(distinct_hashes) >= 7:
+            stop_reason = "quality_reached"
+            break
+
+        page_limit = min(
+            HISTORY_PAGE_SIZE,
+            HISTORY_SCAN_CAP_PER_SOURCE - scanned,
+            HISTORY_SCAN_CAP_PER_RUN - run_scanned,
+        )
+        if page_limit <= 0:
+            hit_run_cap = run_scanned >= HISTORY_SCAN_CAP_PER_RUN
+            hit_source_cap = scanned >= HISTORY_SCAN_CAP_PER_SOURCE
+            stop_reason = "run_cap" if hit_run_cap else "source_cap"
+            break
+
+        request = HistoryRequest(
             schema_version=1,
             source_id=0,
-            telegram_id=telegram_id,
-        ),
-        query=query.query_text,
-        limit=MAX_MESSAGES_PER_SOURCE,
-        published_after=published_after,
-    )
-    try:
-        await _commit_before_network(ctx)
-        page = await ctx.gateway.search_source_messages(request)
-        query.request_count += 1
-    except GatewayFloodWait as exc:
-        query.state = "retry_wait"
-        query.available_at = exc.until
-        query.error_code = "flood_wait"
-        await ctx.session.flush()
-        raise _FloodWaitControl(exc.until, query) from exc
-    except GatewaySourceInaccessible:
-        await _mark_query_terminal(query, "failed", error_code="source_inaccessible")
-        return
-    except GatewayUnauthorized as exc:
-        raise _SessionFatal("unauthorized") from exc
-    except GatewayFrozen as exc:
-        raise _SessionFatal("frozen") from exc
-    except GatewayTransientError as exc:
-        if await _handle_transient(ctx, query, "transient_error"):
-            raise _FloodWaitControl(query.available_at or _utcnow(), query) from exc
-        return
-    except GatewayPermanentError:
-        await _mark_query_terminal(query, "failed", error_code="permanent_error")
-        await _bump_counter(ctx, "failed_queries", 1)
-        return
-
-    annotated = [
-        AnnotatedSearchHit(
-            hit=hit,
-            query_ordinal=query.ordinal,
-            discovery_channel="source_verification",
+            peer=TelegramPeerRef(
+                schema_version=1,
+                telegram_peer_id=telegram_id,
+                username_normalized=username,
+            ),
+            limit=page_limit,
+            purpose="scouting_verification",
+            continuation_cursor=str(offset_id) if offset_id else None,
+            before_published_at=None,
+            after_published_at=None,
         )
-        for hit in page.hits[:MAX_MESSAGES_PER_SOURCE]
-    ]
-    await _persist_hits(ctx, annotated)
-    query.result_count = len(annotated)
+        page_msgs: list[Any] = []
+        try:
+            await _commit_before_network(ctx)
+            async for dto in ctx.gateway.iter_history(request):
+                page_msgs.append(dto)
+                if len(page_msgs) >= page_limit:
+                    break
+            query.request_count += 1
+        except GatewayFloodWait as exc:
+            _save_cursor(
+                query,
+                {
+                    "offset_id": offset_id,
+                    "scanned": scanned,
+                    "distinct_hashes": sorted(distinct_hashes),
+                    "noise_kept": noise_kept,
+                    "stop_reason": "flood_wait",
+                },
+            )
+            query.state = "retry_wait"
+            query.available_at = exc.until
+            query.error_code = "flood_wait"
+            await ctx.session.flush()
+            raise _FloodWaitControl(exc.until, query) from exc
+        except GatewaySourceInaccessible:
+            stop_reason = "inaccessible"
+            await _mark_query_terminal(query, "failed", error_code="source_inaccessible")
+            await _apply_source_truth(
+                ctx,
+                telegram_id=telegram_id,
+                distinct_count=len(distinct_hashes),
+                scanned=scanned,
+                window_complete=False,
+                hit_source_cap=False,
+                hit_run_cap=False,
+                stop_reason=stop_reason,
+            )
+            return
+        except GatewayUnauthorized as exc:
+            raise _SessionFatal("unauthorized") from exc
+        except GatewayFrozen as exc:
+            raise _SessionFatal("frozen") from exc
+        except GatewayTransientError as exc:
+            _save_cursor(
+                query,
+                {
+                    "offset_id": offset_id,
+                    "scanned": scanned,
+                    "distinct_hashes": sorted(distinct_hashes),
+                    "noise_kept": noise_kept,
+                },
+            )
+            if await _handle_transient(ctx, query, "transient_error"):
+                raise _FloodWaitControl(query.available_at or _utcnow(), query) from exc
+            return
+        except GatewayPermanentError:
+            await _mark_query_terminal(query, "failed", error_code="permanent_error")
+            await _bump_counter(ctx, "failed_queries", 1)
+            return
+
+        if not page_msgs:
+            window_complete = True
+            stop_reason = "source_exhausted"
+            break
+
+        scanned_this_page = 0
+        for dto in page_msgs:
+            published = _ensure_utc(dto.published_at)
+            if published < window_start:
+                window_complete = True
+                stop_reason = "window_reached"
+                # Do not count messages past the 14d boundary toward caps.
+                break
+            scanned += 1
+            scanned_this_page += 1
+            offset_id = int(dto.telegram_message_id)
+            excerpt, normalized_hash, detection = qualify_excerpt_text(
+                dto.text or "",
+                detect_fn=seed_catalog_detect,
+            )
+            client = is_client_request(
+                category=detection.category,
+                service_profiles=detection.service_profiles,
+                hard_exclusion=detection.hard_exclusion,
+            )
+            persist = False
+            if client and is_within_quality_window(published, now=now):
+                if normalized_hash not in distinct_hashes:
+                    distinct_hashes.add(normalized_hash)
+                    persist = True
+            elif detection.hard_exclusion and noise_kept < NOISE_EVIDENCE_CAP_PER_SOURCE:
+                noise_kept += 1
+                persist = True
+
+            if persist and await _may_persist_evidence(ctx, is_qualified=client):
+                identity = resolve_source_identity(
+                    telegram_id=telegram_id,
+                    username=username,
+                    registry=ctx.registry,
+                )
+                record = EvidenceRecord(
+                    run_id=ctx.run.id,
+                    source_telegram_id=identity.canonical_telegram_id,
+                    source_username=identity.username_normalized or username,
+                    source_title=str(
+                        source_meta.get("title") or username or str(telegram_id)
+                    ),
+                    source_type=str(source_meta.get("source_type") or "megagroup"),
+                    telegram_message_id=int(dto.telegram_message_id),
+                    published_at=published,
+                    permalink=dto.permalink,
+                    excerpt=excerpt,
+                    normalized_hash=normalized_hash,
+                    matched_query_ordinals=(query.ordinal,),
+                    discovery_channels=("source_verification",),
+                    detection_category=detection.category,
+                    is_qualified=client,
+                    hard_exclusion=detection.hard_exclusion,
+                    hard_exclusion_rule_id=detection.hard_exclusion_rule_id,
+                    service_profiles=detection.service_profiles,
+                    rule_set_checksum=detection.rule_set_checksum,
+                    matched_rule_ids=tuple(
+                        m.stable_rule_id for m in detection.matched_rules
+                    ),
+                )
+                await _insert_evidence(ctx, record)
+                result_count += 1
+
+            if len(distinct_hashes) >= 7:
+                stop_reason = "quality_reached"
+                break
+            if scanned >= HISTORY_SCAN_CAP_PER_SOURCE:
+                hit_source_cap = True
+                stop_reason = "source_cap"
+                break
+            if await _run_history_scanned(ctx) + scanned_this_page >= HISTORY_SCAN_CAP_PER_RUN:
+                hit_run_cap = True
+                stop_reason = "run_cap"
+                break
+
+        if scanned_this_page:
+            await _bump_counter(ctx, "history_scanned_total", scanned_this_page)
+        pages_done += 1
+        _save_cursor(
+            query,
+            {
+                "offset_id": offset_id,
+                "scanned": scanned,
+                "distinct_hashes": sorted(distinct_hashes),
+                "noise_kept": noise_kept,
+                "stop_reason": stop_reason,
+            },
+        )
+        query.result_count = result_count
+        await ctx.session.flush()
+
+        if stop_reason in {
+            "quality_reached",
+            "window_reached",
+            "source_cap",
+            "run_cap",
+            "source_exhausted",
+        }:
+            if stop_reason == "run_cap":
+                hit_run_cap = True
+            if stop_reason == "source_cap":
+                hit_source_cap = True
+            if stop_reason == "window_reached":
+                window_complete = True
+            break
+        if len(page_msgs) < page_limit:
+            window_complete = True
+            stop_reason = stop_reason or "source_exhausted"
+            break
+        if max_pages is not None and pages_done >= max_pages:
+            # Fair scheduling yield: persist progress, keep query running.
+            await _apply_source_truth(
+                ctx,
+                telegram_id=telegram_id,
+                distinct_count=len(distinct_hashes),
+                scanned=scanned,
+                window_complete=False,
+                hit_source_cap=False,
+                hit_run_cap=False,
+                stop_reason=None,
+            )
+            query.state = "running"
+            await ctx.session.flush()
+            return
+
+    if stop_reason is None:
+        window_complete = True
+        stop_reason = "source_exhausted"
+
+    query.result_count = result_count
+    _save_cursor(
+        query,
+        {
+            "offset_id": offset_id,
+            "scanned": scanned,
+            "distinct_hashes": sorted(distinct_hashes),
+            "noise_kept": noise_kept,
+            "stop_reason": stop_reason,
+        },
+    )
+    await _apply_source_truth(
+        ctx,
+        telegram_id=telegram_id,
+        distinct_count=len(distinct_hashes),
+        scanned=scanned,
+        window_complete=window_complete,
+        hit_source_cap=hit_source_cap,
+        hit_run_cap=hit_run_cap,
+        stop_reason=stop_reason,
+    )
     await _mark_query_terminal(query, "succeeded")
 
 
@@ -1187,12 +1624,13 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
     ctx.run.phase = "I"
     await ctx.session.flush()
     evidence_rows = await _load_evidence_records(ctx)
+    scored_at = _utcnow()
     if not evidence_rows:
-        # Keep linked-discussion opportunities already written.
+        # Keep linked-discussion opportunities already written; still emit gate truth.
         counters = _loads_counters(ctx.run.counters_json)
         counters["evidence_count"] = 0
         counters["unique_sources"] = await _opportunity_count(ctx)
-        ctx.run.counters_json = _dumps_counters(counters)
+        await _write_gate_counters(ctx, evidence_rows=[], scored_at=scored_at, base=counters)
         return
 
     # Rebuild annotated hits from persisted evidence is unnecessary — rescore
@@ -1201,16 +1639,20 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
     for row in evidence_rows:
         by_source.setdefault(row.source_telegram_id, []).append(row)
 
-    scored_at = _utcnow()
     qualified = 0
     presented = 0
     novel_presented = 0
     qualified_total = 0
-    cooldown_skipped = 0
+    presented_skipped = 0
     for telegram_id, rows in by_source.items():
-        if ctx.presentation_cooldown.is_cooled_down(telegram_id, now=scored_at):
-            ctx.cooldown_suppressed_ids.add(telegram_id)
-            cooldown_skipped += 1
+        presented_id = _presented_canonical_id(
+            ctx,
+            telegram_id=telegram_id,
+            username=rows[0].source_username,
+        )
+        if presented_id is not None:
+            await _note_presented_suppressed(ctx, {presented_id})
+            presented_skipped += 1
             continue
         meta = rows[0]
         source = SourceSnapshot(
@@ -1242,15 +1684,17 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
         if snap.band in ("review", "promising") or snap.qualified_count > 0:
             qualified_total += 1
         presented += 1
-        if telegram_id not in ctx.presentation_cooldown.presented_at_by_id:
+        if telegram_id not in ctx.presented.by_telegram_id:
             novel_presented += 1
 
     record_qualified_evidence(qualified)
+    unique_presented_suppress = len(ctx.presented_suppressed_ids)
     counters = merge_funnel_counters(
         _loads_counters(ctx.run.counters_json),
-        canonicalized_total=len(by_source) + cooldown_skipped,
+        canonicalized_total=len(by_source) + presented_skipped,
         dismissed_suppressed=len(ctx.dismissed_suppressed_ids),
-        cooldown_suppressed=len(ctx.cooldown_suppressed_ids),
+        presented_suppressed=unique_presented_suppress,
+        cooldown_suppressed=unique_presented_suppress,
         qualified_total=qualified_total,
         presented_total=presented,
         novel_presented_total=novel_presented,
@@ -1258,8 +1702,67 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
     counters["evidence_count"] = len(evidence_rows)
     counters["unique_sources"] = await _opportunity_count(ctx)
     counters["registry_suppressed"] = len(ctx.registry_suppressed_ids)
-    ctx.run.counters_json = _dumps_counters(counters)
+    await _write_gate_counters(
+        ctx, evidence_rows=evidence_rows, scored_at=scored_at, base=counters
+    )
     record_funnel_observability(counters)
+
+
+async def _write_gate_counters(
+    ctx: _WorkerContext,
+    *,
+    evidence_rows: list[EvidenceRecord],
+    scored_at: datetime,
+    base: dict[str, int],
+) -> None:
+    client_ids: list[ClientRequestIdentity] = []
+    for row in evidence_rows:
+        if not row.is_qualified:
+            continue
+        if not is_within_quality_window(row.published_at, now=scored_at):
+            continue
+        if not is_client_request(
+            category=row.detection_category,
+            service_profiles=row.service_profiles,
+            hard_exclusion=row.hard_exclusion,
+        ):
+            continue
+        client_ids.append(
+            ClientRequestIdentity(
+                telegram_peer_id=row.source_telegram_id,
+                telegram_message_id=row.telegram_message_id,
+                normalized_hash=row.normalized_hash,
+            )
+        )
+    global_distinct = distinct_client_request_count(client_ids)
+    opp_rows = list(
+        (
+            await ctx.session.execute(
+                select(SourceOpportunitySnapshot).where(
+                    SourceOpportunitySnapshot.run_id == ctx.run.id
+                )
+            )
+        ).scalars()
+    )
+    gate = evaluate_run_gate(
+        truth_statuses=tuple(o.truth_status for o in opp_rows),  # type: ignore[arg-type]
+        globally_distinct_client_requests=global_distinct,
+        hit_run_cap=bool(base.get("hit_run_cap"))
+        or int(base.get("history_scanned_total", 0)) >= HISTORY_SCAN_CAP_PER_RUN,
+        pool_exhausted=bool(base.get("pool_exhausted")),
+    )
+    raw = {**base}
+    raw["quality_sources"] = gate.quality_sources
+    raw["near_sources"] = gate.near_sources
+    raw["inconclusive_sources"] = gate.inconclusive_sources
+    raw["rejected_sources"] = gate.rejected_sources
+    raw["globally_distinct_client_requests"] = global_distinct
+    raw["gate_status"] = gate.gate_status
+    if raw.get("hit_run_cap") or int(
+        raw.get("history_scanned_total", 0)
+    ) >= HISTORY_SCAN_CAP_PER_RUN:
+        raw["hit_run_cap"] = 1
+    ctx.run.counters_json = json.dumps(raw, ensure_ascii=False, sort_keys=True)
 
 
 async def _note_registry_suppressed(
@@ -1292,6 +1795,23 @@ async def _note_dismissed_suppressed(
     ctx.run.counters_json = _dumps_counters(counters)
 
 
+async def _note_presented_suppressed(
+    ctx: _WorkerContext, telegram_ids: set[int] | frozenset[int]
+) -> None:
+    """Merge unique already-shown peers into presented/cooldown counters (SRC-041)."""
+    if not telegram_ids:
+        return
+    before = len(ctx.presented_suppressed_ids)
+    ctx.presented_suppressed_ids.update(telegram_ids)
+    if len(ctx.presented_suppressed_ids) == before:
+        return
+    unique = len(ctx.presented_suppressed_ids)
+    counters = _loads_counters(ctx.run.counters_json)
+    counters["presented_suppressed"] = unique
+    counters["cooldown_suppressed"] = unique
+    ctx.run.counters_json = _dumps_counters(counters)
+
+
 async def _persist_hits(
     ctx: _WorkerContext,
     annotated: list[AnnotatedSearchHit],
@@ -1305,6 +1825,7 @@ async def _persist_hits(
         scored_at=_utcnow(),
         registry=ctx.registry,
         dismissed=ctx.dismissed,
+        presented=ctx.presented,
         existing_evidence_count=existing,
         linked_parents=ctx.linked_parents,
     )
@@ -1314,6 +1835,7 @@ async def _persist_hits(
         await _bump_counter(ctx, "budget_skipped", result.budget_skipped_count)
     await _note_registry_suppressed(ctx, result.registry_suppressed_ids)
     await _note_dismissed_suppressed(ctx, result.dismissed_suppressed_ids)
+    await _note_presented_suppressed(ctx, result.presented_suppressed_ids)
     hits_by_kind: dict[str, int] = {}
     for item in annotated:
         hits_by_kind[item.discovery_channel] = hits_by_kind.get(item.discovery_channel, 0) + 1
@@ -1327,6 +1849,122 @@ async def _persist_hits(
     counters["evidence_count"] = await _evidence_count(ctx)
     ctx.run.counters_json = _dumps_counters(counters)
     await ctx.session.flush()
+
+
+async def _record_presented_ledger(
+    ctx: _WorkerContext,
+    *,
+    snap: OpportunitySnapshotRecord,
+    opportunity_row: SourceOpportunitySnapshot,
+) -> None:
+    """Persist durable already-shown membership (idempotent; cross-run suppress)."""
+    tid = snap.source_telegram_id
+    await upsert_presented_suppress(
+        ctx.session,
+        identity=SuppressIdentity(
+            canonical_key=peer_canonical_key(tid),
+            telegram_id=tid,
+            username_normalized=snap.username,
+        ),
+        origin_run_id=ctx.run.id,
+        origin_opportunity_id=opportunity_row.id,
+        first_presented_at=opportunity_row.created_at,
+    )
+
+
+async def _expand_directory_replacement(
+    ctx: _WorkerContext,
+    *,
+    suppressed_ids: set[int],
+    target_quota: int,
+    already_qualified: int,
+) -> tuple[int, list[int]]:
+    """Free directory expansion after mass suppress (SRC-040 / D-069).
+
+    Uses versioned SEED_DIRECTORY_REPLACEMENT_QUERIES plus any profile directory
+    texts not yet executed this run. Stars/paid paths are never used.
+    """
+    if already_qualified >= target_quota:
+        return 0, []
+
+    existing = list(
+        (
+            await ctx.session.execute(
+                select(DiscoveryRunQuery).where(
+                    DiscoveryRunQuery.run_id == ctx.run.id,
+                    DiscoveryRunQuery.query_kind == "directory",
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    already_texts = {
+        normalize_query(q.query_text)
+        for q in existing
+        if q.query_text
+    }
+    candidates: list[str] = []
+    for raw in (*ctx.directory_queries, *SEED_DIRECTORY_REPLACEMENT_QUERIES):
+        try:
+            normalized = normalize_query(raw)
+        except Exception:
+            continue
+        if len(normalized) < 3:
+            continue
+        if normalized in already_texts:
+            continue
+        if normalized in candidates:
+            continue
+        candidates.append(normalized)
+
+    fetches = 0
+    new_ids: list[int] = []
+    need = target_quota - already_qualified
+    next_ordinal = await _next_ordinal(ctx)
+
+    for query_text in candidates:
+        if len(new_ids) >= need:
+            break
+        await _check_cancel(ctx)
+        await _maybe_heartbeat(ctx)
+        query = DiscoveryRunQuery(
+            run_id=ctx.run.id,
+            ordinal=next_ordinal,
+            query_kind="directory",
+            query_text=query_text,
+            scope=None,
+            state="queued",
+        )
+        next_ordinal += 1
+        ctx.session.add(query)
+        await ctx.session.flush()
+        before_ids = {s.telegram_id for s in ctx.directory_sources}
+        await _execute_directory_query(ctx, query)
+        fetches += 1
+        # Note suppress on newly acquired peers.
+        for snap in ctx.directory_sources:
+            if snap.telegram_id in before_ids:
+                continue
+            if snap.telegram_id in registry_telegram_ids(ctx.registry):
+                await _note_registry_suppressed(ctx, {snap.telegram_id})
+                continue
+            dismissed_id = _dismissed_canonical_id(
+                ctx, telegram_id=snap.telegram_id, username=snap.username
+            )
+            if dismissed_id is not None:
+                await _note_dismissed_suppressed(ctx, {dismissed_id})
+                continue
+            presented_id = _presented_canonical_id(
+                ctx, telegram_id=snap.telegram_id, username=snap.username
+            )
+            if presented_id is not None:
+                await _note_presented_suppressed(ctx, {presented_id})
+                continue
+            if snap.telegram_id not in suppressed_ids and snap.telegram_id not in new_ids:
+                new_ids.append(snap.telegram_id)
+
+    return fetches, new_ids
 
 
 async def _insert_evidence(ctx: _WorkerContext, record: EvidenceRecord) -> None:
@@ -1351,6 +1989,10 @@ async def _insert_evidence(ctx: _WorkerContext, record: EvidenceRecord) -> None:
         row.discovery_channels_json = json.dumps(channels, ensure_ascii=False)
         if record.is_qualified:
             row.is_qualified = True
+        if record.matched_rule_ids:
+            existing_ids = json.loads(getattr(row, "matched_rule_ids_json", None) or "[]")
+            merged_ids = sorted(set(existing_ids) | set(record.matched_rule_ids))
+            row.matched_rule_ids_json = json.dumps(merged_ids, ensure_ascii=False)
         return
 
     row = SourceDiscoveryEvidence(
@@ -1372,6 +2014,7 @@ async def _insert_evidence(ctx: _WorkerContext, record: EvidenceRecord) -> None:
         hard_exclusion_rule_id=record.hard_exclusion_rule_id,
         service_profiles_json=record.service_profiles_json(),
         rule_set_checksum=record.rule_set_checksum,
+        matched_rule_ids_json=record.matched_rule_ids_json(),
         created_at=_utcnow(),
     )
     ctx.session.add(row)
@@ -1393,6 +2036,14 @@ async def _upsert_opportunity(
     )
     if dismissed_id is not None:
         await _note_dismissed_suppressed(ctx, {dismissed_id})
+        return
+    presented_id = _presented_canonical_id(
+        ctx,
+        telegram_id=snap.source_telegram_id,
+        username=snap.username,
+    )
+    if presented_id is not None:
+        await _note_presented_suppressed(ctx, {presented_id})
         return
     existing = await ctx.session.execute(
         select(SourceOpportunitySnapshot).where(
@@ -1421,6 +2072,9 @@ async def _upsert_opportunity(
             sample_timestamps=snap.sample_timestamps_json(),
             score=snap.score,
             band=snap.band,
+            truth_status=snap.truth_status,
+            verification_scanned_count=snap.verification_scanned_count,
+            verification_stop_reason=snap.verification_stop_reason,
             score_components_json=snap.score_components_json(),
             discovery_channels_json=snap.discovery_channels_json(),
             review_state=snap.review_state,
@@ -1447,11 +2101,18 @@ async def _upsert_opportunity(
         row.sample_timestamps = snap.sample_timestamps_json()
         row.score = snap.score
         row.band = snap.band
+        if snap.verification_scanned_count:
+            row.verification_scanned_count = snap.verification_scanned_count
+        if snap.verification_stop_reason:
+            row.verification_stop_reason = snap.verification_stop_reason
+        if snap.truth_status and snap.truth_status != "inconclusive":
+            row.truth_status = snap.truth_status
         row.score_components_json = snap.score_components_json()
         row.discovery_channels_json = snap.discovery_channels_json()
         row.updated_at = now
         row.version += 1
     await ctx.session.flush()
+    await _record_presented_ledger(ctx, snap=snap, opportunity_row=row)
 
 
 async def _load_evidence_records(ctx: _WorkerContext) -> list[EvidenceRecord]:
@@ -1488,6 +2149,9 @@ async def _load_evidence_records(ctx: _WorkerContext) -> list[EvidenceRecord]:
                 hard_exclusion_rule_id=row.hard_exclusion_rule_id,
                 service_profiles=tuple(json.loads(row.service_profiles_json)),
                 rule_set_checksum=row.rule_set_checksum,
+                matched_rule_ids=tuple(
+                    json.loads(getattr(row, "matched_rule_ids_json", None) or "[]")
+                ),
             )
         )
     return records
@@ -1666,22 +2330,423 @@ async def _parked_queries(
     return list(result.scalars().all())
 
 
-async def _finished_verification_keys(ctx: _WorkerContext) -> set[tuple[int, str]]:
+_TERMINAL_VERIFICATION_STATES = frozenset(
+    {
+        "succeeded",
+        "failed",
+        "cancelled",
+        "quota_skipped",
+        "budget_skipped",
+    }
+)
+
+
+async def _resumable_verification_queries(ctx: _WorkerContext) -> list[DiscoveryRunQuery]:
+    """Return crash ``running`` and ``retry_wait`` source_verification queries.
+
+    Future ``retry_wait`` (available_at > now) is still returned; resume raises
+    FloodWaitControl to park until exact ``until``.
+    """
+    result = await ctx.session.execute(
+        select(DiscoveryRunQuery)
+        .where(
+            DiscoveryRunQuery.run_id == ctx.run.id,
+            DiscoveryRunQuery.query_kind == "source_verification",
+            DiscoveryRunQuery.state.in_(("running", "retry_wait")),
+        )
+        .order_by(DiscoveryRunQuery.ordinal.asc())
+    )
+    return list(result.scalars().all())
+
+
+async def _finished_verification_sources(ctx: _WorkerContext) -> set[int]:
+    """Sources whose verification query reached a true terminal state only."""
     result = await ctx.session.execute(
         select(DiscoveryRunQuery).where(
             DiscoveryRunQuery.run_id == ctx.run.id,
             DiscoveryRunQuery.query_kind == "source_verification",
-            DiscoveryRunQuery.state.in_(
-                (
-                    "succeeded",
-                    "failed",
-                    "cancelled",
-                    "quota_skipped",
-                    "budget_skipped",
-                    "retry_wait",
-                    "running",
+            DiscoveryRunQuery.state.in_(tuple(_TERMINAL_VERIFICATION_STATES)),
+        )
+    )
+    keys: set[int] = set()
+    for row in result.scalars():
+        if row.source_telegram_id is None:
+            continue
+        keys.add(row.source_telegram_id)
+    return keys
+
+
+async def _verification_scanned_by_source(ctx: _WorkerContext) -> dict[int, int]:
+    """Per-source scanned counts from verification query cursors (fair waterfill)."""
+    result = await ctx.session.execute(
+        select(DiscoveryRunQuery).where(
+            DiscoveryRunQuery.run_id == ctx.run.id,
+            DiscoveryRunQuery.query_kind == "source_verification",
+        )
+    )
+    out: dict[int, int] = {}
+    for row in result.scalars():
+        if row.source_telegram_id is None:
+            continue
+        cursor = _load_history_cursor(row)
+        out[int(row.source_telegram_id)] = int(cursor.get("scanned", 0) or 0)
+    return out
+
+
+async def _get_or_create_verification_query(
+    ctx: _WorkerContext,
+    *,
+    telegram_id: int,
+    next_ordinal: int,
+) -> DiscoveryRunQuery:
+    result = await ctx.session.execute(
+        select(DiscoveryRunQuery)
+        .where(
+            DiscoveryRunQuery.run_id == ctx.run.id,
+            DiscoveryRunQuery.query_kind == "source_verification",
+            DiscoveryRunQuery.source_telegram_id == telegram_id,
+        )
+        .order_by(DiscoveryRunQuery.ordinal.asc())
+        .limit(1)
+    )
+    existing = result.scalar_one_or_none()
+    if existing is not None:
+        return existing
+    query = DiscoveryRunQuery(
+        run_id=ctx.run.id,
+        ordinal=next_ordinal,
+        query_kind="source_verification",
+        query_text=HISTORY_SCAN_QUERY_TEXT,
+        source_telegram_id=telegram_id,
+        state="running",
+        started_at=_utcnow(),
+    )
+    ctx.session.add(query)
+    await ctx.session.flush()
+    return query
+
+
+async def _finalize_unfinished_on_run_cap(
+    ctx: _WorkerContext,
+    *,
+    pool: list[dict[str, Any]],
+    done_sources: set[int],
+    suppressed_ids: set[int],
+) -> None:
+    """Mark unfinished pool sources inconclusive when run soft-cap stops verification."""
+    counters = _loads_counters(ctx.run.counters_json)
+    counters["hit_run_cap"] = 1
+    ctx.run.counters_json = _dumps_counters(counters)
+
+    for item in pool:
+        tid = int(item["telegram_id"])
+        if tid in done_sources or tid in suppressed_ids:
+            continue
+        result = await ctx.session.execute(
+            select(DiscoveryRunQuery)
+            .where(
+                DiscoveryRunQuery.run_id == ctx.run.id,
+                DiscoveryRunQuery.query_kind == "source_verification",
+                DiscoveryRunQuery.source_telegram_id == tid,
+            )
+            .order_by(DiscoveryRunQuery.ordinal.asc())
+            .limit(1)
+        )
+        query = result.scalar_one_or_none()
+        scanned = 0
+        distinct = 0
+        if query is not None:
+            cursor = _load_history_cursor(query)
+            scanned = int(cursor.get("scanned", 0) or 0)
+            distinct = len(cursor.get("distinct_hashes", []) or [])
+            if query.state not in _TERMINAL_VERIFICATION_STATES:
+                _save_cursor(
+                    query,
+                    {
+                        **cursor,
+                        "stop_reason": "run_cap",
+                    },
                 )
-            ),
+                await _mark_query_terminal(query, "succeeded")
+        await _apply_source_truth(
+            ctx,
+            telegram_id=tid,
+            distinct_count=distinct,
+            scanned=scanned,
+            window_complete=False,
+            hit_source_cap=False,
+            hit_run_cap=True,
+            stop_reason="run_cap",
+        )
+        done_sources.add(tid)
+
+
+async def _run_history_scanned(ctx: _WorkerContext) -> int:
+    counters = _loads_counters(ctx.run.counters_json)
+    return int(counters.get("history_scanned_total", 0))
+
+
+def _load_history_cursor(query: DiscoveryRunQuery) -> dict[str, Any]:
+    raw = query.cursor_json or "{}"
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _load_run_cursor(ctx: _WorkerContext) -> dict[str, Any]:
+    return _cursor_payload(ctx.run.cursor_json)
+
+
+async def _persist_directory_pool(ctx: _WorkerContext) -> None:
+    payload = _load_run_cursor(ctx)
+    seen: dict[int, dict[str, Any]] = {}
+    for item in payload.get("directory_pool") or []:
+        if isinstance(item, dict) and "telegram_id" in item:
+            seen[int(item["telegram_id"])] = item
+    for snap in ctx.directory_sources:
+        seen[snap.telegram_id] = {
+            "telegram_id": snap.telegram_id,
+            "username": snap.username,
+            "title": snap.title,
+            "source_type": snap.source_type,
+            "public_url": snap.public_url,
+        }
+    payload["directory_pool"] = list(seen.values())
+    ctx.run.cursor_json = json.dumps(payload, ensure_ascii=False)
+    await ctx.session.flush()
+
+
+async def _restore_directory_pool(ctx: _WorkerContext) -> None:
+    if ctx.directory_sources:
+        return
+    payload = _load_run_cursor(ctx)
+    restored: list[SourceSnapshot] = []
+    for item in payload.get("directory_pool") or []:
+        if not isinstance(item, dict):
+            continue
+        tid = int(item["telegram_id"])
+        restored.append(
+            SourceSnapshot(
+                schema_version=1,
+                telegram_id=tid,
+                username=item.get("username") or "",
+                title=str(item.get("title") or item.get("username") or tid),
+                source_type=str(item.get("source_type") or "megagroup"),  # type: ignore[arg-type]
+                public_url=item.get("public_url"),
+                accessible=True,
+            )
+        )
+    ctx.directory_sources = restored
+
+
+async def _persist_acquisition_pool(
+    ctx: _WorkerContext,
+    *,
+    pool: list[dict[str, Any]],
+    pool_cursor: int,
+) -> None:
+    payload = _load_run_cursor(ctx)
+    payload["acquisition_pool"] = pool
+    payload["acquisition_pool_cursor"] = int(pool_cursor)
+    ctx.run.cursor_json = json.dumps(payload, ensure_ascii=False)
+    await ctx.session.flush()
+
+
+async def _source_meta_for_telegram_id(
+    ctx: _WorkerContext, telegram_id: int
+) -> dict[str, Any]:
+    payload = _load_run_cursor(ctx)
+    for key in ("acquisition_pool", "directory_pool"):
+        for item in payload.get(key) or []:
+            if isinstance(item, dict) and int(item.get("telegram_id", -1)) == telegram_id:
+                return item
+    for snap in ctx.directory_sources:
+        if snap.telegram_id == telegram_id:
+            return {
+                "telegram_id": snap.telegram_id,
+                "username": snap.username,
+                "title": snap.title,
+                "source_type": snap.source_type,
+                "public_url": snap.public_url,
+            }
+    opp = await ctx.session.execute(
+        select(SourceOpportunitySnapshot).where(
+            SourceOpportunitySnapshot.run_id == ctx.run.id,
+            SourceOpportunitySnapshot.source_telegram_id == telegram_id,
+        )
+    )
+    row = opp.scalar_one_or_none()
+    if row is not None:
+        return {
+            "telegram_id": telegram_id,
+            "username": row.username,
+            "title": row.title,
+            "source_type": row.source_type,
+            "public_url": row.public_url,
+        }
+    return {"telegram_id": telegram_id}
+
+
+async def _may_persist_evidence(ctx: _WorkerContext, *, is_qualified: bool) -> bool:
+    """Qualified evidence has absolute priority over noise within documented caps."""
+    total = await _evidence_count(ctx)
+    if is_qualified:
+        q = await _qualified_evidence_count(ctx)
+        if q >= MAX_QUALIFIED_EVIDENCE_PER_RUN:
+            return False
+        # Absolute priority: never starve qualified for noise that filled soft total.
+        return True
+    if total >= MAX_EVIDENCE_PER_RUN:
+        return False
+    noise = total - await _qualified_evidence_count(ctx)
+    return noise < MAX_NOISE_EVIDENCE_PER_RUN
+
+
+async def _qualified_evidence_count(ctx: _WorkerContext) -> int:
+    result = await ctx.session.execute(
+        select(func.count())
+        .select_from(SourceDiscoveryEvidence)
+        .where(
+            SourceDiscoveryEvidence.run_id == ctx.run.id,
+            SourceDiscoveryEvidence.is_qualified.is_(True),
+        )
+    )
+    return int(result.scalar_one())
+
+
+async def _gate_satisfied_from_persisted(ctx: _WorkerContext) -> bool:
+    """Early-stop deep verification when gate pass already reachable from DB."""
+    opp_rows = list(
+        (
+            await ctx.session.execute(
+                select(SourceOpportunitySnapshot).where(
+                    SourceOpportunitySnapshot.run_id == ctx.run.id
+                )
+            )
+        ).scalars()
+    )
+    quality = sum(1 for o in opp_rows if o.truth_status == "quality")
+    if quality < GATE_MIN_QUALITY_SOURCES:
+        return False
+    evidence = await _load_evidence_records(ctx)
+    now = _utcnow()
+    ids = [
+        ClientRequestIdentity(
+            telegram_peer_id=r.source_telegram_id,
+            telegram_message_id=r.telegram_message_id,
+            normalized_hash=r.normalized_hash,
+        )
+        for r in evidence
+        if r.is_qualified
+        and is_within_quality_window(r.published_at, now=now)
+        and is_client_request(
+            category=r.detection_category,
+            service_profiles=r.service_profiles,
+            hard_exclusion=r.hard_exclusion,
+        )
+    ]
+    return distinct_client_request_count(ids) >= GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS
+
+
+async def _username_for_telegram_id(ctx: _WorkerContext, telegram_id: int) -> str | None:
+    opp = await ctx.session.execute(
+        select(SourceOpportunitySnapshot).where(
+            SourceOpportunitySnapshot.run_id == ctx.run.id,
+            SourceOpportunitySnapshot.source_telegram_id == telegram_id,
+        )
+    )
+    row = opp.scalar_one_or_none()
+    if row is not None and row.username:
+        return row.username
+    ev = await ctx.session.execute(
+        select(SourceDiscoveryEvidence)
+        .where(
+            SourceDiscoveryEvidence.run_id == ctx.run.id,
+            SourceDiscoveryEvidence.source_telegram_id == telegram_id,
+        )
+        .limit(1)
+    )
+    evidence = ev.scalar_one_or_none()
+    if evidence is not None and evidence.source_username:
+        return evidence.source_username
+    reg = ctx.registry.by_telegram_id.get(telegram_id)
+    if reg is not None and reg.username_normalized:
+        return reg.username_normalized
+    return None
+
+
+async def _apply_source_truth(
+    ctx: _WorkerContext,
+    *,
+    telegram_id: int,
+    distinct_count: int,
+    scanned: int,
+    window_complete: bool,
+    hit_source_cap: bool,
+    hit_run_cap: bool,
+    stop_reason: str | None,
+) -> None:
+    status = classify_truth_status(
+        distinct_qualified_in_window=distinct_count,
+        window_complete=window_complete,
+        hit_source_cap=hit_source_cap,
+        hit_run_cap=hit_run_cap,
+    )
+    existing = await ctx.session.execute(
+        select(SourceOpportunitySnapshot).where(
+            SourceOpportunitySnapshot.run_id == ctx.run.id,
+            SourceOpportunitySnapshot.source_telegram_id == telegram_id,
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row is None:
+        meta = await _source_meta_for_telegram_id(ctx, telegram_id)
+        username = meta.get("username") or await _username_for_telegram_id(ctx, telegram_id)
+        row = SourceOpportunitySnapshot(
+            run_id=ctx.run.id,
+            source_telegram_id=telegram_id,
+            username=username,
+            title=str(meta.get("title") or username or str(telegram_id)),
+            source_type=str(meta.get("source_type") or "megagroup"),
+            public_url=meta.get("public_url")
+            or (f"https://t.me/{username}" if username else None),
+            qualified_count=distinct_count,
+            truth_status=status,
+            verification_scanned_count=scanned,
+            verification_stop_reason=stop_reason,
+            discovery_channels_json=json.dumps(["source_verification"], ensure_ascii=False),
+            created_at=_utcnow(),
+            updated_at=_utcnow(),
+        )
+        ctx.session.add(row)
+    else:
+        row.truth_status = status
+        row.verification_scanned_count = scanned
+        row.verification_stop_reason = stop_reason
+        if distinct_count > row.qualified_count:
+            row.qualified_count = distinct_count
+        row.updated_at = _utcnow()
+        row.version += 1
+    await ctx.session.flush()
+    await upsert_presented_suppress(
+        ctx.session,
+        identity=SuppressIdentity(
+            canonical_key=peer_canonical_key(telegram_id),
+            telegram_id=telegram_id,
+            username_normalized=row.username,
+        ),
+        origin_run_id=ctx.run.id,
+        origin_opportunity_id=row.id,
+        first_presented_at=row.created_at,
+    )
+    """Legacy helper kept for tests; prefer ``_finished_verification_sources``."""
+    result = await ctx.session.execute(
+        select(DiscoveryRunQuery).where(
+            DiscoveryRunQuery.run_id == ctx.run.id,
+            DiscoveryRunQuery.query_kind == "source_verification",
+            DiscoveryRunQuery.state.in_(tuple(_TERMINAL_VERIFICATION_STATES)),
         )
     )
     keys: set[tuple[int, str]] = set()

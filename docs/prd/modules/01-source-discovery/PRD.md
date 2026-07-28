@@ -189,9 +189,25 @@ Identity MUST применяться в порядке: `telegram_id` → сущ
 
 Для найденных каналов система MUST через Gateway `get_linked_discussion` искать связанную публичную discussion group с username. Linked discussion MUST сохраняться как отдельный opportunity result с `linked_parent_telegram_id` (D-053). Auto-join и автоматическое создание `TelegramSource` запрещены. Provenance method при promotion — `linked_discussion`.
 
-### SRC-024 — Глубокая проверка источника
+### SRC-024 — Глубокая проверка источника (history scan, D-068)
 
-После seed search система MUST выбрать не более `25` источников для deep verification по предварительному рейтингу (число запросов, seed evidence, directory match, приоритет megagroup/linked discussion, свежесть, tie-break Telegram ID). На источник: максимум `5` **profile** queries из `KeywordDiscoveryProfileVersion` (`required_service_profiles` / profile-bound queries, not global `post_queries[:5]`), максимум `20` уникальных сообщений, окно `30` дней. Сообщения нормализуются и оцениваются pure DET `detect()`; результат пишется только в evidence. `required_service_profiles` и `additional_exclusions` MUST влиять на eligibility/score с explainable reason codes (SRC-045).
+После seed search система MUST выбрать не более `25` источников для deep verification по предварительному рейтингу (число запросов, seed evidence, directory match, приоритет megagroup/linked discussion, свежесть, tie-break Telegram ID).
+
+Deep verification MUST читать публичную историю источника через Gateway `iter_history` (newest→older), классифицируя каждое доступное сообщение pinned DET version. Exact-phrase `search_source_messages` verification MUST NOT быть единственным механизмом доказательства.
+
+Остановка скана источника при первом из:
+
+1. ≥`7` globally-distinct client requests внутри окна `14` дней (quality reached);
+2. достигнута граница `<14` дней от `now` (window complete);
+3. просканировано `1500` сообщений источника (source soft-cap);
+4. суммарно по run просканировано `7500` сообщений (run soft-cap);
+5. история исчерпана / источник недоступен / cancel.
+
+Technical scheduling (не новый product cap): deep verification MUST выделять историю page-based fair waterfill / round-robin по `HISTORY_PAGE_SIZE` между незавершёнными кандидатами (минимум scanned → следующий), углубляя источники с qualified evidence и заменяя exhausted/low-yield, пока не достигнуты `5` quality, pool exhausted или run soft-cap `7500`. Слабый источник MUST NOT монополизировать `1500`, пока в pool остаются непроверенные кандидаты. Per-source cursor/progress и acquisition pool MUST persist для exact FloodWait/restart resume.
+
+Client request = DET category ∈ `{direct_order, contractor_search, recommendation_request, potential_need}` + ≥1 service profile ∈ `{websites, telegram_bots, integrations_api, automation_parsers, ecommerce}` + нет hard exclusion. Distinct identity: `(telegram_peer_id, telegram_message_id)` ∪ `normalized_hash`; exact repost не удваивает счёт.
+
+Persist только scouting evidence (не `TelegramMessage`/Lead/outbox/checkpoint). Soft-cap без доказательства ⇒ `truth_status=inconclusive`, не reject. `required_service_profiles` и `additional_exclusions` MUST влиять на eligibility/score с explainable reason codes (SRC-045).
 
 ### SRC-025 — Source Opportunity Score
 
@@ -223,12 +239,43 @@ Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Plan prose a
 Один keyword run MUST соблюдать:
 
 - page size global search `50`, максимум `2` страницы на query/scope;
-- отбрасывание hits старше `30` дней;
-- общий cap `500` уникальных evidence; сверх лимита — `budget_skipped`;
+- seed/global/public_posts hits вне окна quality `14` дней не квалифицируют source (D-068); acquisition MAY всё ещё видеть более старые hits для ranking seed;
+- общий cap `500` уникальных **persisted** evidence rows; сверх лимита — `budget_skipped` (history scan counters `scanned_*` независимы);
 - directory search максимум `20` peer results на query;
-- deep verification максимум `25` источников;
-- FloodWait: query `available_at=until`, Job `retry_wait`, run `retry_wait_flood`; worker MUST NOT долго спать в event loop;
+- deep verification максимум `25` источников; per-source history soft-cap `1500`; whole-run history soft-cap `7500`;
+- FloodWait: persist exact cursor/source progress, query `available_at=until`, Job `retry_wait`, run `retry_wait_flood`; worker MUST NOT долго спать в event loop, MUST NOT restart run и MUST NOT retry раньше `until`;
 - transient query retry максимум `3` attempts с delays `30`, `120`, `600` секунд.
+
+### SRC-046 — Truth status источника (D-068)
+
+Каждый opportunity после verification MUST получить `truth_status`:
+
+| Status | Условие |
+|---|---|
+| `quality` | ≥`7` distinct client requests в `14` днях |
+| `near` | `1..6` distinct при завершённом сканe без soft-cap interruption |
+| `inconclusive` | soft-cap `1500`/`7500` без quality, либо скан не завершён; soft-cap interruption overrides `near` |
+| `rejected` | завершённый 14-дневный скан доказал `0` distinct client requests (noise/none) |
+
+`inconclusive` MUST отображаться оператору как «недоказанный». Soft-cap MUST NOT silently map to `rejected`.
+
+### SRC-047 — Working-run gate (D-068)
+
+Keyword run MUST вычислять `gate_status`:
+
+- `pass` только при `quality_sources ≥ 5` И `globally_distinct_client_requests ≥ 35`;
+- `inconclusive` если run soft-cap `7500` достигнут до исчерпания candidate pool и PASS не доказан (не `fail`);
+- `fail` если pool exhausted без PASS и без run-cap-before-exhaustion path; иначе при отсутствии PASS.
+
+Counters MUST включать `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `globally_distinct_client_requests`, `history_scanned_total`, `gate_status` (и `hit_run_cap` / `pool_exhausted` для честного отображения).
+
+### SRC-048 — FloodWait resume для history verification (D-068)
+
+На любом history/provider call FloodWait MUST: сохранить cursor/progress источника, перевести run в `retry_wait_flood` до exact `until`, затем продолжить тот же источник без duplicate committed evidence effects.
+
+### SRC-049 — Acquisition coverage пяти услуг (D-068)
+
+Keyword profile seed/post queries MUST покрывать все service profiles `websites|telegram_bots|integrations_api|automation_parsers|ecommerce`. Directory queries MUST ориентироваться на клиентские сообщества (роль клиента + тип сообщества), не на конкурентные «разработка сайтов» directory hits. Public posts Premium/Stars boundary: `premium_required` и `quota_exhausted` сообщаются правдиво; `allow_paid_stars=None`; Premium MUST NOT считаться успехом поиска.
 
 ### SRC-030 — Retention keyword artifacts
 
@@ -305,7 +352,7 @@ Durable suppress ledger `DismissedSource` / `DismissedKeywordSource` MUST store 
 
 ### SRC-037 — Discovery run funnel counters and novelty
 
-Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063): `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`; `novelty_ratio = novel_presented_total / max(1, presented_total)`. Deterministic fixture with sufficient replacement pool: `novelty_ratio ≥ 0.80` after first run; dismissed recurrence across future runs = `0`. Live pilot: `5` sequential runs; median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has proven `pool_exhausted=true` with reason.
+Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063 / D-069): `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` (unique already-shown peers; `cooldown_suppressed` is a historical alias of the same unique count), `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`; `novelty_ratio = novel_presented_total / max(1, presented_total)`. Deterministic fixture with sufficient replacement pool: `novelty_ratio ≥ 0.80` after first run; dismissed recurrence across future runs = `0`. Live pilot: `5` sequential runs; median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has proven `pool_exhausted=true` with reason.
 
 ### SRC-038 — pool_exhausted terminal reason codes
 
@@ -317,11 +364,29 @@ Keyword worker MUST separate stages (D-063): `acquired` → `canonicalized` → 
 
 ### SRC-040 — Replacement acquisition after suppress
 
-After registry/dismiss/cooldown suppress, worker MUST continue provider cursor/replacement fetches until presented quota (deep/qualification caps) OR `pool_exhausted` (D-063). Permanent dismiss (SRC-032) is not replaced by cooldown.
+After registry/dismiss/presented suppress, worker MUST continue free provider cursor/replacement fetches (directory expansion queries, remaining pages, linked discussion/recommendations where already contracted) until deep-verification quota OR truthful `pool_exhausted` (D-063 / D-069). Permanent dismiss (SRC-032) and durable presented suppress (SRC-041) are not temporary cooldowns. Stars/paid paths MUST NOT be used. `pool_exhausted=no_unseen_after_suppress` ONLY after all allowed free replacement paths for the run are exhausted.
 
-### SRC-041 — Cross-run presentation cooldown
+### SRC-041 — Durable presented-source suppress (D-069; supersedes 24h cooldown)
 
-Already-presented **non-dismissed** canonical identity MUST be hidden from default presentation for **24 hours** across keyword runs (`cooldown_suppressed`). Permanent dismiss suppress is not replaced by cooldown.
+Already-presented canonical identity from any prior keyword opportunity snapshot (any `truth_status`, including quality/near/inconclusive/rejected) MUST be durably suppressed from future keyword scouting runs:
+
+- suppressed peer MUST NOT receive new `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot` / deep-verification selection / linked-discussion opportunity in later keyword runs;
+- suppress MUST use SRC-022 identity order (peer id after resolve; username aliases MUST NOT bypass);
+- suppress MUST persist across restart and MUST survive `SourceOpportunitySnapshot` retention (STO-020);
+- distinct from registry suppress (SRC-031) and permanent dismiss (SRC-032);
+- upsert on first presentation is idempotent; historical snapshots MUST be backfilled into the ledger;
+- run counter `presented_suppressed` MUST equal the number of **unique** canonical peers suppressed as already-shown in the run; funnel field `cooldown_suppressed` is a historical alias of that same unique count (no double-count).
+
+The prior «24 hours then show again» rule is **void** (D-069).
+
+### SRC-050 — Presented suppress ledger entity
+
+Durable ledger `PresentedKeywordSource` MUST store (D-069 / SRC-041):
+
+- `canonical_key`, nullable `telegram_id`, usernames/aliases JSON, `first_presented_at`, nullable `origin_run_id` / `origin_opportunity_id`, version/upsert stamp;
+- uniqueness on `canonical_key` and on `source_telegram_id` when set;
+- physical table + retention immunity owned by STO (STO-020);
+- snapshot presence alone after retention is NOT sufficient — ledger membership is authoritative.
 
 ### SRC-042 — Graph edge types and public-only targets
 
@@ -377,7 +442,7 @@ Deep verification noise sample MUST include up to `20` messages in a `30`-day wi
 
 ## 7. Data ownership
 
-Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity` и `DismissedSource` / `DismissedKeywordSource`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine. Physical suppress table and retention immunity are STO (STO-017).
+Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource` и logical `PresentedKeywordSource`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine. Physical suppress tables and retention immunity are STO (STO-017, STO-020).
 
 Ключевые ограничения:
 
@@ -442,7 +507,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-045 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-049 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -471,7 +536,7 @@ MVP включает SRC-001—SRC-045 полностью. Исключены se
 | `AT-SRC-021` | SRC-021 | Завершить keyword run с hits | Нет `TelegramMessage`/Lead/outbox/checkpoint изменений |
 | `AT-SRC-022` | SRC-022 | Один Telegram ID найден двумя queries | Один snapshot; ≥2 evidence rows |
 | `AT-SRC-023` | SRC-023 | Канал с публичной linked discussion | Отдельный opportunity с `linked_parent_telegram_id`; join не вызван |
-| `AT-SRC-024` | SRC-024 | Seed вернул >25 источников | Deep verification ≤25; per-source ≤20 messages / 30 дней |
+| `AT-SRC-024` | SRC-024 | History scan fixture: 7 distinct in 14d; older excluded; caps | Quality at 7; messages older than 14d excluded; source cap 1500→inconclusive; run cap 7500→inconclusive; phrase-only fake path not required |
 | `AT-SRC-025` | SRC-025 | Фикстура qualified/weeks/ecommerce/recency/noise | Score и band совпадают с формулой; `quality_score` источника не изменён |
 | `AT-SRC-026` | SRC-026 | Promote нового и существующего snapshot | Candidate создан один раз / linked; monitoring не стартовал |
 | `AT-SRC-027` | SRC-027 | Повтор start при active run и повтор promote | Conflict / идемпотентный promote без дубля |
@@ -487,12 +552,17 @@ MVP включает SRC-001—SRC-045 полностью. Исключены se
 | `AT-SRC-037` | SRC-037 | Fixture with sufficient replacement pool after first run | `novelty_ratio ≥ 0.80`; dismissed recurrence = 0 |
 | `AT-SRC-038` | SRC-038 | Exhaust provider after suppress without quota fill | `pool_exhausted=true` with closed reason code |
 | `AT-SRC-039` | SRC-039 | Trace single hit through stages | Stages `acquired→…→presented` recorded with provenance method |
-| `AT-SRC-040` | SRC-040 | Suppress removes presented slot | Replacement fetch increases `replacement_fetches_total` until quota or exhaust |
-| `AT-SRC-041` | SRC-041 | Present non-dismissed identity; second run within 24h | Hidden via `cooldown_suppressed`; after 24h eligible again |
+| `AT-SRC-040` | SRC-040 | Suppress removes presented slot; initial provider results mostly seen | Replacement/expansion fetches raise `replacement_fetches_total`; later unseen sources verified; `pool_exhausted` only after free paths exhausted |
+| `AT-SRC-041` | SRC-041 | Present quality/near/rejected peer; next run finds same peer | No evidence/snapshot/deep for peer; `presented_suppressed` ≥ 1; survives restart + snapshot retention; alias/canonical merge does not bypass |
 | `AT-SRC-042` | SRC-042 | Private invite and depth-3 public link | Private skipped; depth>2 not resolved; depth stays `2`, caps `100`/`25` |
 | `AT-SRC-043` | SRC-043 | Directory-only peer without message evidence | Band `weak`, reason `directory_only_no_evidence` |
-| `AT-SRC-044` | SRC-044 | Deep sample includes non-query hits | ≤20 messages / 30d; neutral noise counted in exclusions |
+| `AT-SRC-044` | SRC-044 | Deep sample includes non-query hits | History classify-all; bounded noise samples persisted; caps 1500/14d |
 | `AT-SRC-045` | SRC-045 | Profile with `required_service_profiles` + exclusion | Eligibility/score reflect profile; exclusion reason explainable |
+| `AT-SRC-046` | SRC-046 | 6 distinct vs 7; incomplete/cap vs completed 0 | 6→near; 7→quality; cap→inconclusive; completed 0→rejected |
+| `AT-SRC-047` | SRC-047 | 4 quality sources vs 5×7 distinct | gate fail / gate pass |
+| `AT-SRC-048` | SRC-048 | FloodWait mid history page | Cursor persisted; resume same source; no duplicate evidence |
+| `AT-SRC-049` | SRC-049 | Profile covers 5 services; Premium vs Stars quota | All services present in seed queries; premium_required≠quota_exhausted; Stars=0 |
+| `AT-SRC-050` | SRC-050 | Presentation creates ledger row; purge snapshots | Presented suppress membership remains; registry/dismiss/presented reasons distinguishable |
 
 ## 14. Принятые записи decision log
 
@@ -507,4 +577,6 @@ MVP включает SRC-001—SRC-045 полностью. Исключены se
 - `D-061`: provisional identity + peer merge (SRC-033/034).
 - `D-062`: suppress ledger + `ReconsiderDismissSuppress` (SRC-035/036).
 - `D-063`: acquisition≠qualification, novelty, pool_exhausted (SRC-037..041).
+- `D-068`: working-client-search quality gate, history verification, truth_status, FloodWait resume (SRC-024 amended, SRC-046..049).
+- `D-069`: durable presented-source suppress supersedes 24h cooldown; free replacement acquisition after mass suppress (SRC-041/050, SRC-040).
 - `D-067`: opportunity bands stay `promising|review|weak`; plan `strong|moderate` aliases only.

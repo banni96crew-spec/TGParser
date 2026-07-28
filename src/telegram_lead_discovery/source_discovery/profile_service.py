@@ -259,30 +259,34 @@ def _seed_matches_catalog(version_row: KeywordDiscoveryProfileVersion) -> bool:
         and actual.additional_exclusions == expected.additional_exclusions
         and actual.source_scope == expected.source_scope
         and actual.required_service_profiles == expected.required_service_profiles
-        and version_row.version == SEED_PROFILE_VERSION
     )
 
 
 async def ensure_seed_keyword_profile(session: AsyncSession) -> ProfileWithVersion:
-    """Idempotent seed of immutable ecommerce-development-ru version 1 (SRC-017)."""
+    """Idempotent seed of ecommerce-development-ru; appends new version on catalog change."""
     existing = await get_profile_by_name(session, SEED_PROFILE_NAME)
-    if existing is not None:
-        version_row = await get_profile_version(
+    if existing is None:
+        seed = build_seed_normalized_profile()
+        return await create_keyword_discovery_profile(
             session,
-            profile_id=existing.id,
-            version=SEED_PROFILE_VERSION,
+            name=SEED_PROFILE_NAME,
+            post_queries=seed.post_queries,
+            directory_queries=seed.directory_queries,
+            additional_exclusions=seed.additional_exclusions,
+            source_scope=seed.source_scope,
+            required_service_profiles=seed.required_service_profiles,
         )
-        if not _seed_matches_catalog(version_row):
-            raise ProfileSeedMismatchError(
-                f"seed_profile_mismatch:{SEED_PROFILE_NAME}:v{SEED_PROFILE_VERSION}:"
-                f"checksum={seed_profile_checksum()}"
-            )
+
+    version_row = await get_current_profile_version(session, existing.id)
+    if _seed_matches_catalog(version_row):
         return ProfileWithVersion(profile=existing, version=version_row)
 
+    # Remediation: append immutable version with updated seed catalog (D-068).
     seed = build_seed_normalized_profile()
-    return await create_keyword_discovery_profile(
+    return await create_keyword_discovery_profile_version(
         session,
-        name=SEED_PROFILE_NAME,
+        profile_id=existing.id,
+        expected_version=existing.current_version,
         post_queries=seed.post_queries,
         directory_queries=seed.directory_queries,
         additional_exclusions=seed.additional_exclusions,

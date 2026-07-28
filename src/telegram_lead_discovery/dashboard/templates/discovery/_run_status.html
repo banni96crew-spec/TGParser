@@ -31,6 +31,20 @@
     <li>FloodWait until:
       <span class="mono">{% if run.flood_wait_until %}{{ run.flood_wait_until }}{% else %}—{% endif %}</span>
     </li>
+    <li>Gate:
+      <span class="mono">{% if run.gate_status == "pass" %}pass{% elif run.gate_status == "inconclusive" %}inconclusive (недоказанный){% else %}{{ run.gate_status or "fail" }}{% endif %}</span>
+      · quality <span class="mono">{{ run.quality_sources }}/5</span>
+      · global distinct <span class="mono">{{ run.globally_distinct_client_requests }}/35</span>
+    </li>
+    <li>Truth buckets:
+      quality=<span class="mono">{{ run.quality_sources }}</span>,
+      near=<span class="mono">{{ run.near_sources }}</span>,
+      inconclusive=<span class="mono">{{ run.inconclusive_sources }}</span>,
+      rejected=<span class="mono">{{ run.rejected_sources }}</span>
+    </li>
+    <li>History scanned / run cap:
+      <span class="mono">{{ run.history_scanned_total }}</span> / 7500
+    </li>
     <li>Ошибка: <span class="mono">{{ run.last_error_code or "—" }}</span></li>
   </ul>
 

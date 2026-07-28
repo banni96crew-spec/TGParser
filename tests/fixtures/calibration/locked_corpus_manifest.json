@@ -1,0 +1,17 @@
+{
+  "catalog_slug": "ru-mvp-3",
+  "corpus_sha256": "1b097ffd88690fcb24ceda2d2ca39e5371ae064e5820d6a7423549ff3c9309a8",
+  "live_companion_corpus": "live_run13_c01_c20.jsonl",
+  "materialization_policy": "deterministic generated candidates; locked rows retain expected category+band; NOT operator run13 Telegram excerpts. Live C01–C20 sanitized derivatives live in live_run13_c01_c20.jsonl with provenance operator_run_13_sanitized_excerpt; T1–T5 are det_a_golden.",
+  "provenance": "synthetic_fixed_no_live_telegram_text",
+  "quality_gates": {
+    "client_precision_min": 0.8,
+    "client_recall_min": 0.8
+  },
+  "rule_set_checksum": "73efecbf35e0f5f79f20cbdaab8a8c35994e7dbfba2c69522193cec8b2c476e2",
+  "sample_count": 520,
+  "schema_version": "det-calibration-corpus.v2",
+  "source_count": 12,
+  "train_count": 416,
+  "validation_count": 104
+}

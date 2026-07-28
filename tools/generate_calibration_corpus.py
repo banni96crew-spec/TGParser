@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 from telegram_lead_discovery.scoring.calibration import (
@@ -96,6 +97,9 @@ def _ads_templates(i: int) -> str:
         "Мы создаём интернет-магазины, акция на разработку до конца месяца.",
         "Принимаем заказы, свободны для новых проектов.",
         "Наша команда оказываем услуги интеграции CRM.",
+        "#Помогу с сайтом на Tilda под ключ.",
+        "Разработчик сайтов под ключ, портфолио в наличии.",
+        "Сделаю сайт или лендинг, свободен для заказов.",
     ]
     return variants[i % len(variants)]
 
@@ -148,6 +152,16 @@ def build_candidates() -> list[tuple[str, str, str, bool]]:
         out.append((_vacancy_templates(i), "vacancy", "irrelevant", False))
     for i in range(50):
         out.append((_ads_templates(i), "advertising", "irrelevant", False))
+    for i in range(20):
+        budget = 6000 + i * 250
+        out.append(
+            (
+                f"Нужно снять интерьер для сайта {budget}₽ по завершению.",
+                "direct_order",
+                "warm",
+                True,
+            )
+        )
     for i in range(50):
         out.append((_spam_templates(i), "spam", "irrelevant", False))
     for i in range(80):
@@ -226,6 +240,33 @@ def main() -> None:
                 )
                 + "\n"
             )
+    corpus_bytes = corpus_path.read_bytes()
+    manifest = {
+        "schema_version": "det-calibration-corpus.v2",
+        "catalog_slug": "ru-mvp-3",
+        "rule_set_checksum": report.rule_set_checksum,
+        "corpus_sha256": hashlib.sha256(corpus_bytes).hexdigest(),
+        "sample_count": len(samples),
+        "source_count": len({s.source_id for s in samples}),
+        "train_count": sum(1 for s in samples if s.split == "train"),
+        "validation_count": sum(1 for s in samples if s.split == "val"),
+        "provenance": "synthetic_fixed_no_live_telegram_text",
+        "materialization_policy": (
+            "deterministic generated candidates; locked rows retain expected "
+            "category+band; NOT operator run13 Telegram excerpts. "
+            "Live C01–C20 sanitized derivatives live in live_run13_c01_c20.jsonl "
+            "with provenance operator_run_13_sanitized_excerpt; T1–T5 are det_a_golden."
+        ),
+        "quality_gates": {
+            "client_precision_min": 0.80,
+            "client_recall_min": 0.80,
+        },
+        "live_companion_corpus": "live_run13_c01_c20.jsonl",
+    }
+    (out_dir / "locked_corpus_manifest.json").write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     print("corpus", len(samples), "sources", len({s.source_id for s in samples}))
     print(
         "val_metrics",
@@ -236,6 +277,18 @@ def main() -> None:
     print("gates", report.gates, "passed", report.gates_passed)
     if not report.gates_passed:
         raise SystemExit(1)
+
+    # Separate locked live C01–C20 JSONL (honest provenance; not mixed into synthetic rows).
+    import importlib.util
+
+    live_mod_path = out_dir / "live_run13_c01_c20.py"
+    spec = importlib.util.spec_from_file_location("live_run13_c01_c20", live_mod_path)
+    if spec is not None and spec.loader is not None:
+        live_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(live_mod)
+        live_jsonl = out_dir / "live_run13_c01_c20.jsonl"
+        live_mod.write_jsonl(live_jsonl)
+        print("live_c01_c20_jsonl", live_jsonl, "rows", 20 + 5)
 
 
 if __name__ == "__main__":

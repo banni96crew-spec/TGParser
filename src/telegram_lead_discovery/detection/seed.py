@@ -1,4 +1,4 @@
-"""DET-A seed catalog for RuleSetVersion ru-mvp-1."""
+"""DET-A seed catalogs: ru-mvp-1 / ru-mvp-2 historical; ru-mvp-3 active (D-068 run14)."""
 
 from __future__ import annotations
 
@@ -58,9 +58,8 @@ def _r(
     )
 
 
-# Exact DET-A catalog from docs/prd/modules/04-lead-detection/PRD.md
+# Exact DET-A catalog ru-mvp-1 (immutable historical).
 SEED_RULES: tuple[SeedRule, ...] = (
-    # Hard exclusions
     _r("NEG-SPAM-001", 100, "spam", "hard_exclusion", 0, r"\b(?:казино|слоты|ставки на спорт|букмекер|джекпот)\b", "spam_gambling"),
     _r("NEG-SPAM-002", 101, "spam", "hard_exclusion", 0, r"\b(?:гарантированный заработок|быстрый заработок|доход без вложений|крипто[- ]?сигналы|раздача криптовалюты)\b", "spam_income"),
     _r("NEG-SPAM-003", 102, "spam", "hard_exclusion", 0, r"\b(?:рассылка по чатам|массовая рассылка|накрутка подписчиков|накрутка реакций)\b", "spam_bulk"),
@@ -72,7 +71,6 @@ SEED_RULES: tuple[SeedRule, ...] = (
     _r("NEG-VAC-003", 142, "vacancy", "hard_exclusion", 0, r"\b(?:зарплата|оклад)\b\s*(?:от\s*)?\d[\d\s]{2,}", "vacancy_salary"),
     _r("NEG-VAC-004", 143, "vacancy", "hard_exclusion", 0, r"(?:https?://)?(?:www\.)?(?:hh\.ru|career\.habr\.com)/\S+", "vacancy_link"),
     _r("NEG-VAC-005", 144, "vacancy", "hard_exclusion", 0, r"\b(?:присылайте резюме|отправляйте резюме|откликнуться на вакансию|испытательный срок)\b", "vacancy_application"),
-    # Services
     _r("SVC-WEB-001", 200, "websites", "service_fit", 12, r"\b(?:сайт(?:а|е|ом|у|ы|ов)?|лендинг(?:а|е|и|ов)?|веб[- ]?приложени(?:е|я|ю|ем|й)|frontend|backend|фронтенд|бэкенд)\b", "service_websites"),
     _r("SVC-WEB-002", 201, "websites", "service_fit", 8, r"\b(?:wordpress|tilda|webflow|react|vue|django|fastapi)\b", "service_web_stack"),
     _r("SVC-BOT-001", 210, "telegram_bots", "service_fit", 12, r"\b(?:telegram|телеграм|тг)\b.{0,30}\b(?:бот(?:а|е|ом|у|ы|ов)?|mini app|мини[- ]?приложени(?:е|я))\b", "service_telegram_bot"),
@@ -83,7 +81,6 @@ SEED_RULES: tuple[SeedRule, ...] = (
     _r("SVC-AUT-002", 231, "automation_parsers", "service_fit", 8, r"\b(?:сбор данных|выгрузка данных|обработка данных|перенос данных)\b", "service_data_flow"),
     _r("SVC-ECOM-001", 240, "ecommerce", "service_fit", 12, r"\b(?:интернет[- ]?магазин(?:а|е|ы|ов)?|e[- ]?commerce|электронн(?:ая|ой) коммерци(?:я|и))\b", "service_ecommerce"),
     _r("SVC-ECOM-002", 241, "ecommerce", "service_fit", 8, r"\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|ozon|яндекс маркет|товарн(?:ый|ого) каталог|корзин(?:а|ы)|перенос заказов|обработка заказов|приём заказов)\b", "service_marketplace"),
-    # Positive intent
     _r("POS-DIR-001", 300, "direct_order", "intent", 15, r"\b(?:нужно|надо|хочу|хотим|планирую|планируем)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать|перенести|запустить)\b", "intent_direct_need"),
     _r("POS-DIR-002", 301, "direct_order", "intent", 15, r"\b(?:задача|тз|техническое задание)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать)\b", "intent_direct_task"),
     _r("POS-DIR-003", 302, "direct_order", "intent", 12, r"\b(?:кто|кто-нибудь|кто-то)\b.{0,60}\b(?:сделает|разработает|создаст|доработает|настроит|подключит|интегрирует|автоматизирует)\b", "intent_direct_who"),
@@ -95,7 +92,6 @@ SEED_RULES: tuple[SeedRule, ...] = (
     _r("POS-POT-001", 360, "potential_need", "intent", 6, r"\b(?:можно ли|реально ли|как лучше|как можно|как)\b.{0,100}\b(?:сделать|реализовать|подключить|интегрировать|автоматизировать|перенести|собрать)\b", "intent_potential_how"),
     _r("POS-POT-002", 361, "potential_need", "intent", 5, r"\b(?:есть|возникла|появилась|столкнулся|столкнулись)\b.{0,40}\b(?:проблема|ошибка|сложность|потребность)\b", "intent_potential_problem"),
     _r("POS-POT-003", 362, "potential_need", "intent", 5, r"\b(?:устал|устали)\b.{0,60}\b(?:вручную|руками|копировать|переносить|обрабатывать)\b", "intent_potential_manual_work"),
-    # Signals
     _r("SIG-BUD-001", 400, "budget_present", "budget", 10, r"\b(?:бюджет|стоимость|оплата)\b\s*(?:[:=—-]\s*)?(?:до\s*|от\s*)?\d[\d\s]*(?:₽|руб(?:лей|ля|\.)?|р\b|usd|eur|\$|€)", "signal_budget_amount"),
     _r("SIG-BUD-002", 401, "budget_present", "budget", 8, r"\b(?:готов|готовы|готова)\s+(?:заплатить|оплатить)\b", "signal_budget_ready"),
     _r("SIG-DUE-001", 410, "deadline_present", "deadline", 5, r"\b(?:срок|дедлайн)\b\s*(?:[:=—-]\s*)?(?:до\s*)?\d{1,2}[./-]\d{1,2}(?:[./-]\d{2,4})?", "signal_deadline_date"),
@@ -109,9 +105,117 @@ SEED_RULES: tuple[SeedRule, ...] = (
     _r("SIG-SPC-002", 451, "task_specificity", "specificity", 8, r"\b(?:оплата|авторизация|личный кабинет|админ(?:ка|панель)|каталог|корзина|уведомления|выгрузка|синхронизация)\b", "signal_task_feature"),
 )
 
+_REMEDIATION_RULES_V2: tuple[SeedRule, ...] = (
+    _r("NEG-ADV-004", 123, "advertising", "hard_exclusion", 0, r"(?:#помогу|\bпомогу\b).{0,60}\b(?:сайт|лендинг|бот|tilda|тильда|интеграц|парсер|магазин)\b", "advertising_help_hashtag"),
+    _r("NEG-ADV-005", 124, "advertising", "hard_exclusion", 0, r"\b(?:разработчик(?:а)? сайтов?|веб[- ]?мастер|фрилансер)\b.{0,100}\b(?:под ключ|портфолио|опыт\s+\d+|в наличии|свободн(?:а|ы)?\s+для\s+заказов)\b", "advertising_portfolio_offer"),
+    _r("NEG-ADV-006", 125, "advertising", "hard_exclusion", 0, r"\b(?:сделаю|делаю|разработаю|создам|настрою)\b.{0,50}\b(?:сайт|лендинг|бот|магазин|интеграц|парсер)\b", "advertising_first_person_offer"),
+    _r("SVC-ECOM-003", 242, "ecommerce", "service_fit", 10, r"\b(?:снять|отснять|сфотографировать|фотосесси(?:я|ю)|фото)\b.{0,80}\b(?:интерьер|товар(?:ы|ов)?|каталог).{0,60}\b(?:для сайта|для магазина|для интернет[- ]?магазина|для карточек)\b", "service_ecommerce_product_photo"),
+    _r("POS-DIR-005", 304, "direct_order", "intent", 14, r"\b(?:нужно|надо|хочу|хотим|требуется)\b.{0,80}\b(?:снять|отснять|сфотографировать|фотосесси(?:я|ю)|сделать фото)\b", "intent_direct_photo"),
+)
+
+SEED_RULES_RU_MVP_2: tuple[SeedRule, ...] = SEED_RULES + _REMEDIATION_RULES_V2
+
+# Run14 precision remediation: provider cards, resumes, vacancies, marketplace news/ops.
+# Do not broadly ban all marketplace or first-person language (DET-018).
+_REMEDIATION_RULES_V3: tuple[SeedRule, ...] = (
+    _r(
+        "NEG-ADV-007",
+        126,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:разрабатываю|пишу|занимаюсь)\b.{0,120}\b(?:telegram[- ]?бот|телеграм[- ]?бот|бот(?:ов|ы)?|сайт|парсер|карточек|инфографик).{0,160}\b(?:готовые кейсы|портфолио|могу показать|есть готовые|кейсы:)\b",
+        "advertising_provider_cases",
+    ),
+    _r(
+        "NEG-ADV-008",
+        127,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:нужны кому[- ]?то услуги|кому нужны услуги|услуги разработчика\s*\?)\b",
+        "advertising_service_solicitation",
+    ),
+    _r(
+        "NEG-ADV-009",
+        128,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"(?:#специалист|\bчто умею\b|\bопыт работы с\s+\d{4}|\bпомогаю брендам\b|\bменеджер маркетплейсов\b)",
+        "advertising_specialist_card",
+    ),
+    _r(
+        "NEG-ADV-010",
+        129,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:откликаюсь на вакансию|откликнулся на вакансию)\b",
+        "advertising_job_seeker_resume",
+    ),
+    _r(
+        "NEG-ADV-011",
+        130,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\bкому нужен бухгалтер\b",
+        "advertising_out_of_scope_referral",
+    ),
+    _r(
+        "NEG-ADV-012",
+        131,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:платит селлерам|атак(?:и|а|ам|ами)? на склад|перераспределяет поток|оферта говорит|пожаров? на склад)\b",
+        "advertising_marketplace_news",
+    ),
+    _r(
+        "NEG-ADV-013",
+        132,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:перераспределени[еюя]\s+остатков|подключить перераспределение)\b",
+        "advertising_marketplace_ops",
+    ),
+    _r(
+        "NEG-ADV-014",
+        133,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\b(?:мне )?нужно отгрузить\b|\bотгрузить текущие заказы\b",
+        "advertising_operational_shipping",
+    ),
+    _r(
+        "NEG-ADV-015",
+        134,
+        "advertising",
+        "hard_exclusion",
+        0,
+        r"\bзанимаюсь оформлением карточек\b",
+        "advertising_card_design_offer",
+    ),
+    _r(
+        "NEG-VAC-006",
+        145,
+        "vacancy",
+        "hard_exclusion",
+        0,
+        r"(?:\b(?:удалёнка|удаленка)\b.{0,40}\b(?:support|поддержк))|(?:\bищем\b.{0,40}\b(?:специалист(?:ов)?|сотрудник(?:ов)?|менеджер(?:ов)?)\b)",
+        "vacancy_support_hiring",
+    ),
+)
+
+SEED_RULES_RU_MVP_3: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_2 + _REMEDIATION_RULES_V3
+ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_3
+
 
 def catalog_canonical_json(rules: tuple[SeedRule, ...] | None = None) -> str:
-    catalog = rules if rules is not None else SEED_RULES
+    catalog = rules if rules is not None else ACTIVE_SEED_RULES
     payload = [
         {
             "stable_rule_id": r.stable_rule_id,
@@ -134,43 +238,56 @@ def catalog_checksum(rules: tuple[SeedRule, ...] | None = None) -> str:
     return hashlib.sha256(catalog_canonical_json(rules).encode("utf-8")).hexdigest()
 
 
-async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:
-    checksum = catalog_checksum()
-    existing = await session.execute(
-        select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-1")
-    )
+async def _insert_ruleset(
+    session: AsyncSession,
+    *,
+    version: int,
+    slug: str,
+    rules: tuple[SeedRule, ...],
+    activate: bool,
+) -> RuleSetVersion:
+    checksum = catalog_checksum(rules)
+    existing = await session.execute(select(RuleSetVersion).where(RuleSetVersion.slug == slug))
     row = existing.scalar_one_or_none()
     if row is not None:
         if row.checksum != checksum:
-            raise RuntimeError("ruleset_checksum_mismatch")
+            raise RuntimeError(f"ruleset_checksum_mismatch:{slug}")
+        if activate and row.state != "active":
+            await session.execute(
+                update(RuleSetVersion).where(RuleSetVersion.state == "active").values(state="retired")
+            )
+            row.state = "active"
+            row.activated_at = datetime.now(UTC)
+            await session.flush()
         return row
 
-    await session.execute(
-        update(RuleSetVersion).where(RuleSetVersion.state == "active").values(state="retired")
-    )
+    if activate:
+        await session.execute(
+            update(RuleSetVersion).where(RuleSetVersion.state == "active").values(state="retired")
+        )
     now = datetime.now(UTC)
-    version = RuleSetVersion(
-        version=1,
-        slug="ru-mvp-1",
+    version_row = RuleSetVersion(
+        version=version,
+        slug=slug,
         locale="ru",
-        state="active",
+        state="active" if activate else "retired",
         checksum=checksum,
         hot_min=70,
         warm_min=50,
         cold_min=30,
-        activated_at=now,
+        activated_at=now if activate else None,
     )
-    session.add(version)
+    session.add(version_row)
     await session.flush()
-    for rule in SEED_RULES:
+    for rule in rules:
         rule_checksum = hashlib.sha256(
-            json.dumps(asdict(rule), ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-                "utf-8"
-            )
+            json.dumps(
+                asdict(rule), ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
         ).hexdigest()
         session.add(
             MonitoringRule(
-                rule_set_version_id=version.id,
+                rule_set_version_id=version_row.id,
                 stable_rule_id=rule.stable_rule_id,
                 kind=rule.kind,
                 target=rule.target,
@@ -185,7 +302,49 @@ async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:
             )
         )
     await session.flush()
-    return version
+    return version_row
+
+
+async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:
+    """Bootstrap historical ru-mvp-1 without forcing it active after newer catalogs exist."""
+    newer = await session.execute(
+        select(RuleSetVersion).where(RuleSetVersion.slug.in_(("ru-mvp-2", "ru-mvp-3")))
+    )
+    activate = newer.scalars().first() is None
+    return await _insert_ruleset(
+        session,
+        version=1,
+        slug="ru-mvp-1",
+        rules=SEED_RULES,
+        activate=activate,
+    )
+
+
+async def seed_ruleset_ru_mvp_2(session: AsyncSession) -> RuleSetVersion:
+    """Bootstrap immutable ru-mvp-2; do not force active when ru-mvp-3 exists."""
+    await seed_ruleset_ru_mvp_1(session)
+    existing_v3 = await session.execute(
+        select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-3")
+    )
+    activate = existing_v3.scalar_one_or_none() is None
+    return await _insert_ruleset(
+        session,
+        version=2,
+        slug="ru-mvp-2",
+        rules=SEED_RULES_RU_MVP_2,
+        activate=activate,
+    )
+
+
+async def seed_ruleset_ru_mvp_3(session: AsyncSession) -> RuleSetVersion:
+    await seed_ruleset_ru_mvp_2(session)
+    return await _insert_ruleset(
+        session,
+        version=3,
+        slug="ru-mvp-3",
+        rules=SEED_RULES_RU_MVP_3,
+        activate=True,
+    )
 
 
 async def get_active_ruleset(session: AsyncSession) -> RuleSetVersion | None:
@@ -196,4 +355,5 @@ async def get_active_ruleset(session: AsyncSession) -> RuleSetVersion | None:
 
 
 async def seed_active_ruleset(session: AsyncSession) -> RuleSetVersion:
-    return await seed_ruleset_ru_mvp_1(session)
+    """Ensure active catalog ru-mvp-3 (DET-018 / run14 precision)."""
+    return await seed_ruleset_ru_mvp_3(session)

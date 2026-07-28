@@ -155,6 +155,14 @@ Detection engine MUST предоставлять pure evaluation entrypoint (т�
 
 Runtime loader MUST fetch immutable compiled catalog from DB/cache keyed by **checksum** for the pinned `rule_set_version_id` (D-065). Missing version or checksum mismatch → permanent processing error / dead-letter (`RULE_SET_INVALID` / equivalent) — **no** `SEED_RULES` silent fallback. `SEED_RULES` allowed **only** when creating the initial DB version at bootstrap/migration. Regex timeout **50 ms**; input cap **4096** characters; compile cache key = checksum; byte-stable result for same revision+version (NFR-QLT-005).
 
+### DET-017 — Remediation catalog `ru-mvp-2` (D-068 / NFR-QLT-007)
+
+Provider self-promotion (`#Помогу`, «под ключ»/portfolio offers, first-person «сделаю/делаю сайт») MUST hard-exclude as `advertising` without breaking true client intents. Commercial product/interior photography for a website/shop MUST classify as client intent with `ecommerce` (+ typically `websites`). Activation MUST create new immutable `RuleSetVersion` slug `ru-mvp-2` and retire prior active version — never mutate `ru-mvp-1`. Versioned labeled corpus MUST demonstrate precision ≥ `0.80` and recall ≥ `0.80` with honest sample metadata: C01–C20 are sanitized derivatives of operator run-13 evidence (owner labels; 3 positives / 17 negatives — too small alone for population inference); T1–T5 are DET-A synthetic golden positives (`det_a_golden`), not live Telegram text. Reports MUST show live-only and combined confusion matrices separately.
+
+### DET-018 — Run14 precision remediation catalog `ru-mvp-3`
+
+Active catalog MUST advance to immutable `ru-mvp-3` = `ru-mvp-2` plus explainable hard exclusions for confirmed run14 false positives: provider self-promo with cases/portfolio, service solicitations, specialist/resume cards (`#специалист`, «что умею», marketplace manager cards), job-seeker resumes, out-of-scope referrals (accountant), marketplace news/ops commentary, operational shipping chatter, and support-hiring vacancies — without broadly excluding all marketplace language or all first-person text, and without losing the plausible automation-need ask. Regex timeout/`4096` input cap MUST remain. Reports MUST separate metrics for: live C01–C20, run14 regression (`operator_run_14_sanitized_excerpt`, not population), golden T*, and combined. Do not claim population readiness from fixtures.
+
 ## 7. Data ownership и contracts
 
 Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult; Source Discovery потребляет pure detect для scouting text.
@@ -219,7 +227,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 12. MVP и исключённые функции
 
-MVP включает DET-001—DET-016 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
+MVP включает DET-001—DET-018 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -241,6 +249,8 @@ MVP включает DET-001—DET-016 и приложение DET-A. Исклю
 | `AT-DET-014` | DET-014 | Бюджет указан дважды | Один boolean signal и два matched IDs без усиления |
 | `AT-DET-015` | DET-015 | Вызвать DetectAnalysisText из scouting fixture | Category совпадает с DetectLead на том же тексте; Lead/outbox не созданы |
 | `AT-DET-016` | DET-016 | Runtime load with wrong checksum; bootstrap seed path | RULE_SET_INVALID / no silent SEED_RULES fallback; seed only at bootstrap |
+| `AT-DET-017` | DET-017 | Live run13 C01–C20 sanitized + DET-A T1–T5 golden; provenance split | `ru-mvp-2`; C02–C04 advertising; C01/C05 same normalized client; C06 ecommerce; C07–C20 live negatives; T* not labeled live; live-only + combined ≥80/80 reported separately |
+| `AT-DET-018` | DET-018 | Run14 sanitized FP regression + keep automation ask; C/T unchanged ≥80/80 | `ru-mvp-3`; FPs hard-excluded; KEEP retained; separate C* / R14 / T* / combined metrics; provenance `operator_run_14_sanitized_excerpt` |
 
 Golden classification fixtures:
 
@@ -254,6 +264,10 @@ Golden classification fixtures:
 | `Наша команда разрабатывает сайты, скидка до пятницы.` | `advertising` |
 | `Гарантированный заработок в крипте, пишите всем.` | `spam` |
 | `Сегодня отличная погода.` | `irrelevant` |
+| `#Помогу с сайтом на Tilda` | `advertising` (ru-mvp-2) |
+| `Разработчик сайтов под ключ, портфолио в наличии` | `advertising` (ru-mvp-2) |
+| `Сделаю сайт / лендинг под ключ` | `advertising` (ru-mvp-2) |
+| `Нужно снять интерьер для сайта 6000₽ по завершению` | `direct_order`, `ecommerce` (+websites) (ru-mvp-2) |
 
 ## 14. Принятые записи decision log
 
@@ -262,10 +276,13 @@ Golden classification fixtures:
 - `DEC-DET-003`: active rules immutable; изменение создаёт version.
 - `DEC-DET-004`: hard exclusions выполняются до positive rules.
 - `DEC-DET-005`: нормативный начальный catalog равен DET-A.
+- `D-068`: remediation `ru-mvp-2` provider-offer exclusions + ecommerce product-photo semantics; corpus precision/recall ≥80/80 (`NFR-QLT-007` / DET-017).
 
 ---
 
-# Приложение DET-A — нормативный RU catalog `ru-mvp-1`
+# Приложение DET-A — нормативный RU catalog
+
+`ru-mvp-1` / `ru-mvp-2` remain immutable historical seeds. Active remediation catalog is `ru-mvp-3` = `ru-mvp-2` plus NEG-ADV-007..015 and NEG-VAC-006 (DET-018). Tables below list the full `ru-mvp-2` normative set; v3 additions are listed after.
 
 ## A.1 Общие правила исполнения
 
@@ -288,11 +305,24 @@ Golden classification fixtures:
 | `NEG-ADV-001` | 120 | `advertising` | `hard_exclusion` | 0 | `\b(?:мы|наша команда|наше агентство)\b.{0,80}\b(?:делаем|разрабатываем|создаём|оказываем|предлагаем)\b` | `advertising_provider` |
 | `NEG-ADV-002` | 121 | `advertising` | `hard_exclusion` | 0 | `\b(?:скидка|акция|спецпредложение|специальное предложение)\b.{0,80}\b(?:на сайт|на разработку|на бота|на услуги|до пятницы|до конца месяца)\b` | `advertising_promo` |
 | `NEG-ADV-003` | 122 | `advertising` | `hard_exclusion` | 0 | `\b(?:принимаем заказы|свободны для новых проектов|возьмём ваш проект|закажите у нас)\b` | `advertising_solicitation` |
+| `NEG-ADV-004` | 123 | `advertising` | `hard_exclusion` | 0 | `(?:#помогу|\bпомогу\b).{0,60}\b(?:сайт|лендинг|бот|tilda|тильда|интеграц|парсер|магазин)\b` | `advertising_help_hashtag` |
+| `NEG-ADV-005` | 124 | `advertising` | `hard_exclusion` | 0 | `\b(?:разработчик(?:а)? сайтов?|веб[- ]?мастер|фрилансер)\b.{0,100}\b(?:под ключ|портфолио|опыт\s+\d+|в наличии|свободн(?:а|ы)?\s+для\s+заказов)\b` | `advertising_portfolio_offer` |
+| `NEG-ADV-006` | 125 | `advertising` | `hard_exclusion` | 0 | `\b(?:сделаю|делаю|разработаю|создам|настрою)\b.{0,50}\b(?:сайт|лендинг|бот|магазин|интеграц|парсер)\b` | `advertising_first_person_offer` |
+| `NEG-ADV-007` | 126 | `advertising` | `hard_exclusion` | 0 | `\b(?:разрабатываю|пишу|занимаюсь)\b.{0,120}\b(?:telegram[- ]?бот|телеграм[- ]?бот|бот(?:ов|ы)?|сайт|парсер|карточек|инфографик).{0,160}\b(?:готовые кейсы|портфолио|могу показать|есть готовые|кейсы:)\b` | `advertising_provider_cases` |
+| `NEG-ADV-008` | 127 | `advertising` | `hard_exclusion` | 0 | `\b(?:нужны кому[- ]?то услуги|кому нужны услуги|услуги разработчика\s*\?)\b` | `advertising_service_solicitation` |
+| `NEG-ADV-009` | 128 | `advertising` | `hard_exclusion` | 0 | `(?:#специалист|\bчто умею\b|\bопыт работы с\s+\d{4}|\bпомогаю брендам\b|\bменеджер маркетплейсов\b)` | `advertising_specialist_card` |
+| `NEG-ADV-010` | 129 | `advertising` | `hard_exclusion` | 0 | `\b(?:откликаюсь на вакансию|откликнулся на вакансию)\b` | `advertising_job_seeker_resume` |
+| `NEG-ADV-011` | 130 | `advertising` | `hard_exclusion` | 0 | `\bкому нужен бухгалтер\b` | `advertising_out_of_scope_referral` |
+| `NEG-ADV-012` | 131 | `advertising` | `hard_exclusion` | 0 | `\b(?:платит селлерам|атак(?:и|а|ам|ами)? на склад|перераспределяет поток|оферта говорит|пожаров? на склад)\b` | `advertising_marketplace_news` |
+| `NEG-ADV-013` | 132 | `advertising` | `hard_exclusion` | 0 | `\b(?:перераспределени[еюя]\s+остатков|подключить перераспределение)\b` | `advertising_marketplace_ops` |
+| `NEG-ADV-014` | 133 | `advertising` | `hard_exclusion` | 0 | `\b(?:мне )?нужно отгрузить\b|\bотгрузить текущие заказы\b` | `advertising_operational_shipping` |
+| `NEG-ADV-015` | 134 | `advertising` | `hard_exclusion` | 0 | `\bзанимаюсь оформлением карточек\b` | `advertising_card_design_offer` |
 | `NEG-VAC-001` | 140 | `vacancy` | `hard_exclusion` | 0 | `\b(?:вакансия|открыта позиция|открыта вакансия|ищем сотрудника)\b` | `vacancy_marker` |
 | `NEG-VAC-002` | 141 | `vacancy` | `hard_exclusion` | 0 | `\b(?:в штат|полная занятость|частичная занятость|оформление по тк|трудоустройство)\b` | `vacancy_employment` |
 | `NEG-VAC-003` | 142 | `vacancy` | `hard_exclusion` | 0 | `\b(?:зарплата|оклад)\b\s*(?:от\s*)?\d[\d\s]{2,}` | `vacancy_salary` |
 | `NEG-VAC-004` | 143 | `vacancy` | `hard_exclusion` | 0 | `(?:https?://)?(?:www\.)?(?:hh\.ru|career\.habr\.com)/\S+` | `vacancy_link` |
 | `NEG-VAC-005` | 144 | `vacancy` | `hard_exclusion` | 0 | `\b(?:присылайте резюме|отправляйте резюме|откликнуться на вакансию|испытательный срок)\b` | `vacancy_application` |
+| `NEG-VAC-006` | 145 | `vacancy` | `hard_exclusion` | 0 | `(?:\b(?:удалёнка|удаленка)\b.{0,40}\b(?:support|поддержк))|(?:\bищем\b.{0,40}\b(?:специалист(?:ов)?|сотрудник(?:ов)?|менеджер(?:ов)?)\b)` | `vacancy_support_hiring` |
 ```
 
 ## A.3 Service profiles
@@ -310,6 +340,7 @@ Golden classification fixtures:
 | `SVC-AUT-002` | 231 | `automation_parsers` | `service_fit` | 8 | `\b(?:сбор данных|выгрузка данных|обработка данных|перенос данных)\b` | `service_data_flow` |
 | `SVC-ECOM-001` | 240 | `ecommerce` | `service_fit` | 12 | `\b(?:интернет[- ]?магазин(?:а|е|ы|ов)?|e[- ]?commerce|электронн(?:ая|ой) коммерци(?:я|и))\b` | `service_ecommerce` |
 | `SVC-ECOM-002` | 241 | `ecommerce` | `service_fit` | 8 | `\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|ozon|яндекс маркет|товарн(?:ый|ого) каталог|корзин(?:а|ы)|перенос заказов|обработка заказов|приём заказов)\b` | `service_marketplace` |
+| `SVC-ECOM-003` | 242 | `ecommerce` | `service_fit` | 10 | `\b(?:снять|отснять|сфотографировать|фотосесси(?:я|ю)|фото)\b.{0,80}\b(?:интерьер|товар(?:ы|ов)?|каталог).{0,60}\b(?:для сайта|для магазина|для интернет[- ]?магазина|для карточек)\b` | `service_ecommerce_product_photo` |
 ```
 
 ## A.4 Positive intent
@@ -321,6 +352,7 @@ Golden classification fixtures:
 | `POS-DIR-002` | 301 | `direct_order` | `intent` | 15 | `\b(?:задача|тз|техническое задание)\b.{0,100}\b(?:сделать|разработать|создать|доработать|исправить|настроить|подключить|интегрировать|автоматизировать)\b` | `intent_direct_task` |
 | `POS-DIR-003` | 302 | `direct_order` | `intent` | 12 | `\b(?:кто|кто-нибудь|кто-то)\b.{0,60}\b(?:сделает|разработает|создаст|доработает|настроит|подключит|интегрирует|автоматизирует)\b` | `intent_direct_who` |
 | `POS-DIR-004` | 303 | `direct_order` | `intent` | 18 | `\b(?:заказать|закажу|готов оплатить|готовы оплатить)\b.{0,80}\b(?:сайт|лендинг|бот|интеграцию|автоматизацию|парсер|интернет[- ]?магазин)\b` | `intent_direct_purchase` |
+| `POS-DIR-005` | 304 | `direct_order` | `intent` | 14 | `\b(?:нужно|надо|хочу|хотим|требуется)\b.{0,80}\b(?:снять|отснять|сфотографировать|фотосесси(?:я|ю)|сделать фото)\b` | `intent_direct_photo` |
 | `POS-CTR-001` | 320 | `contractor_search` | `intent` | 14 | `\b(?:ищу|ищем|нужен|нужна|нужны|требуется|требуются)\b.{0,80}\b(?:разработчик(?:а|и|ов)?|программист(?:а|ы|ов)?|фрилансер(?:а|ы|ов)?|специалист(?:а|ы|ов)?|подрядчик(?:а|и|ов)?|исполнитель|команда|агентство)\b` | `intent_contractor_search` |
 | `POS-CTR-002` | 321 | `contractor_search` | `intent` | 10 | `\b(?:кто возьмётся|кто может взяться|есть свободный разработчик|есть свободный специалист)\b` | `intent_contractor_available` |
 | `POS-REC-001` | 340 | `recommendation_request` | `intent` | 10 | `\b(?:посоветуйте|порекомендуйте|можете посоветовать|можете порекомендовать)\b.{0,100}\b(?:разработчик(?:а)?|программист(?:а)?|специалист(?:а)?|подрядчик(?:а)?|исполнитель|команду|агентство)\b` | `intent_recommend_person` |

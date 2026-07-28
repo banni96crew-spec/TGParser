@@ -389,15 +389,26 @@ class TelethonTelegramGateway:
     ) -> PublicPostSearchQuotaDTO:
         from telethon.tl.functions.channels import CheckSearchPostsFloodRequest
 
-        flood = await self._invoke(CheckSearchPostsFloodRequest(query=query))
+        try:
+            flood = await self._invoke(CheckSearchPostsFloodRequest(query=query))
+        except GatewayPremiumRequired:
+            return PublicPostSearchQuotaDTO(
+                schema_version=1,
+                free_slot_available=False,
+                premium_required=True,
+                stars_amount=0,
+            )
         remains = int(getattr(flood, "remains", 0) or 0)
         stars_amount = int(getattr(flood, "stars_amount", 0) or 0)
         query_is_free = bool(getattr(flood, "query_is_free", False))
         free_slot_available = query_is_free or remains > 0
+        # Truthful Premium vs Stars (D-068): PremiumAccountRequired is mapped above;
+        # Stars paid slot is remains==0 with stars_amount>0 (quota_exhausted path).
+        premium_required = False
         return PublicPostSearchQuotaDTO(
             schema_version=1,
             free_slot_available=free_slot_available,
-            premium_required=False,
+            premium_required=premium_required,
             stars_amount=stars_amount,
         )
 

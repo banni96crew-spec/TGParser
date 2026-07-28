@@ -19,38 +19,67 @@ MAX_PROFILE_NAME_LEN = 80
 MAX_EVIDENCE_EXCERPT_CODEPOINTS = 240
 
 SEED_PROFILE_NAME = "ecommerce-development-ru"
-SEED_PROFILE_VERSION = 1
+SEED_PROFILE_VERSION = 2
 
 SEED_POST_QUERIES: tuple[str, ...] = (
-    "нужен разработчик сайта",
+    # websites
+    "нужен сайт",
     "ищу разработчика сайта",
     "кто сделает сайт",
-    "посоветуйте разработчика",
-    "нужно разработать сайт",
-    "нужен интернет-магазин",
-    "разработать интернет-магазин",
-    "доработать интернет-магазин",
+    "нужен лендинг",
+    # telegram_bots
     "нужен telegram бот",
     "разработать telegram бота",
-    "нужен mini app",
-    "разработать мобильное приложение",
+    "нужен бот для заказов",
+    # integrations_api
     "нужна интеграция api",
     "интеграция сайта crm",
-    "автоматизировать заказы",
+    "интеграция с 1с",
+    # automation_parsers
     "нужен парсер",
+    "автоматизировать заказы",
+    "нужна автоматизация",
+    # ecommerce
+    "нужен интернет-магазин",
+    "доработать интернет-магазин",
     "интеграция ozon",
     "интеграция wildberries",
+    "нужен магазин на сайте",
 )
 
+# Primary directory lane (SRC-018 cap 0..10): client/operator communities across
+# five service families — not marketplace-seller-only (D-069).
 SEED_DIRECTORY_QUERIES: tuple[str, ...] = (
-    "ecommerce",
-    "e-commerce",
-    "интернет-магазин",
-    "маркетплейсы",
-    "ozon",
-    "wildberries",
-    "бизнес чат",
-    "предприниматели",
+    "чат предпринимателей",
+    "сообщество предпринимателей",
+    "владельцы бизнеса",
+    "заказчики сайтов",
+    "чат владельцев ботов",
+    "интеграции api сообщество",
+    "автоматизация бизнеса чат",
+    "владельцы интернет-магазинов",
+    "основатели стартапов",
+    "сообщество заказчиков",
+)
+
+# Free replacement directory family after mass suppress (SRC-040 / D-069).
+# Not counted against SRC-018 profile directory cap; worker expansion only.
+SEED_DIRECTORY_REPLACEMENT_QUERIES: tuple[str, ...] = (
+    "ищу разработчика чат",
+    "нужен сайт сообщество",
+    "лендинг для бизнеса",
+    "telegram боты для бизнеса",
+    "чат заказчиков ботов",
+    "crm интеграция сообщество",
+    "1с интеграция чат",
+    "парсеры и автоматизация",
+    "чат автоматизации процессов",
+    "ecommerce владельцы чат",
+    "интернет магазин сообщество",
+    "чат предпринимателей рф",
+    "малый бизнес сообщество",
+    "заказчики it услуг",
+    "клиенты на разработку",
 )
 
 SEED_ADDITIONAL_EXCLUSIONS: tuple[str, ...] = (
@@ -180,6 +209,7 @@ def seed_profile_payload() -> dict[str, object]:
         "source_scope": "all",
         "post_queries": list(SEED_POST_QUERIES),
         "directory_queries": list(SEED_DIRECTORY_QUERIES),
+        "directory_replacement_queries": list(SEED_DIRECTORY_REPLACEMENT_QUERIES),
         "additional_exclusions": list(SEED_ADDITIONAL_EXCLUSIONS),
         "required_service_profiles": [],
     }
@@ -329,6 +359,7 @@ __all__ = [
     "ProfileValidationError",
     "SEED_ADDITIONAL_EXCLUSIONS",
     "SEED_DIRECTORY_QUERIES",
+    "SEED_DIRECTORY_REPLACEMENT_QUERIES",
     "SEED_POST_QUERIES",
     "SEED_PROFILE_NAME",
     "SEED_PROFILE_VERSION",

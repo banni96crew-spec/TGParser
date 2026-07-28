@@ -9,11 +9,10 @@
   <div class="form-row filter-row">
     <label>Band
       <select name="band">
-        <option value="default"{% if f.get("band") in (None, "", "default") %} selected{% endif %}>review + promising</option>
+        <option value="all"{% if f.get("band") in (None, "", "all", "default") %} selected{% endif %}>все (правда)</option>
         <option value="promising"{% if f.get("band") == "promising" %} selected{% endif %}>promising</option>
         <option value="review"{% if f.get("band") == "review" %} selected{% endif %}>review</option>
-        <option value="weak"{% if f.get("band") == "weak" %} selected{% endif %}>weak (аудит)</option>
-        <option value="all"{% if f.get("band") == "all" %} selected{% endif %}>все</option>
+        <option value="weak"{% if f.get("band") == "weak" %} selected{% endif %}>weak</option>
       </select>
     </label>
     <label>Type
@@ -32,70 +31,68 @@
         <option value="dismissed"{% if f.get("review_state") == "dismissed" %} selected{% endif %}>dismissed</option>
       </select>
     </label>
-    <label>Источник
-      <select name="existing_source">
-        <option value="">все</option>
-        <option value="new"{% if f.get("existing_source") == "new" %} selected{% endif %}>новый</option>
-        <option value="existing"{% if f.get("existing_source") == "existing" %} selected{% endif %}>существующий</option>
-      </select>
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="linked_discussion_only" value="true"
-             {% if f.get("linked_discussion_only") %}checked{% endif %} />
-      Только флудилки
-    </label>
-    <label class="checkbox-label">
-      <input type="checkbox" name="ecommerce_only" value="true"
-             {% if f.get("ecommerce_only") %}checked{% endif %} />
-      Только e-commerce
-    </label>
     <button type="submit" class="btn-secondary">Применить</button>
   </div>
 </form>
 
+{% macro render_bucket(title, items) %}
+<section class="truth-bucket">
+  <h3 class="section-title">{{ title }} ({{ items|length }})</h3>
+  {% if items %}
+  <div class="table-scroll">
+    <table class="data-table discovery-results-table">
+      <thead>
+        <tr>
+          <th>Truth</th>
+          <th>Score</th>
+          <th>Band</th>
+          <th>Title</th>
+          <th>Username</th>
+          <th>Qualified</th>
+          <th>Scanned</th>
+          <th>Stop</th>
+          <th>Review</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><span class="band-chip">{{ item.truth_label }}</span></td>
+          <td class="mono">{{ item.score }}</td>
+          <td><span class="band-chip band-{{ item.band }}">{{ item.band }}</span></td>
+          <td><a href="/discovery/results/{{ item.id }}">{{ item.title }}</a></td>
+          <td class="mono">{{ item.username or "—" }}</td>
+          <td class="mono">{{ item.qualified_count }}</td>
+          <td class="mono">{{ item.verification_scanned_count }}</td>
+          <td class="mono">{{ item.verification_stop_reason or "—" }}</td>
+          <td>{{ item.review_state }}</td>
+          <td>
+            <a href="/discovery/results/{{ item.id }}">Открыть</a>
+            {% if item.public_url %}
+            · <a href="{{ item.public_url }}" rel="noopener noreferrer" target="_blank">Telegram</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty-state">Нет источников в этой секции.</p>
+  {% endif %}
+</section>
+{% endmacro %}
+
 {% if results is defined and results %}
-<div class="table-scroll">
-  <table class="data-table discovery-results-table">
-    <thead>
-      <tr>
-        <th>Score</th>
-        <th>Band</th>
-        <th>Title</th>
-        <th>Username</th>
-        <th>Type</th>
-        <th>Флудилка</th>
-        <th>Qualified</th>
-        <th>Weeks</th>
-        <th>E-com</th>
-        <th>Noise</th>
-        <th>Last qualified</th>
-        <th>Lifecycle</th>
-        <th>Review</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in results %}
-      <tr>
-        <td class="mono">{{ item.score }}</td>
-        <td><span class="band-chip band-{{ item.band }}">{{ item.band }}</span></td>
-        <td><a href="/discovery/results/{{ item.id }}">{{ item.title }}</a></td>
-        <td class="mono">{{ item.username or "—" }}</td>
-        <td>{{ item.source_type }}</td>
-        <td>{% if item.is_linked_discussion %}да{% else %}нет{% endif %}</td>
-        <td class="mono">{{ item.qualified_count }}</td>
-        <td class="mono">{{ item.active_week_count }}</td>
-        <td class="mono">{{ item.ecommerce_qualified_count }}</td>
-        <td class="mono">{{ item.noise }}</td>
-        <td class="mono">{{ item.last_qualified_at or "—" }}</td>
-        <td class="mono">{{ item.lifecycle_state }}</td>
-        <td>{{ item.review_state }}</td>
-        <td><a href="/discovery/results/{{ item.id }}">Открыть</a></td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
+  {% set quality = results|selectattr("truth_status", "equalto", "quality")|list %}
+  {% set near = results|selectattr("truth_status", "equalto", "near")|list %}
+  {% set inconclusive = results|selectattr("truth_status", "equalto", "inconclusive")|list %}
+  {% set rejected = results|selectattr("truth_status", "equalto", "rejected")|list %}
+  {{ render_bucket("Качественные (≥7 / 14д)", quality) }}
+  {{ render_bucket("Почти (1–6)", near) }}
+  {{ render_bucket("Недоказанные", inconclusive) }}
+  {{ render_bucket("Отклонённые", rejected) }}
 {% else %}
 <p class="empty-state">Результатов пока нет.</p>
 {% endif %}

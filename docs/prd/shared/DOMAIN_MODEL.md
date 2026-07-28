@@ -14,7 +14,7 @@
 
 | Entity | Owner |
 |---|---|
-| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource` | `SRC` |
+| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource`, logical `PresentedKeywordSource` | `SRC` |
 | `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` (gateway DTO) | `COL` |
 | `TelegramMessage`, `TelegramMessageRevision`, `DuplicateGroup`, `MessageDuplicate`, `ProcessingJob`, `ProcessingRun`, `ProcessingResult`, `ProcessingLog` | `PROC` |
 | `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `MatchedRule`, `DetectionResult` | `DET` |
@@ -120,6 +120,18 @@ Constraints:
 - retention MUST NOT delete suppress rows;
 - snapshot `review_state=dismissed` alone is not durable suppress.
 
+`PresentedKeywordSource` (logical already-shown suppress ledger, owner `SRC`; physical table `STO`; D-069 / SRC-041/050)
+
+- `id`;
+- `canonical_key: str` unique;
+- `telegram_id: int | null` unique when set;
+- `usernames_json` / aliases;
+- `first_presented_at`;
+- `origin_run_id: int | null`, `origin_opportunity_id: int | null`;
+- `version` / upsert stamp — idempotent on re-presentation;
+- retention MUST NOT delete presented-suppress rows (STO-020);
+- snapshot presence alone after retention is not durable suppress.
+
 `SourceApprovalEvent`
 
 - `id`, `event_id: UUIDv7 unique`, `source_id`;
@@ -178,9 +190,10 @@ Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
 - `quota_snapshot_json`, `cursor_json`, `last_error_code`;
 - `version: int` — optimistic concurrency;
 - counters и timestamps;
-- remediation funnel counters (all `int ≥ 0`, keyword runs; D-063 / SRC-037):
+- remediation funnel counters (all `int ≥ 0`, keyword runs; D-063 / SRC-037 / D-069):
   - `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`,
-  - `duplicate_in_run`, `cooldown_suppressed`, `qualified_total`, `presented_total`,
+  - `duplicate_in_run`, `presented_suppressed` (unique already-shown peers; `cooldown_suppressed` is alias),
+  - `qualified_total`, `presented_total`,
   - `novel_presented_total`, `replacement_fetches_total`;
 - `pool_exhausted: bool`;
 - `pool_exhausted_reason: enum(provider_empty, budget_cap_reached, quota_skipped_remaining, flood_wait_deferred, cancel_requested, no_unseen_after_suppress) | null`;
@@ -213,6 +226,7 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 - `matched_query_ordinals_json`, `discovery_channels_json`;
 - `detection_category`, `is_qualified`, `hard_exclusion`, `hard_exclusion_rule_id`;
 - `service_profiles_json`, `rule_set_checksum`;
+- `matched_rule_ids_json: list[str]` — stable DET rule IDs for UI explainability (D-068); default `[]`;
 - `created_at`;
 - unique `(run_id, source_telegram_id, telegram_message_id)`.
 
@@ -227,6 +241,9 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 - `qualified_count`, `excluded_count`, `active_week_count`, `ecommerce_qualified_count`;
 - `last_qualified_at`, `sample_message_count`, `sample_truncated`;
 - `score: int 0..100`, `band: enum(promising, review, weak)`;
+- `truth_status: enum(quality, near, inconclusive, rejected)` — working-client-search bucket (D-068 / SRC-046); default `inconclusive` until verification settles;
+- `verification_scanned_count: int ≥ 0` — messages classified in history scan for this source/run;
+- `verification_stop_reason: str | null`;
 - `score_components_json`, `discovery_channels_json`;
 - `review_state: enum(unreviewed, promoted, dismissed)`;
 - `promoted_source_id: int | null`, `dismiss_reason: str | null`;
@@ -236,6 +253,10 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 Opportunity score принадлежит `SRC` (D-054) и MUST NOT копироваться в `TelegramSource.quality_score`.
 
 Band mapping (frozen, D-054 / D-067): plan prose `strong` ≡ `promising` (`60–100`); `moderate` ≡ `review` (`35–59`); `weak` (`0–34`). Enums MUST NOT be renamed.
+
+Truth status (D-068): `quality` (≥7 distinct clients / 14d); `near` (1–6); `inconclusive` (soft-cap/incomplete — «недоказанный»); `rejected` (completed 14d scan, 0 clients). Soft-cap MUST NOT map to `rejected`.
+
+Keyword run counters (D-068 / SRC-047) additionally: `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `globally_distinct_client_requests`, `history_scanned_total`, `gate_status` (`pass`|`fail`|`inconclusive`). Semantics: `pass` = ≥5 quality sources and ≥35 globally distinct client requests; `inconclusive` = run soft-cap `7500` reached before candidate pool exhausted without PASS; `fail` = pool exhausted (or otherwise finished) without PASS and without that run-cap-before-exhaustion path.
 
 Eligibility reason codes (SRC opportunity, not SCR): `directory_only_no_evidence`, `needs_verification` — directory-only / unverified linked discussion MUST NOT receive `review` or `promising` without deep verification evidence.
 

@@ -1,0 +1,19 @@
+---
+description: Apply approved dependency-stack and lockfile rules.
+globs: "{pyproject.toml,uv.lock}"
+alwaysApply: false
+---
+
+# Зависимости и stack
+
+- Сначала используй Python standard library и уже утверждённый stack.
+- Новая dependency требует явного технического обоснования и проверки существования,
+  источника, сопровождения, лицензии и известных уязвимостей.
+- Управление зависимостями выполняется только через `uv`, `pyproject.toml` и
+  закреплённый `uv.lock`.
+- Изменение dependency обновляет manifest и lock согласованно; не редактируй
+  разрешённые версии частично и не добавляй второй package manager.
+- Не добавляй manifests или packages для неутверждённого frontend, distributed,
+  cloud или AI/LLM stack.
+- Числовые версии и разрешённые технологии сверяй с актуальным Decision Log,
+  а не с памятью модели или старым prompt.

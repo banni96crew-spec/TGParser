@@ -1,0 +1,42 @@
+---
+description: Apply Telegram Lead Discovery product contracts and architecture to Python runtime code.
+globs: "src/telegram_lead_discovery/**/*.py"
+alwaysApply: false
+---
+
+# Product code: contracts и архитектура
+
+При конфликте действуют универсальное ядро, master PRD, принятый Decision Log,
+shared contracts и owner PRD затронутого модуля — именно в таком порядке.
+
+## Обязательная маршрутизация
+
+- До изменения прочитай `docs/prd/README.md`, `docs/prd/DECISION_LOG.md`,
+  релевантные shared contracts, owner PRD и непосредственные upstream/downstream PRD.
+- Владельцы каталогов: `source_discovery` → `01`, `collector` → `02`,
+  `processing` → `03`, `detection` → `04`, `scoring` → `05`, `storage` → `06`,
+  `dashboard` → `07`, `notifications` → `08`, `settings` → `09`,
+  `observability` → `10`, `security` → `11`, `infrastructure` и `main.py` → `12`.
+- Не создавай hidden product rules. Новый state, DTO, API, event, error code,
+  lifecycle transition, limit или retry schedule сначала получает owner decision.
+- Не копируй числовые требования из PRD в код без canonical constant/config owner
+  и не создавай конкурирующие значения.
+
+## Архитектурные границы
+
+- Соблюдай pipeline: `Source Registry → Collector → Processing → Detection →
+  Scoring → Storage/Outbox → Dashboard/Notifications`.
+- Внешний I/O находится в gateways/adapters. Domain logic получает typed inputs
+  и возвращает structured results; domain не импортирует Telethon objects,
+  SQLAlchemy models или HTTP client responses.
+- Telethon доступен только через collector adapter/`TelegramGateway`; HTTP routes
+  не выполняют direct SQL и не реализуют detection, scoring или collection.
+- Один process владеет Telegram user session. Не передавай database `source_id`
+  как Telegram entity и не выноси session access за gateway boundary.
+- Сохраняй транзакционные, idempotency, checkpoint, outbox и immutable-history
+  invariants из owner PRD. Network I/O не выполняется внутри долгой write transaction.
+- Runtime остаётся локальным single-operator приложением утверждённого стека.
+  Без PRD-решения не добавляй AI/LLM runtime, PostgreSQL, Redis, Celery, SPA,
+  multi-user/RBAC, account rotation, telemetry, cloud sync или network exposure.
+- Все timestamps хранятся в UTC; пользовательское отображение следует настройкам
+  продукта. Ошибки внешних систем выражаются structured/typed результатами.

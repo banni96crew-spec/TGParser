@@ -1,0 +1,21 @@
+---
+description: Apply SQLite and Alembic migration safety rules.
+globs: "src/telegram_lead_discovery/storage/alembic/**/*"
+alwaysApply: false
+---
+
+# Storage migrations
+
+При конфликте действуют storage owner PRD, shared domain model и integration contracts.
+
+- Каждое изменение schema оформляется новой Alembic migration; не переписывай
+  уже применённую migration без отдельного recovery decision.
+- Migration сохраняет существующие данные либо явно документирует утверждённое
+  преобразование и rollback/recovery boundary.
+- Проверяй upgrade path, migration head, SQLite constraints, foreign keys,
+  indexes и idempotent backfill behavior.
+- Не выполняй network I/O, Telegram access или secret handling внутри migration.
+- Schema, SQLAlchemy models, repositories, contracts и integration tests
+  обновляются согласованно.
+- Migration-файл является рукописным кодом и подчиняется универсальному лимиту
+  `300` строк; большие преобразования разделяются на безопасные последовательные шаги.

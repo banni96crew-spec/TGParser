@@ -1,0 +1,27 @@
+---
+description: Apply deterministic behavior-focused testing rules to test artifacts.
+globs: "tests/**/*"
+alwaysApply: false
+---
+
+# Тестирование
+
+При конфликте действуют универсальное ядро, product acceptance criteria и
+owner PRD проверяемого поведения.
+
+- Проверяй конкретные outputs, errors, state changes и side effects; тест
+  «не упало» не является достаточной проверкой.
+- Для изменённого behavior покрывай happy path, boundary/edge case и failure path.
+- Используй правильный слой: unit для pure logic, contract для ports/DTO,
+  integration для SQLite/jobs, adapter для внешних клиентов, E2E для operator flow,
+  fault injection для recovery, calibration для качества правил.
+- Bug fix сначала получает воспроизводящий regression test, когда это практически
+  возможно. Production behavior не изменяется ради ошибочного теста.
+- Async behavior проверяет cancellation, retry, idempotency, ordering и отсутствие
+  duplicate committed effects.
+- Используй fixed clocks, IDs и deterministic fixtures. Автотесты не зависят от
+  реальной сети, текущего времени, порядка запуска или реальных credentials.
+- Тестовый код подчиняется лимиту `300` строк; тесно связанные тесты могут
+  находиться вместе, пока файл проверяет одну ответственность.
+- Не изменяй locked corpus, acceptance threshold или ожидаемое значение без
+  подтверждения owner requirement.

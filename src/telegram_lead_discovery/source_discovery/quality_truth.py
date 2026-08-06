@@ -1,4 +1,4 @@
-"""Working-client-search quality truth / gate (SRC-046..SRC-049 / D-068)."""
+"""Compatibility helpers around the ActiveClientChat v1 run gate (D-070)."""
 
 from __future__ import annotations
 
@@ -20,11 +20,11 @@ ScanStopReason = Literal[
     "cancelled",
 ]
 
-# Owner-approved numerics (D-068).
-QUALITY_MIN_DISTINCT_CLIENT_REQUESTS = 7
-QUALITY_WINDOW_DAYS = 14
-GATE_MIN_QUALITY_SOURCES = 5
-GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS = 35
+# ActiveClientChat v1 compatibility constants (D-070).
+QUALITY_MIN_DISTINCT_CLIENT_REQUESTS = 3
+QUALITY_WINDOW_DAYS = 30
+GATE_MIN_QUALITY_SOURCES = 1
+GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS = 0
 HISTORY_CAP_PER_SOURCE = 1500
 HISTORY_CAP_PER_RUN = 7500
 HISTORY_PAGE_SIZE = 100
@@ -36,7 +36,6 @@ CLIENT_CATEGORIES = frozenset(
         "direct_order",
         "contractor_search",
         "recommendation_request",
-        "potential_need",
     }
 )
 CLIENT_SERVICE_PROFILES = frozenset(
@@ -111,10 +110,11 @@ def is_client_request(
     category: str,
     service_profiles: Sequence[str],
     hard_exclusion: bool,
+    author_kind: str = "user",
 ) -> bool:
     if hard_exclusion:
         return False
-    if category not in CLIENT_CATEGORIES:
+    if author_kind != "user" or category not in CLIENT_CATEGORIES:
         return False
     return any(s in CLIENT_SERVICE_PROFILES for s in service_profiles)
 
@@ -146,18 +146,19 @@ def classify_truth_status(
 ) -> TruthStatus:
     """Map scan outcome to operator-facing truth bucket (SRC-046).
 
-    Soft caps MUST yield ``inconclusive`` (недоказанный), never silent reject.
+    Soft caps MUST yield ``inconclusive``, never silent reject.
     Soft-cap interruption overrides ``near`` when quality is not reached.
-    Rejected only when a completed 14-day scan proves 0 distinct client requests.
+    Rejected only when a completed 30-day scan proves 0 distinct client requests.
+    This compatibility helper cannot prove ``quality`` because it has no activity
+    or distinct-author counters.
     """
-    if distinct_qualified_in_window >= QUALITY_MIN_DISTINCT_CLIENT_REQUESTS:
-        return "quality"
     if hit_source_cap or hit_run_cap:
         return "inconclusive"
     if NEAR_MIN_DISTINCT <= distinct_qualified_in_window <= NEAR_MAX_DISTINCT:
         return "near"
     if window_complete and distinct_qualified_in_window == 0:
         return "rejected"
+    # Request count alone cannot prove the activity and author thresholds.
     if not window_complete:
         return "inconclusive"
     return "inconclusive"
@@ -172,23 +173,19 @@ def evaluate_run_gate(
 ) -> RunGateResult:
     """Working-run gate (SRC-047).
 
-    PASS only real ≥5 quality × ≥35 distinct.
-    Run soft-cap before pool exhaustion without PASS ⇒ INCONCLUSIVE (not FAIL).
-    Pool exhausted below target without that cap path ⇒ FAIL.
+    PASS requires one quality source. FAIL requires proven pool exhaustion and
+    no incomplete source; every other no-quality terminal path is inconclusive.
     """
     quality_sources = sum(1 for s in truth_statuses if s == "quality")
     near_sources = sum(1 for s in truth_statuses if s == "near")
     inconclusive_sources = sum(1 for s in truth_statuses if s == "inconclusive")
     rejected_sources = sum(1 for s in truth_statuses if s == "rejected")
-    if (
-        quality_sources >= GATE_MIN_QUALITY_SOURCES
-        and globally_distinct_client_requests >= GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS
-    ):
+    if quality_sources >= GATE_MIN_QUALITY_SOURCES:
         gate_status: GateStatus = "pass"
-    elif hit_run_cap and not pool_exhausted:
-        gate_status = "inconclusive"
-    else:
+    elif pool_exhausted and not inconclusive_sources:
         gate_status = "fail"
+    else:
+        gate_status = "inconclusive"
     return RunGateResult(
         gate_status=gate_status,
         quality_sources=quality_sources,

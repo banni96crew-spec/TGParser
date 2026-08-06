@@ -1,42 +1,21 @@
-"""Immutable seed keyword profile data."""
+"""Frozen operator seed written by migration 006."""
 
-from typing import Literal
+from sqlalchemy import text
 
-SourceScope = Literal["groups", "channels", "all"]
-
-MIN_QUERY_LEN = 3
-MAX_QUERY_LEN = 128
-MAX_POST_QUERIES = 20
-MIN_POST_QUERIES = 1
-MAX_DIRECTORY_QUERIES = 10
-MIN_DIRECTORY_QUERIES = 0
-MAX_REPLACEMENT_DIRECTORY_QUERIES = 15
-MIN_REPLACEMENT_DIRECTORY_QUERIES = 0
-MAX_PROFILE_NAME_LEN = 80
-MAX_EVIDENCE_EXCERPT_CODEPOINTS = 240
-
-SEED_PROFILE_NAME = "ecommerce-development-ru"
-SEED_PROFILE_VERSION = 3
-
-SEED_POST_QUERIES: tuple[str, ...] = (
-    # websites
+POST_QUERIES = (
     "нужен сайт",
     "ищу разработчика сайта",
     "кто сделает сайт",
     "нужен лендинг",
-    # telegram_bots
     "нужен telegram бот",
     "разработать telegram бота",
     "нужен бот для заказов",
-    # integrations_api
     "нужна интеграция api",
     "интеграция сайта crm",
     "интеграция с 1с",
-    # automation_parsers
     "нужен парсер",
     "автоматизировать заказы",
     "нужна автоматизация",
-    # ecommerce
     "нужен интернет-магазин",
     "доработать интернет-магазин",
     "интеграция ozon",
@@ -44,9 +23,7 @@ SEED_POST_QUERIES: tuple[str, ...] = (
     "нужен магазин на сайте",
 )
 
-# Primary directory lane (SRC-018 cap 0..10): client/operator communities across
-# five service families — not marketplace-seller-only (D-069).
-SEED_DIRECTORY_QUERIES: tuple[str, ...] = (
+DIRECTORY_QUERIES = (
     "чат предпринимателей",
     "сообщество предпринимателей",
     "владельцы бизнеса",
@@ -59,9 +36,7 @@ SEED_DIRECTORY_QUERIES: tuple[str, ...] = (
     "малый бизнес чат",
 )
 
-# Free replacement directory family after mass suppress (SRC-040 / D-069).
-# Not counted against SRC-018 profile directory cap; worker expansion only.
-SEED_DIRECTORY_REPLACEMENT_QUERIES: tuple[str, ...] = (
+REPLACEMENT_DIRECTORY_QUERIES = (
     "предприниматели москва",
     "предприниматели спб",
     "предприниматели казань",
@@ -79,7 +54,7 @@ SEED_DIRECTORY_REPLACEMENT_QUERIES: tuple[str, ...] = (
     "локальный бизнес чат",
 )
 
-SEED_ADDITIONAL_EXCLUSIONS: tuple[str, ...] = (
+ADDITIONAL_EXCLUSIONS = (
     "ищем в команду",
     "резюме",
     "ищу работу",
@@ -87,3 +62,31 @@ SEED_ADDITIONAL_EXCLUSIONS: tuple[str, ...] = (
     "курс",
     "обучение",
 )
+
+
+def downgrade_seed_profile(bind, tables: set[str]) -> None:
+    required = {"keyword_discovery_profiles", "keyword_discovery_profile_versions"}
+    if not required <= tables:
+        return
+    profile = bind.execute(
+        text("SELECT id, current_version FROM keyword_discovery_profiles WHERE name=:name"),
+        {"name": "ecommerce-development-ru"},
+    ).fetchone()
+    if profile is None:
+        return
+    profile_id, current_version = int(profile[0]), int(profile[1])
+    if current_version == 6:
+        return
+    if current_version != 7:
+        raise RuntimeError(f"seed_profile_downgrade_requires_version_7:found={current_version}")
+    bind.execute(
+        text(
+            "UPDATE keyword_discovery_profiles SET current_version=6, "
+            "updated_at=CURRENT_TIMESTAMP WHERE id=:pid"
+        ),
+        {"pid": profile_id},
+    )
+    bind.execute(
+        text("DELETE FROM keyword_discovery_profile_versions WHERE profile_id=:pid AND version=7"),
+        {"pid": profile_id},
+    )

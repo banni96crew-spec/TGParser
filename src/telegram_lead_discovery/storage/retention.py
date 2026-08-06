@@ -45,6 +45,7 @@ class RetentionPurgeResult:
     evidence_excerpts_cleared: int
     evidence_rows_deleted: int
     unpromoted_snapshots_deleted: int
+    terminal_outcomes_deleted: int
     keyword_queries_deleted: int
     terminal_keyword_runs_deleted: int
     duration_ms: int
@@ -117,7 +118,7 @@ from telegram_lead_discovery.storage.retention_batches import (
 from telegram_lead_discovery.storage.retention_discovery import (
     clear_evidence_excerpts, purge_empty_evidence_rows,
     purge_keyword_discovery_queries, purge_terminal_keyword_runs,
-    purge_unpromoted_opportunity_snapshots,
+    purge_terminal_discovery_outcomes, purge_unpromoted_opportunity_snapshots,
 )
 
 
@@ -136,6 +137,7 @@ async def run_retention_purge(
     excerpts_cleared = await clear_evidence_excerpts(session, now=clock)
     evidence_deleted = await purge_empty_evidence_rows(session, now=clock)
     snapshots_deleted = await purge_unpromoted_opportunity_snapshots(session, now=clock)
+    outcomes_deleted = await purge_terminal_discovery_outcomes(session, now=clock)
     queries_deleted = await purge_keyword_discovery_queries(session, now=clock)
     runs_deleted = await purge_terminal_keyword_runs(session, now=clock)
     duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
@@ -146,6 +148,7 @@ async def run_retention_purge(
         evidence_excerpts_cleared=excerpts_cleared,
         evidence_rows_deleted=evidence_deleted,
         unpromoted_snapshots_deleted=snapshots_deleted,
+        terminal_outcomes_deleted=outcomes_deleted,
         keyword_queries_deleted=queries_deleted,
         terminal_keyword_runs_deleted=runs_deleted,
         duration_ms=duration_ms,

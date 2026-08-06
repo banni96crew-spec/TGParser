@@ -10,6 +10,9 @@ from telegram_lead_discovery.collector.ports import (
     TelegramUpdateDTO,
 )
 from telegram_lead_discovery.collector.adapter.telethon_parts.entity_mapping import _permalink
+from telegram_lead_discovery.collector.adapter.telethon_parts.author_mapping import (
+    classify_message_author,
+)
 
 
 def _encode_cursor(*, offset_rate: int, offset_id: int, offset_peer_id: int) -> SearchCursor:
@@ -109,6 +112,7 @@ def _event_to_update_dto(event: Any) -> TelegramUpdateDTO | None:
     chat = getattr(event, "chat", None)
     if chat is not None:
         username = getattr(chat, "username", None)
+    author_kind, author_peer_id = classify_message_author(message)
 
     return TelegramUpdateDTO(
         schema_version=1,
@@ -116,13 +120,15 @@ def _event_to_update_dto(event: Any) -> TelegramUpdateDTO | None:
         telegram_peer_id=peer_id,
         observed_at=observed,
         message=TelegramMessageDTO(
-            schema_version=1,
+            schema_version=2,
             source_id=0,
             telegram_message_id=msg_id,
             published_at=published,
             text=getattr(message, "message", None) or "",
             telegram_peer_id=peer_id,
             edited_at=edited,
+            author_peer_id=author_peer_id,
+            author_kind=author_kind,
             permalink=_permalink(username or "", msg_id),
         ),
     )

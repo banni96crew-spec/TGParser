@@ -42,6 +42,11 @@ class DiscoveryRun(Base):
     last_error_code: Mapped[str | None] = mapped_column(String(64))
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     counters_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    reference_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    gate_status: Mapped[str] = mapped_column(String(16), nullable=False, default="inconclusive")
+    pool_exhausted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pool_exhausted_reason: Mapped[str | None] = mapped_column(String(64))
+    run_termination_reason: Mapped[str | None] = mapped_column(String(64))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
@@ -82,6 +87,14 @@ class SourceDiscoveryEvidence(Base):
         ),
         Index("ix_evidence_run_source_telegram_id", "run_id", "source_telegram_id"),
         Index("ix_source_discovery_evidence_created_at", "created_at"),
+        CheckConstraint(
+            "author_key IS NULL OR length(author_key) = 64",
+            name="ck_source_discovery_evidence_author_key",
+        ),
+        CheckConstraint(
+            "author_kind IN ('user','bot','channel','anonymous','unknown')",
+            name="ck_source_discovery_evidence_author_kind",
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -90,6 +103,8 @@ class SourceDiscoveryEvidence(Base):
     source_username: Mapped[str | None] = mapped_column(String(64))
     source_title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    author_key: Mapped[str | None] = mapped_column(String(64))
+    author_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
     telegram_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     permalink: Mapped[str | None] = mapped_column(String(512))
@@ -141,6 +156,19 @@ class SourceOpportunitySnapshot(Base):
     truth_status: Mapped[str] = mapped_column(String(16), nullable=False, default="inconclusive")
     verification_scanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     verification_stop_reason: Mapped[str | None] = mapped_column(String(64))
+    activity_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    activity_active_day_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    activity_distinct_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    client_request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    client_request_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hard_excluded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unknown_author_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    latest_client_request_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sample_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    qualification_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy"
+    )
+    qualification_reasons_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
 
     score_components_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     discovery_channels_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
@@ -150,3 +178,48 @@ class SourceOpportunitySnapshot(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DiscoveryTerminalOutcome(Base):
+    __tablename__ = "discovery_terminal_outcomes"
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "source_canonical_key",
+            "terminal_outcome_version",
+            name="uq_discovery_terminal_outcome_version",
+        ),
+        CheckConstraint(
+            "truth_status IN ('quality','near','inconclusive','rejected')",
+            name="ck_discovery_terminal_outcome_truth",
+        ),
+        CheckConstraint(
+            "verification_stop_reason IN "
+            "('quality_reached','window_complete','history_exhausted','source_cap',"
+            "'run_cap','inaccessible','cancelled')",
+            name="ck_discovery_terminal_outcome_stop_reason",
+        ),
+        Index("ix_discovery_terminal_outcomes_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[int] = mapped_column(ForeignKey("discovery_runs.id"), nullable=False)
+    source_canonical_key: Mapped[str] = mapped_column(String(96), nullable=False)
+    terminal_outcome_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    truth_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    verification_stop_reason: Mapped[str] = mapped_column(String(64), nullable=False)
+    activity_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    activity_active_day_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    activity_distinct_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    client_request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    client_request_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    hard_excluded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    unknown_author_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    latest_client_request_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    threshold_activity_messages: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    threshold_activity_days: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    threshold_activity_authors: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    threshold_client_requests: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    threshold_client_authors: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    threshold_freshness: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

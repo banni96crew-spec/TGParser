@@ -6,6 +6,7 @@ from telegram_lead_discovery.detection.catalog_versions import (
     ACTIVE_SEED_RULES,
     SEED_RULES_RU_MVP_2,
     SEED_RULES_RU_MVP_3,
+    SEED_RULES_RU_MVP_4,
 )
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "SEED_RULES",
     "SEED_RULES_RU_MVP_2",
     "SEED_RULES_RU_MVP_3",
+    "SEED_RULES_RU_MVP_4",
     "SeedRule",
 ]

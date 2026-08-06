@@ -5,6 +5,9 @@ from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 from telegram_lead_discovery.source_discovery.worker_parts.cap_finalize import (
     _finalize_unfinished_on_run_cap,
 )
+from telegram_lead_discovery.source_discovery.worker_parts.acquisition_state import (
+    _classify_acquisition_stop,
+)
 from telegram_lead_discovery.source_discovery.worker_parts.control import (
     _bump_counter,
     _check_cancel,
@@ -103,10 +106,16 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
     run_cursor = _load_run_cursor(ctx)
     existing_pool = run_cursor.get("acquisition_pool")
     if isinstance(existing_pool, list) and existing_pool:
-        pool = [item for item in existing_pool if isinstance(item, dict)]
+        pool = [
+            item for item in existing_pool
+            if isinstance(item, dict) and item.get("source_type") == "megagroup"
+        ]
         cursor = int(run_cursor.get("acquisition_pool_cursor") or 0)
     else:
-        ranked = sorted(candidates, key=preliminary_rank_key)
+        ranked = [
+            candidate for candidate in sorted(candidates, key=preliminary_rank_key)
+            if candidate.source_type == "megagroup" and candidate.username
+        ]
         pages = [
             tuple(c.telegram_id for c in ranked[:40]),
             tuple(c.telegram_id for c in ranked[40:80]),
@@ -118,7 +127,9 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
             target_quota=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
         )
         replacement_fetches = acquisition.replacement_fetches_total
-        pool_ids = [tid for tid in acquisition.qualified_candidate_ids if tid not in suppressed_ids]
+        pool_ids = [
+            tid for tid in acquisition.qualified_candidate_ids if tid not in suppressed_ids
+        ][: RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES]
         meta_by_id = {
             c.telegram_id: {
                 "telegram_id": c.telegram_id,
@@ -152,13 +163,13 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
             )
             replacement_fetches += extra_fetches
             for tid in expanded_ids:
-                if tid not in pool_ids and tid not in suppressed_ids:
-                    pool_ids.append(tid)
                 snap = next(
                     (s for s in ctx.directory_sources if s.telegram_id == tid),
                     None,
                 )
-                if snap is not None:
+                if snap is not None and snap.source_type == "megagroup" and snap.username:
+                    if tid not in pool_ids and tid not in suppressed_ids:
+                        pool_ids.append(tid)
                     meta_by_id.setdefault(
                         tid,
                         {
@@ -183,13 +194,14 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         pool = [meta_by_id[tid] for tid in pool_ids if tid in meta_by_id]
         cursor = 0
         await _persist_acquisition_pool(ctx, pool=pool, pool_cursor=cursor)
-        pool_exhausted = len(pool) < RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES
+        pool_exhausted, reason, termination_reason = await _classify_acquisition_stop(
+            ctx,
+            pool_size=len(pool),
+            acquired_total=max(acquisition.acquired_total, len(meta_by_id)),
+        )
         if pool_exhausted:
-            reason = (
-                "provider_empty"
-                if acquisition.acquired_total == 0 and replacement_fetches == 0
-                else "no_unseen_after_suppress"
-            )
+            if reason is None:
+                raise RuntimeError("pool_exhausted_reason_missing")
             counters = _loads_counters(ctx.run.counters_json)
             merged = merge_funnel_counters(
                 counters,
@@ -200,6 +212,13 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
                 replacement_fetches_total=replacement_fetches,
             )
             ctx.run.counters_json = _dumps_counters(merged)
+            ctx.run.pool_exhausted = True
+            ctx.run.pool_exhausted_reason = reason
+            ctx.run.run_termination_reason = reason
+        else:
+            ctx.run.pool_exhausted = False
+            ctx.run.pool_exhausted_reason = None
+            ctx.run.run_termination_reason = termination_reason
 
     if ctx.presented_suppressed_ids:
         counters = _loads_counters(ctx.run.counters_json)
@@ -229,11 +248,15 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         await _check_cancel(ctx)
         await _maybe_heartbeat(ctx)
         if await _run_history_scanned(ctx) >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN:
+            ctx.run.pool_exhausted = False
+            ctx.run.pool_exhausted_reason = None
+            ctx.run.run_termination_reason = "history_run_cap"
             await _finalize_unfinished_on_run_cap(
                 ctx, pool=pool, done_sources=done_sources, suppressed_ids=suppressed_ids
             )
             break
         if await _gate_satisfied_from_persisted(ctx):
+            ctx.run.run_termination_reason = "quality_reached"
             break
 
         scanned_by = await _verification_scanned_by_source(ctx)
@@ -245,17 +268,8 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
             source_cap=RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_SOURCE,
         )
         if tid is None:
-            counters = _loads_counters(ctx.run.counters_json)
-            if len(pool) > 0 and not counters.get("pool_exhausted"):
-                merged = merge_funnel_counters(
-                    counters,
-                    pool_exhausted=True,
-                    pool_exhausted_reason="verification_pool_exhausted",
-                    acquired_total=len(pool),
-                    suppressed_total=len(suppressed_ids),
-                    replacement_fetches_total=int(counters.get("replacement_fetches_total", 0)),
-                )
-                ctx.run.counters_json = _dumps_counters(merged)
+            if not ctx.run.pool_exhausted and ctx.run.run_termination_reason is None:
+                ctx.run.run_termination_reason = "deep_candidate_cap"
             break
 
         # Observability cursor: furthest pool index touched (not sequential monopoly).

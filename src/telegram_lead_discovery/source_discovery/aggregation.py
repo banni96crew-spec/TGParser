@@ -10,6 +10,7 @@ from telegram_lead_discovery.collector.ports import SourceSnapshot
 from telegram_lead_discovery.detection.engine import seed_catalog_detect
 from telegram_lead_discovery.source_discovery.evidence import (
     MAX_EVIDENCE_PER_RUN,
+    MAX_QUALIFIED_EVIDENCE_PER_RUN,
     AnnotatedSearchHit,
     DetectFn,
     EvidenceRecord,
@@ -61,6 +62,36 @@ def aggregate_search_hits(
     detect_fn: DetectFn = seed_catalog_detect,
     evidence_cap: int = MAX_EVIDENCE_PER_RUN,
     existing_evidence_count: int = 0,
+    linked_parents: Mapping[int, int] | None = None,
+) -> AggregationResult:
+    """Compatibility entry point with the stable public signature."""
+    return _aggregate_search_hits_with_budget(
+        annotated_hits,
+        run_id=run_id,
+        scored_at=scored_at,
+        registry=registry,
+        dismissed=dismissed,
+        presented=presented,
+        detect_fn=detect_fn,
+        evidence_cap=evidence_cap,
+        existing_evidence_count=existing_evidence_count,
+        linked_parents=linked_parents,
+    )
+
+
+def _aggregate_search_hits_with_budget(
+    annotated_hits: Sequence[AnnotatedSearchHit],
+    *,
+    run_id: int,
+    scored_at: datetime,
+    registry: SourceRegistryIndex | None = None,
+    dismissed: DismissedKeywordSourceIndex | None = None,
+    presented: PresentedKeywordSourceIndex | None = None,
+    detect_fn: DetectFn = seed_catalog_detect,
+    evidence_cap: int = MAX_EVIDENCE_PER_RUN,
+    qualified_evidence_cap: int = MAX_QUALIFIED_EVIDENCE_PER_RUN,
+    existing_evidence_count: int = 0,
+    existing_qualified_evidence_count: int = 0,
     linked_parents: Mapping[int, int] | None = None,
 ) -> AggregationResult:
     """Aggregate hits → evidence + opportunity snapshots (phases E/H/I).
@@ -137,8 +168,19 @@ def aggregate_search_hits(
     )
 
     remaining = max(0, evidence_cap - existing_evidence_count)
-    kept = merged[:remaining]
-    budget_skipped = len(merged) - len(kept)
+    qualified_remaining = max(0, qualified_evidence_cap - existing_qualified_evidence_count)
+    kept: list[EvidenceRecord] = []
+    budget_skipped = 0
+    for record in merged:
+        if len(kept) >= remaining:
+            budget_skipped += 1
+            continue
+        if record.is_qualified:
+            if qualified_remaining <= 0:
+                budget_skipped += 1
+                continue
+            qualified_remaining -= 1
+        kept.append(record)
 
     by_source: dict[int, list[EvidenceRecord]] = {}
     for row in kept:
@@ -199,8 +241,9 @@ def acquire_with_replacement(
     *,
     is_suppressed: Callable[[int], bool],
     target_quota: int,
+    provider_exhausted: bool = False,
 ) -> ReplacementAcquisitionResult:
-    """Consume provider pages, skip suppressed ids, fill quota or mark exhaustion."""
+    """Consume pages; claim exhaustion only when the provider proves it."""
     acquired = 0
     suppressed = 0
     qualified: list[int] = []
@@ -234,7 +277,7 @@ def acquire_with_replacement(
     replacement_fetches = 0
     if len(pages) > 1 and first_page_kept < target_quota:
         replacement_fetches = len(pages) - 1
-    pool_exhausted = len(qualified) < target_quota
+    pool_exhausted = provider_exhausted and len(qualified) < target_quota
     reason: str | None = None
     if pool_exhausted:
         if acquired == 0:
@@ -252,7 +295,6 @@ def acquire_with_replacement(
     )
 
 
-
 __all__ = [
     "AggregationResult",
     "ReplacementAcquisitionResult",
@@ -260,4 +302,3 @@ __all__ = [
     "aggregate_search_hits",
     "sort_opportunity_snapshots",
 ]
-

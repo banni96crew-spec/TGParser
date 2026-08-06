@@ -12,7 +12,19 @@ from telegram_lead_discovery.source_discovery.worker_parts.core import (
 )
 from telegram_lead_discovery.source_discovery.worker_parts.repository import (
     _evidence_count,
+    _load_evidence_records,
     _opportunity_count,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.cap_finalize import (
+    _finalize_unfinished_on_cancel,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.history_state import _load_run_cursor
+from telegram_lead_discovery.source_discovery.worker_parts.query_state import (
+    _finished_verification_sources,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.finalize import (
+    _terminal_opportunities,
+    _write_gate_counters,
 )
 
 
@@ -56,9 +68,41 @@ async def _park_flood_wait(ctx: _WorkerContext, exc: _FloodWaitControl) -> dict[
 
 async def _mark_cancelled(ctx: _WorkerContext) -> dict[str, Any]:
     now = _utcnow()
+    cursor = _load_run_cursor(ctx)
+    pool = [item for item in cursor.get("acquisition_pool", []) if isinstance(item, dict)]
+    if pool:
+        await _finalize_unfinished_on_cancel(
+            ctx,
+            pool=pool,
+            done_sources=await _finished_verification_sources(ctx),
+            suppressed_ids=(
+                set(ctx.registry_suppressed_ids)
+                | set(ctx.dismissed_suppressed_ids)
+                | set(ctx.presented_suppressed_ids)
+            ),
+        )
     ctx.run.state = "cancelled"
     ctx.run.finished_at = now
     ctx.run.phase = ctx.run.phase or "cancelled"
+    ctx.run.pool_exhausted = False
+    ctx.run.pool_exhausted_reason = None
+    ctx.run.run_termination_reason = "cancelled"
+    ctx.run.gate_status = "inconclusive"
+    opportunities = await _terminal_opportunities(ctx)
+    evidence_rows = await _load_evidence_records(ctx)
+    counters = merge_funnel_counters(
+        _loads_counters(ctx.run.counters_json),
+        canonicalized_total=len({row.source_telegram_id for row in evidence_rows}),
+        dismissed_suppressed=len(ctx.dismissed_suppressed_ids),
+        presented_suppressed=len(ctx.presented_suppressed_ids),
+        qualified_total=sum(1 for row in opportunities if row.client_request_count > 0),
+        presented_total=len(opportunities),
+        novel_presented_total=len(opportunities),
+    )
+    counters["evidence_count"] = len(evidence_rows)
+    counters["unique_sources"] = len(opportunities)
+    counters["registry_suppressed"] = len(ctx.registry_suppressed_ids)
+    await _write_gate_counters(ctx, opportunities=opportunities, base=counters)
     ctx.job.state = "cancelled"
     ctx.job.lease_until = None
     ctx.job.updated_at = now
@@ -128,6 +172,23 @@ async def _fail_run(
     run.state = "failed"
     run.finished_at = now
     run.last_error_code = code
+    run.pool_exhausted = False
+    run.pool_exhausted_reason = None
+    run.run_termination_reason = "failed"
+    counters = _loads_counters(run.counters_json)
+    counters["pool_exhausted"] = 0
+    counters.pop("pool_exhausted_reason_code", None)
+    run.counters_json = _dumps_counters(counters)
+    running = await session.execute(
+        select(DiscoveryRunQuery).where(
+            DiscoveryRunQuery.run_id == run.id,
+            DiscoveryRunQuery.state == "running",
+        )
+    )
+    for query in running.scalars():
+        query.state = "failed"
+        query.error_code = code
+        query.finished_at = now
     job.state = "failed"
     job.last_error_code = code
     job.lease_until = None

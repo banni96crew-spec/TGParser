@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
+from telegram_lead_discovery.detection.errors import RuleSetInvalidError
+from telegram_lead_discovery.detection.loader import get_default_loader
 
 from telegram_lead_discovery.source_discovery.worker_parts.control import _check_cancel
 from telegram_lead_discovery.source_discovery.worker_parts.core import (
@@ -66,6 +68,16 @@ async def process_keyword_discovery_job(
     version_row = await session.get(KeywordDiscoveryProfileVersion, run.profile_version_id)
     if version_row is None:
         return await _fail_run(session, job, run, "profile_version_missing")
+    if run.rule_set_version_id is None or not run.rule_set_checksum:
+        return await _fail_run(session, job, run, "rule_set_pin_missing")
+    try:
+        catalog = await get_default_loader().load(
+            session,
+            rule_set_version_id=run.rule_set_version_id,
+            checksum=run.rule_set_checksum,
+        )
+    except RuleSetInvalidError:
+        return await _fail_run(session, job, run, "rule_set_pin_invalid")
 
     normalized = version_as_normalized(version_row)
     registry = await _load_registry(session)
@@ -77,6 +89,8 @@ async def process_keyword_discovery_job(
             run.state = "running"
         if run.started_at is None:
             run.started_at = now
+        if run.reference_at is None:
+            run.reference_at = run.started_at
     run.phase = run.phase or "B"
     await session.flush()
 
@@ -88,8 +102,11 @@ async def process_keyword_discovery_job(
         profile_version=version_row,
         post_queries=normalized.post_queries,
         directory_queries=normalized.directory_queries,
+        replacement_directory_queries=normalized.replacement_directory_queries,
         additional_exclusions=normalized.additional_exclusions,
         required_service_profiles=normalized.required_service_profiles,
+        detection_rules=catalog.rules,
+        rule_set_checksum=catalog.checksum,
         registry=registry,
         dismissed=dismissed,
         directory_sources=[],

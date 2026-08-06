@@ -114,6 +114,7 @@ def test_pool_exhaustion_visible_not_masked_as_success() -> None:
         pages,
         is_suppressed=lambda tid: tid in suppressed,
         target_quota=25,
+        provider_exhausted=True,
     )
     assert result.pool_exhausted is True
     assert result.pool_exhausted_reason == "no_unseen_after_suppress"
@@ -343,7 +344,7 @@ def test_seed_directory_covers_service_families_and_client_communities() -> None
         build_seed_normalized_profile,
     )
 
-    assert SEED_PROFILE_VERSION >= 2
+    assert SEED_PROFILE_VERSION == 3
     profile = build_seed_normalized_profile()
     joined_posts = " ".join(profile.post_queries)
     for token in ("сайт", "бот", "интеграц", "парсер", "магазин"):
@@ -351,8 +352,19 @@ def test_seed_directory_covers_service_families_and_client_communities() -> None
     joined_dirs = " ".join(SEED_DIRECTORY_QUERIES) + " " + " ".join(
         SEED_DIRECTORY_REPLACEMENT_QUERIES
     )
-    assert "предпринимател" in joined_dirs or "заказчик" in joined_dirs
-    assert "селлер" not in " ".join(SEED_DIRECTORY_QUERIES)
+    assert "предпринимател" in joined_dirs
+    assert SEED_DIRECTORY_QUERIES == (
+        "чат предпринимателей",
+        "сообщество предпринимателей",
+        "владельцы бизнеса",
+        "основатели стартапов",
+        "владельцы интернет-магазинов",
+        "чат селлеров",
+        "рестораторы чат",
+        "владельцы салонов чат",
+        "онлайн-школы чат",
+        "малый бизнес чат",
+    )
     assert "маркетплейс" not in " ".join(SEED_DIRECTORY_QUERIES)
     assert len(SEED_DIRECTORY_REPLACEMENT_QUERIES) >= 10
     assert len(set(SEED_DIRECTORY_QUERIES) & set(SEED_DIRECTORY_REPLACEMENT_QUERIES)) == 0

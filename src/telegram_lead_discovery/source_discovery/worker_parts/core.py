@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
+from telegram_lead_discovery.detection.catalog import SeedRule
 
 
 class _CancelRequested(Exception):
@@ -29,8 +30,11 @@ class _WorkerContext:
     profile_version: KeywordDiscoveryProfileVersion
     post_queries: tuple[str, ...]
     directory_queries: tuple[str, ...]
+    replacement_directory_queries: tuple[str, ...]
     additional_exclusions: tuple[str, ...]
     required_service_profiles: tuple[str, ...]
+    detection_rules: tuple[SeedRule, ...]
+    rule_set_checksum: str
     registry: SourceRegistryIndex
     dismissed: DismissedKeywordSourceIndex
     directory_sources: list[SourceSnapshot]

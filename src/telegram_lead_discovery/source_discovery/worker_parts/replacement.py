@@ -31,8 +31,8 @@ async def _expand_directory_replacement(
 ) -> tuple[int, list[int]]:
     """Free directory expansion after mass suppress (SRC-040 / D-069).
 
-    Uses versioned SEED_DIRECTORY_REPLACEMENT_QUERIES plus any profile directory
-    texts not yet executed this run. Stars/paid paths are never used.
+    Uses only replacement queries frozen in the run's immutable profile version,
+    plus profile directory texts not yet executed. Stars/paid paths are never used.
     """
     if already_qualified >= target_quota:
         return 0, []
@@ -51,7 +51,7 @@ async def _expand_directory_replacement(
     )
     already_texts = {normalize_query(q.query_text) for q in existing if q.query_text}
     candidates: list[str] = []
-    for raw in (*ctx.directory_queries, *SEED_DIRECTORY_REPLACEMENT_QUERIES):
+    for raw in (*ctx.directory_queries, *ctx.replacement_directory_queries):
         try:
             normalized = normalize_query(raw)
         except Exception:

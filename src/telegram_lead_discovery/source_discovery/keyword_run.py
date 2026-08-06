@@ -14,8 +14,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
-from telegram_lead_discovery.detection.seed import get_active_ruleset
+from telegram_lead_discovery.detection.seed import seed_active_ruleset
 from telegram_lead_discovery.source_discovery.profile_service import (
     ProfileNotFoundError,
     get_current_profile_version,
@@ -166,9 +165,9 @@ async def start_keyword_discovery_run(
     version_row = await get_current_profile_version(session, profile_id)
     queries = version_as_normalized(version_row)
 
-    ruleset = await get_active_ruleset(session)
-    rule_set_version_id = ruleset.id if ruleset is not None else None
-    rule_set_checksum = ruleset.checksum if ruleset is not None else catalog_checksum()
+    ruleset = await seed_active_ruleset(session)
+    rule_set_version_id = ruleset.id
+    rule_set_checksum = ruleset.checksum
 
     now = _utcnow()
     run = DiscoveryRun(

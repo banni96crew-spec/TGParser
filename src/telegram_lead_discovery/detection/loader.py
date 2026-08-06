@@ -73,7 +73,9 @@ class RuleCatalogLoader:
                 MonitoringRule.rule_set_version_id == rule_set_version_id,
                 MonitoringRule.enabled.is_(True),
             )
-            .order_by(MonitoringRule.priority.asc(), MonitoringRule.stable_rule_id.asc())
+            # Rows are inserted in immutable catalog order; id preserves that order
+            # and therefore the checksum pinned by the run.
+            .order_by(MonitoringRule.id.asc())
         )
         rows = list(result.scalars().all())
         if not rows:

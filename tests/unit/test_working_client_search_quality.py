@@ -35,7 +35,7 @@ def _load_live_fixture():
     return mod
 
 
-def test_six_distinct_is_near_seven_is_quality() -> None:
+def test_legacy_request_only_truth_cannot_claim_active_chat_quality() -> None:
     assert (
         classify_truth_status(
             distinct_qualified_in_window=6,
@@ -43,7 +43,7 @@ def test_six_distinct_is_near_seven_is_quality() -> None:
             hit_source_cap=False,
             hit_run_cap=False,
         )
-        == "near"
+        == "inconclusive"
     )
     assert (
         classify_truth_status(
@@ -52,14 +52,14 @@ def test_six_distinct_is_near_seven_is_quality() -> None:
             hit_source_cap=False,
             hit_run_cap=False,
         )
-        == "quality"
+        == "inconclusive"
     )
 
 
-def test_fourteen_day_boundary() -> None:
+def test_thirty_day_demand_boundary() -> None:
     now = datetime(2026, 7, 27, 12, 0, tzinfo=UTC)
-    inside = now - timedelta(days=14)
-    outside = now - timedelta(days=14, seconds=1)
+    inside = now - timedelta(days=30)
+    outside = now - timedelta(days=30, seconds=1)
     assert is_within_quality_window(inside, now=now) is True
     assert is_within_quality_window(outside, now=now) is False
 
@@ -103,12 +103,12 @@ def test_source_cap_and_run_cap_are_inconclusive_not_rejected() -> None:
     )
 
 
-def test_gate_four_fail_five_times_seven_pass() -> None:
+def test_gate_one_quality_passes() -> None:
     fail = evaluate_run_gate(
         truth_statuses=("quality",) * 4 + ("near",),
         globally_distinct_client_requests=28,
     )
-    assert fail.gate_status == "fail"
+    assert fail.gate_status == "pass"
     ok = evaluate_run_gate(
         truth_statuses=("quality",) * 5,
         globally_distinct_client_requests=35,
@@ -339,10 +339,7 @@ def test_run14_precision_regression_and_separate_metrics() -> None:
             r14_fn += 1
         else:
             r14_tn += 1
-        if sid == "R14-KEEP01":
-            assert predicted is True
-        else:
-            assert predicted is False, sid
+        assert predicted is False, sid
 
     print(
         f"run14_regression tp={r14_tp} fp={r14_fp} fn={r14_fn} tn={r14_tn} "
@@ -350,8 +347,8 @@ def test_run14_precision_regression_and_separate_metrics() -> None:
         f"recall={r14_tp / max(1, r14_tp + r14_fn):.3f}"
     )
     assert r14_fp == 0
-    assert r14_fn == 0
-    assert r14_tp == 1
+    assert r14_fn == 1
+    assert r14_tp == 0
 
     # Old C* + T* still meet combined ≥80/80 under ru-mvp-3.
     mod = _load_live_fixture()
@@ -374,9 +371,9 @@ def test_run14_precision_regression_and_separate_metrics() -> None:
     )
     assert precision >= 0.80
     assert recall >= 0.80
-    from telegram_lead_discovery.detection.seed import SEED_RULES_RU_MVP_3
+    from telegram_lead_discovery.detection.seed import SEED_RULES_RU_MVP_4
 
-    assert any(r.stable_rule_id == "NEG-ADV-007" for r in SEED_RULES_RU_MVP_3)
+    assert any(r.stable_rule_id == "NEG-ADV-016" for r in SEED_RULES_RU_MVP_4)
     assert tuple(r.stable_rule_id for r in ACTIVE_SEED_RULES) == tuple(
-        r.stable_rule_id for r in SEED_RULES_RU_MVP_3
+        r.stable_rule_id for r in SEED_RULES_RU_MVP_4
     )

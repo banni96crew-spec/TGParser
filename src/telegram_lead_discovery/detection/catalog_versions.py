@@ -150,7 +150,49 @@ _REMEDIATION_RULES_V3: tuple[SeedRule, ...] = (
 )
 
 SEED_RULES_RU_MVP_3: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_2 + _REMEDIATION_RULES_V3
-ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_3
+
+_ECOMMERCE_TECHNICAL_V4 = _r(
+    "SVC-ECOM-002", 241, "ecommerce", "service_fit", 8,
+    r"(?:\b(?:интеграц(?:ия|ии|ию|ией)|api|автоматизац(?:ия|ии|ию|ией)|бот|парсер|сайт|магазин|выгрузка|синхронизация)\b.{0,80}\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|wb|ozon|яндекс маркет)\b)|(?:\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|wb|ozon|яндекс маркет)\b.{0,80}\b(?:интеграц(?:ия|ии|ию|ией)|api|автоматизац(?:ия|ии|ию|ией)|бот|парсер|сайт|магазин|выгрузка|синхронизация)\b)",
+    "service_marketplace_technical_v4",
+)
+_ACTIVE_CLIENT_RULES_V4: tuple[SeedRule, ...] = (
+    _r(
+        "NEG-ADV-016", 135, "advertising", "hard_exclusion", 0,
+        r"\b(?:предлагаю|оказываю|продаю)\b.{0,80}\b(?:услуг(?:у|и)|разработк(?:у|и)|создани(?:е|я)|настройк(?:у|и))\b.{0,80}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|магазин)\b",
+        "advertising_provider_offer_v4",
+    ),
+    _r(
+        "NEG-ADV-017", 136, "advertising", "hard_exclusion", 0,
+        r"\b(?:мои кейсы|мой кейс|в портфолио|покажу портфолио|беру проекты|открыт(?:а|ы)? к заказам)\b.{0,120}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|маркетплейс)\b",
+        "advertising_portfolio_v4",
+    ),
+    _r(
+        "NEG-ADV-018", 137, "advertising", "hard_exclusion", 0,
+        r"\b(?:курс|обучение|вебинар|интенсив|наставничество)\b.{0,100}\b(?:сайт|бот|автоматизац|маркетплейс|wildberries|ozon)\b",
+        "advertising_training_v4",
+    ),
+    _r(
+        "NEG-ADV-019", 138, "advertising", "hard_exclusion", 0,
+        r"\b(?:возврат(?:ы|ов)?|поставка|отгрузка|остатки|склад|доставка|заказы|поддержка)\b.{0,80}\b(?:wildberries|wb|ozon|маркетплейс)\b",
+        "advertising_marketplace_operations_v4",
+    ),
+    _r(
+        "POS-DIR-006", 305, "direct_order", "intent", 16,
+        r"\b(?:нужен|нужна|нужны|требуется|требуются)\b.{0,80}\b(?:сайт|лендинг|telegram[- ]?бот|телеграм[- ]?бот|чат[- ]?бот|интеграц(?:ия|ию)|api|автоматизац(?:ия|ию)|парсер|интернет[- ]?магазин)\b",
+        "intent_explicit_service_need_v4",
+    ),
+    _r(
+        "POS-REC-003", 342, "recommendation_request", "intent", 10,
+        r"\b(?:посоветуйте|порекомендуйте|кого рекомендуете)\b.{0,100}\b(?:кто|человек|исполнитель|разработчик|специалист|команда)?\b.{0,80}\b(?:сделает|разработает|создаст|доработает|настроит|интегрирует|автоматизирует)?\b",
+        "intent_recommend_contractor_v4",
+    ),
+)
+SEED_RULES_RU_MVP_4: tuple[SeedRule, ...] = tuple(
+    _ECOMMERCE_TECHNICAL_V4 if rule.stable_rule_id == "SVC-ECOM-002" else rule
+    for rule in SEED_RULES_RU_MVP_3
+) + _ACTIVE_CLIENT_RULES_V4
+ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_4
 
 
 __all__ = [
@@ -159,5 +201,6 @@ __all__ = [
     "SEED_RULES",
     "SEED_RULES_RU_MVP_2",
     "SEED_RULES_RU_MVP_3",
+    "SEED_RULES_RU_MVP_4",
     "SeedRule",
 ]

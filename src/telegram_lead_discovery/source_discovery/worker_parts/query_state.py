@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
-
+from telegram_lead_discovery.source_discovery.worker_parts.control import _bump_counter
 from telegram_lead_discovery.source_discovery.worker_parts.core import (
-    _WorkerContext,
     _cursor_payload,
     _ensure_utc,
     _save_cursor,
     _transient_delay_seconds,
     _utcnow,
+    _WorkerContext,
 )
-from telegram_lead_discovery.source_discovery.worker_parts.control import _bump_counter
+
+# ruff: noqa: F403,F405
+from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 
 
 async def _mark_query_terminal(
@@ -96,6 +97,41 @@ async def _restore_linked_parents(ctx: _WorkerContext) -> None:
         if parent is not None:
             ctx.linked_parents[snap.source_telegram_id] = parent
 
+    queries = (
+        await ctx.session.execute(
+            select(DiscoveryRunQuery).where(
+                DiscoveryRunQuery.run_id == ctx.run.id,
+                DiscoveryRunQuery.query_kind == "linked_discussion",
+                DiscoveryRunQuery.state == "succeeded",
+            )
+        )
+    ).scalars()
+    for query in queries:
+        linked = _cursor_payload(query.cursor_json).get("linked_discussion")
+        if not isinstance(linked, dict):
+            continue
+        telegram_id = int(linked["telegram_id"])
+        parent_id = int(linked["parent_telegram_id"])
+        username = str(linked.get("username") or "")
+        if not username or linked.get("source_type") != "megagroup":
+            continue
+        ctx.linked_parents[telegram_id] = parent_id
+        if all(item.telegram_id != telegram_id for item in ctx.directory_sources):
+            ctx.directory_sources.append(
+                SourceSnapshot(
+                    schema_version=1,
+                    telegram_id=telegram_id,
+                    username=username,
+                    title=str(linked.get("title") or username),
+                    source_type="megagroup",
+                    public_url=(
+                        str(linked["public_url"])
+                        if linked.get("public_url")
+                        else f"https://t.me/{username}"
+                    ),
+                )
+            )
+
 
 async def _source_ids_with_query_kind(ctx: _WorkerContext, query_kind: str) -> set[int]:
     result = await ctx.session.execute(
@@ -120,7 +156,7 @@ async def _parked_queries(
         .where(
             DiscoveryRunQuery.run_id == ctx.run.id,
             DiscoveryRunQuery.query_kind == query_kind,
-            DiscoveryRunQuery.state == "retry_wait",
+            DiscoveryRunQuery.state.in_(("running", "retry_wait")),
         )
         .order_by(DiscoveryRunQuery.ordinal.asc())
     )

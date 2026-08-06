@@ -11,11 +11,7 @@ from telegram_lead_discovery.source_discovery.opportunity_score import score_opp
 
 POOL_EXHAUSTED_REASON_CODES: dict[str, int] = {
     "provider_empty": 0,
-    "budget_cap_reached": 1,
-    "quota_skipped_remaining": 2,
-    "flood_wait_deferred": 3,
-    "cancel_requested": 4,
-    "no_unseen_after_suppress": 5,
+    "no_unseen_after_suppress": 1,
 }
 
 def apply_neutral_noise_sample(
@@ -130,4 +126,3 @@ __all__ = [
     "apply_neutral_noise_sample",
     "merge_funnel_counters",
 ]
-

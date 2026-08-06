@@ -11,6 +11,7 @@ from telegram_lead_discovery.infrastructure.paths import database_path, ensure_d
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
     SEED_ADDITIONAL_EXCLUSIONS,
     SEED_DIRECTORY_QUERIES,
+    SEED_DIRECTORY_REPLACEMENT_QUERIES,
     SEED_POST_QUERIES,
     SEED_PROFILE_NAME,
     SEED_PROFILE_VERSION,
@@ -51,20 +52,21 @@ async def test_at_src_017_seed_ecommerce_development_ru(db_env) -> None:
     assert first.version.id == second.version.id
     assert first.profile.name == SEED_PROFILE_NAME
     assert first.profile.state == "active"
-    # Fresh install starts DB version 1 with the current seed catalog.
-    # SEED_PROFILE_VERSION is the catalog identifier.
-    assert first.profile.current_version == 1
-    assert first.version.version == 1
-    assert SEED_PROFILE_VERSION >= 2
+    assert first.profile.current_version == 3
+    assert first.version.version == 3
+    assert SEED_PROFILE_VERSION == 3
 
     expected = build_seed_normalized_profile()
     actual = version_as_normalized(first.version)
     assert actual.post_queries == expected.post_queries == SEED_POST_QUERIES
     assert actual.directory_queries == expected.directory_queries == SEED_DIRECTORY_QUERIES
     assert (
-        actual.additional_exclusions
-        == expected.additional_exclusions
-        == SEED_ADDITIONAL_EXCLUSIONS
+        actual.replacement_directory_queries
+        == expected.replacement_directory_queries
+        == SEED_DIRECTORY_REPLACEMENT_QUERIES
+    )
+    assert (
+        actual.additional_exclusions == expected.additional_exclusions == SEED_ADDITIONAL_EXCLUSIONS
     )
     assert actual.source_scope == "all"
     assert len(actual.post_queries) == 18
@@ -72,11 +74,7 @@ async def test_at_src_017_seed_ecommerce_development_ru(db_env) -> None:
     assert len(actual.additional_exclusions) == 6
 
     async with session_scope() as session:
-        rows = list(
-            (
-                await session.execute(select(KeywordDiscoveryProfile))
-            ).scalars().all()
-        )
+        rows = list((await session.execute(select(KeywordDiscoveryProfile))).scalars().all())
     assert len(rows) == 1
 
 
@@ -88,6 +86,7 @@ async def test_create_profile_normalizes_and_rejects_invalid(db_env) -> None:
             name="  Custom Profile  ",
             post_queries=["  Нужен Сайт  ", "ищу бота"],
             directory_queries=["Ecommerce"],
+            replacement_directory_queries=["Business Moscow"],
             additional_exclusions=[" Курс "],
             source_scope="groups",
         )
@@ -96,6 +95,7 @@ async def test_create_profile_normalizes_and_rejects_invalid(db_env) -> None:
         normalized = version_as_normalized(created.version)
         assert normalized.post_queries == ("нужен сайт", "ищу бота")
         assert normalized.directory_queries == ("ecommerce",)
+        assert normalized.replacement_directory_queries == ("business moscow",)
         assert normalized.additional_exclusions == ("курс",)
         assert normalized.source_scope == "groups"
 
@@ -111,6 +111,14 @@ async def test_create_profile_normalizes_and_rejects_invalid(db_env) -> None:
                 session,
                 name="Other",
                 post_queries=["Нужен сайт", "  нужен сайт  "],
+            )
+
+        with pytest.raises(ProfileValidationError, match="duplicate_query_across_lists"):
+            await create_keyword_discovery_profile(
+                session,
+                name="Cross-list duplicate",
+                post_queries=["client website"],
+                replacement_directory_queries=[" Client Website "],
             )
 
         with pytest.raises(ProfileValidationError, match="post_queries_count_out_of_range"):
@@ -129,6 +137,7 @@ async def test_at_src_018_new_version_leaves_prior_immutable(db_env) -> None:
             name="mutable-demo",
             post_queries=["нужен сайт", "ищу бота"],
             directory_queries=["ecommerce"],
+            replacement_directory_queries=["business replacement"],
             source_scope="all",
         )
         profile_id = created.profile.id
@@ -160,6 +169,7 @@ async def test_at_src_018_new_version_leaves_prior_immutable(db_env) -> None:
             expected_version=1,
             post_queries=["нужен парсер", "интеграция ozon"],
             directory_queries=["ozon"],
+            replacement_directory_queries=["seller business"],
             additional_exclusions=["резюме"],
             source_scope="channels",
         )
@@ -170,10 +180,12 @@ async def test_at_src_018_new_version_leaves_prior_immutable(db_env) -> None:
         v1 = await get_profile_version(session, profile_id=profile_id, version=1)
         assert v1.id == v1_id
         assert v1.post_queries_json == v1_posts
+        assert version_as_normalized(v1).replacement_directory_queries == ("business replacement",)
         assert version_as_normalized(v1).post_queries == ("нужен сайт", "ищу бота")
 
         v2 = version_as_normalized(updated.version)
         assert v2.post_queries == ("нужен парсер", "интеграция ozon")
         assert v2.directory_queries == ("ozon",)
+        assert v2.replacement_directory_queries == ("seller business",)
         assert v2.additional_exclusions == ("резюме",)
         assert v2.source_scope == "channels"

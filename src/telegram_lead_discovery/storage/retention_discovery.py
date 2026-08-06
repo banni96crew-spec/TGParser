@@ -12,6 +12,7 @@ from telegram_lead_discovery.infrastructure.paths import AppPaths, ensure_app_di
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
+    DiscoveryTerminalOutcome,
     NotificationDelivery,
     NotificationOutbox,
     SourceDiscoveryEvent,
@@ -32,6 +33,7 @@ EVIDENCE_ROW_RETENTION = timedelta(days=90)
 UNPROMOTED_SNAPSHOT_RETENTION = timedelta(days=90)
 KEYWORD_QUERY_RETENTION = timedelta(days=90)
 TERMINAL_KEYWORD_RUN_RETENTION = timedelta(days=90)
+TERMINAL_OUTCOME_RETENTION = timedelta(days=90)
 
 KEYWORD_SCOUTING_RUN_TYPE = "keyword_scouting"
 TERMINAL_KEYWORD_RUN_STATES = frozenset({"succeeded", "partial", "failed", "cancelled"})
@@ -180,6 +182,41 @@ async def purge_keyword_discovery_queries(
     return await _purge_batches(session, batch_limit=batch_limit, purge_once=_once)
 
 
+async def purge_terminal_discovery_outcomes(
+    session: AsyncSession,
+    *,
+    now: datetime | None = None,
+    retention: timedelta = TERMINAL_OUTCOME_RETENTION,
+    batch_limit: int = BATCH_LIMIT,
+) -> int:
+    """Delete immutable terminal outcome evidence after its approved 90-day term."""
+    clock = now or datetime.now(UTC)
+    cutoff = clock - retention
+
+    async def _once(session: AsyncSession, *, batch_limit: int) -> int:
+        result = await session.execute(
+            select(DiscoveryTerminalOutcome.id)
+            .join(DiscoveryRun, DiscoveryRun.id == DiscoveryTerminalOutcome.run_id)
+            .where(
+                DiscoveryRun.state.in_(("succeeded", "partial", "failed", "cancelled")),
+                DiscoveryRun.finished_at.is_not(None),
+                DiscoveryRun.finished_at < cutoff,
+            )
+            .order_by(DiscoveryTerminalOutcome.id.asc())
+            .limit(batch_limit)
+        )
+        ids = list(result.scalars().all())
+        if not ids:
+            return 0
+        deleted = await session.execute(
+            delete(DiscoveryTerminalOutcome).where(DiscoveryTerminalOutcome.id.in_(ids))
+        )
+        await session.flush()
+        return int(deleted.rowcount or 0)
+
+    return await _purge_batches(session, batch_limit=batch_limit, purge_once=_once)
+
+
 async def purge_terminal_keyword_runs(
     session: AsyncSession,
     *,
@@ -201,6 +238,7 @@ async def purge_terminal_keyword_runs(
         exists().where(SourceOpportunitySnapshot.run_id == DiscoveryRun.id),
         exists().where(DiscoveryRunQuery.run_id == DiscoveryRun.id),
         exists().where(SourceDiscoveryEvent.run_id == DiscoveryRun.id),
+        exists().where(DiscoveryTerminalOutcome.run_id == DiscoveryRun.id),
     )
 
     async def _once(session: AsyncSession, *, batch_limit: int) -> int:

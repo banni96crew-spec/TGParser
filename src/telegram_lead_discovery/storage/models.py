@@ -26,6 +26,7 @@ from telegram_lead_discovery.storage.model_parts.discovery import (
     DiscoveryRunQuery,
     SourceDiscoveryEvidence,
     SourceOpportunitySnapshot,
+    DiscoveryTerminalOutcome,
 )
 
 from telegram_lead_discovery.storage.model_parts.suppression import (
@@ -66,4 +67,3 @@ from telegram_lead_discovery.storage.model_parts.leads import (
     DeletionTombstone,
     BackupManifest,
 )
-

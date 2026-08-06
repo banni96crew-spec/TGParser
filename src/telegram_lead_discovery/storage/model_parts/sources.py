@@ -96,6 +96,9 @@ class KeywordDiscoveryProfileVersion(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     post_queries_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     directory_queries_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    replacement_directory_queries_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]"
+    )
     required_service_profiles_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     additional_exclusions_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     source_scope: Mapped[str] = mapped_column(String(16), nullable=False, default="all")

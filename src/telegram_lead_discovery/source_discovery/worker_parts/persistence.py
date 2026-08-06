@@ -1,19 +1,27 @@
 from __future__ import annotations
 
-from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
-
+from telegram_lead_discovery.source_discovery.active_chat import MIN_CLIENT_REQUESTS
+from telegram_lead_discovery.source_discovery.aggregation import (
+    _aggregate_search_hits_with_budget,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.control import _bump_counter
 from telegram_lead_discovery.source_discovery.worker_parts.core import (
-    _WorkerContext,
     _dumps_counters,
     _loads_counters,
     _utcnow,
+    _WorkerContext,
 )
-from telegram_lead_discovery.source_discovery.worker_parts.control import _bump_counter
+
+# ruff: noqa: F403,F405
+from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 from telegram_lead_discovery.source_discovery.worker_parts.registry import (
     _dismissed_canonical_id,
     _presented_canonical_id,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.repository import _evidence_count
+from telegram_lead_discovery.source_discovery.worker_parts.truth_state import (
+    _qualified_evidence_count,
+)
 
 
 async def _note_registry_suppressed(
@@ -70,14 +78,28 @@ async def _persist_hits(
     if not annotated:
         return
     existing = await _evidence_count(ctx)
-    result = aggregate_search_hits(
+    qualified_existing = await _qualified_evidence_count(ctx)
+    result = _aggregate_search_hits_with_budget(
         annotated,
         run_id=ctx.run.id,
         scored_at=_utcnow(),
         registry=ctx.registry,
         dismissed=ctx.dismissed,
         presented=ctx.presented,
+        detect_fn=lambda text: detect(
+            text,
+            rules=ctx.detection_rules,
+            rule_set_checksum=ctx.rule_set_checksum,
+        ),
+        evidence_cap=(
+            RUNTIME_CONFIG.MAX_EVIDENCE_PER_RUN - RUNTIME_CONFIG.MAX_QUALIFIED_EVIDENCE_PER_RUN
+        ),
+        qualified_evidence_cap=(
+            RUNTIME_CONFIG.MAX_QUALIFIED_EVIDENCE_PER_RUN
+            - RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES * MIN_CLIENT_REQUESTS
+        ),
         existing_evidence_count=existing,
+        existing_qualified_evidence_count=qualified_existing,
         linked_parents=ctx.linked_parents,
     )
     if result.window_skipped_count:
@@ -156,6 +178,8 @@ async def _insert_evidence(ctx: _WorkerContext, record: EvidenceRecord) -> None:
         source_username=record.source_username,
         source_title=record.source_title,
         source_type=record.source_type,
+        author_key=record.author_key,
+        author_kind=record.author_kind,
         telegram_message_id=record.telegram_message_id,
         published_at=record.published_at,
         permalink=record.permalink,
@@ -180,6 +204,9 @@ async def _upsert_opportunity(
     ctx: _WorkerContext,
     snap: OpportunitySnapshotRecord,
 ) -> None:
+    # ActiveClientChat v1 publishes only terminal verification results.
+    if snap.verification_stop_reason is None:
+        return
     # SRC-031 safety net: never persist opportunity for registry-known ids.
     if snap.source_telegram_id in registry_telegram_ids(ctx.registry) or snap.source_id is not None:
         await _note_registry_suppressed(ctx, {snap.source_telegram_id})
@@ -267,4 +294,3 @@ async def _upsert_opportunity(
         row.updated_at = now
         row.version += 1
     await ctx.session.flush()
-    await _record_presented_ledger(ctx, snap=snap, opportunity_row=row)

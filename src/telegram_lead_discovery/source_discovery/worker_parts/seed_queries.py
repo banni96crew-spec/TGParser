@@ -27,6 +27,9 @@ from telegram_lead_discovery.source_discovery.worker_parts.query_state import (
     _mark_query_terminal,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.repository import _evidence_count
+from telegram_lead_discovery.source_discovery.directory_filter import (
+    directory_candidate_exclusion_reason,
+)
 
 
 async def _run_seed_queries(ctx: _WorkerContext) -> None:
@@ -194,13 +197,40 @@ async def _execute_directory_query(ctx: _WorkerContext, query: DiscoveryRunQuery
         return
 
     query.request_count += 1
-    accepted = [
-        p
-        for p in peers
-        if p.accessible and p.source_type in ("channel", "megagroup", "group") and p.username
-    ]
+    accepted: list[SourceSnapshot] = []
+    excluded: dict[str, str] = {}
+    for peer in peers:
+        if not (
+            peer.accessible
+            and peer.source_type in ("channel", "megagroup", "group")
+            and peer.username
+        ):
+            continue
+        reason = directory_candidate_exclusion_reason(
+            title=peer.title,
+            username=peer.username,
+        )
+        if reason is not None:
+            excluded[str(peer.telegram_id)] = reason
+            continue
+        accepted.append(peer)
     ctx.directory_sources.extend(accepted)
     await _persist_directory_pool(ctx)
+    run_cursor = _cursor_payload(ctx.run.cursor_json)
+    prior = run_cursor.get("directory_candidate_exclusions")
+    reasons = dict(prior) if isinstance(prior, dict) else {}
+    reasons.update(excluded)
+    run_cursor["directory_candidate_exclusions"] = reasons
+    ctx.run.cursor_json = json.dumps(run_cursor, ensure_ascii=False, sort_keys=True)
+    if excluded:
+        await _bump_counter(ctx, "directory_provider_offer_excluded", len(excluded))
+    _save_cursor(
+        query,
+        {
+            "provider_exhausted": len(peers) < RUNTIME_CONFIG.DIRECTORY_PEER_LIMIT,
+            "provider_result_count": len(peers),
+        },
+    )
     query.result_count += len(accepted)
     await _mark_query_terminal(query, "succeeded")
 

@@ -6,7 +6,9 @@ from telegram_lead_discovery.source_discovery.worker_parts.core import (
     _FloodWaitControl,
     _SessionFatal,
     _WorkerContext,
+    _cursor_payload,
     _ensure_utc,
+    _save_cursor,
     _utcnow,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.control import (
@@ -105,7 +107,7 @@ async def _resume_linked_query(ctx: _WorkerContext, query: DiscoveryRunQuery) ->
         discussion is None
         or not discussion.accessible
         or not discussion.username
-        or discussion.source_type not in ("megagroup", "group")
+        or discussion.source_type != "megagroup"
     ):
         await _mark_query_terminal(query, "succeeded", error_code="no_public_linked")
         return
@@ -138,13 +140,17 @@ async def _resume_linked_query(ctx: _WorkerContext, query: DiscoveryRunQuery) ->
         await _note_presented_suppressed(ctx, {presented_match.canonical_telegram_id})
         await _mark_query_terminal(query, "succeeded", error_code="presented_suppressed")
         return
-    snap = linked_discussion_opportunity(
-        run_id=ctx.run.id,
-        parent_telegram_id=telegram_id,
-        discussion=discussion,
-        scored_at=_utcnow(),
-        registry_source_id=identity.registry_source_id,
-    )
-    await _upsert_opportunity(ctx, snap)
+    cursor = _cursor_payload(query.cursor_json)
+    cursor["linked_discussion"] = {
+        "telegram_id": discussion.telegram_id,
+        "username": discussion.username,
+        "title": discussion.title,
+        "source_type": discussion.source_type,
+        "public_url": discussion.public_url,
+        "parent_telegram_id": telegram_id,
+    }
+    _save_cursor(query, cursor)
+    if all(item.telegram_id != discussion.telegram_id for item in ctx.directory_sources):
+        ctx.directory_sources.append(discussion)
     query.result_count = 1
     await _mark_query_terminal(query, "succeeded")

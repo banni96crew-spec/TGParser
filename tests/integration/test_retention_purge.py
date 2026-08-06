@@ -18,6 +18,7 @@ from telegram_lead_discovery.storage.migrate import upgrade_head
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
+    DiscoveryTerminalOutcome,
     KeywordDiscoveryProfile,
     KeywordDiscoveryProfileVersion,
     NotificationDelivery,
@@ -171,7 +172,15 @@ async def test_keyword_retention_matrix_31_and_91_days(purge_env) -> None:
             finished_at=age_91,
             created_at=age_91,
         )
-        session.add_all([run_old, run_mid, run_fresh, run_promoted])
+        run_active = DiscoveryRun(
+            run_type="keyword_scouting",
+            profile_version_id=version.id,
+            state="retry_wait_flood",
+            started_at=age_91,
+            finished_at=None,
+            created_at=age_91,
+        )
+        session.add_all([run_old, run_mid, run_fresh, run_promoted, run_active])
         await session.flush()
 
         session.add_all(
@@ -280,6 +289,38 @@ async def test_keyword_retention_matrix_31_and_91_days(purge_env) -> None:
                 ),
             ]
         )
+        session.add(
+            DiscoveryTerminalOutcome(
+                run_id=run_old.id,
+                source_canonical_key="peer:2001",
+                terminal_outcome_version=1,
+                truth_status="rejected",
+                verification_stop_reason="history_exhausted",
+                threshold_activity_messages=False,
+                threshold_activity_days=False,
+                threshold_activity_authors=False,
+                threshold_client_requests=False,
+                threshold_client_authors=False,
+                threshold_freshness=False,
+                created_at=age_91,
+            )
+        )
+        session.add(
+            DiscoveryTerminalOutcome(
+                run_id=run_active.id,
+                source_canonical_key="peer:active-old",
+                terminal_outcome_version=1,
+                truth_status="inconclusive",
+                verification_stop_reason="inaccessible",
+                threshold_activity_messages=False,
+                threshold_activity_days=False,
+                threshold_activity_authors=False,
+                threshold_client_requests=False,
+                threshold_client_authors=False,
+                threshold_freshness=False,
+                created_at=age_91,
+            )
+        )
         return {
             "profile_id": profile.id,
             "version_id": version.id,
@@ -287,6 +328,7 @@ async def test_keyword_retention_matrix_31_and_91_days(purge_env) -> None:
             "run_mid_id": run_mid.id,
             "run_fresh_id": run_fresh.id,
             "run_promoted_id": run_promoted.id,
+            "run_active_id": run_active.id,
         }
 
     ids = await run_write(_seed)
@@ -298,6 +340,7 @@ async def test_keyword_retention_matrix_31_and_91_days(purge_env) -> None:
     assert result.evidence_excerpts_cleared >= 2
     assert result.evidence_rows_deleted >= 1
     assert result.unpromoted_snapshots_deleted >= 1
+    assert result.terminal_outcomes_deleted == 1
     assert result.keyword_queries_deleted >= 1
     assert result.terminal_keyword_runs_deleted >= 1
     assert EVIDENCE_RETENTION_UI_MESSAGE == "Доказательства очищены по retention policy"
@@ -380,10 +423,17 @@ async def test_keyword_retention_matrix_31_and_91_days(purge_env) -> None:
         assert (await session.get(DiscoveryRun, ids["run_mid_id"])) is not None
         assert (await session.get(DiscoveryRun, ids["run_fresh_id"])) is not None
         assert (await session.get(DiscoveryRun, ids["run_promoted_id"])) is not None
+        assert (await session.get(DiscoveryRun, ids["run_active_id"])) is not None
+        assert (
+            await session.scalar(
+                select(func.count())
+                .select_from(DiscoveryTerminalOutcome)
+                .where(DiscoveryTerminalOutcome.run_id == ids["run_active_id"])
+            )
+            == 1
+        )
 
         assert (await session.get(KeywordDiscoveryProfile, ids["profile_id"])) is not None
-        assert (
-            await session.get(KeywordDiscoveryProfileVersion, ids["version_id"])
-        ) is not None
+        assert (await session.get(KeywordDiscoveryProfileVersion, ids["version_id"])) is not None
 
     await run_write(_assert)

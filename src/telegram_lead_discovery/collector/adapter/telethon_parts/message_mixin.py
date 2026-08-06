@@ -62,6 +62,9 @@ from telegram_lead_discovery.collector.adapter.telethon_parts.cursor_mapping imp
     _event_to_update_dto,
     _permalink,
 )
+from telegram_lead_discovery.collector.adapter.telethon_parts.author_mapping import (
+    classify_message_author,
+)
 
 
 class TelethonMessageMixin:
@@ -98,15 +101,17 @@ class TelethonMessageMixin:
                     published = published.replace(tzinfo=UTC)
                 elif published is None:
                     published = datetime.now(UTC)
+                author_kind, author_peer_id = classify_message_author(message)
                 yield TelegramMessageDTO(
-                    schema_version=1,
+                    schema_version=2,
                     source_id=request.source_id,
                     telegram_message_id=int(message.id),
                     published_at=published,
                     text=message.message or "",
                     telegram_peer_id=peer_id,
                     edited_at=None,
-                    author_peer_id=None,
+                    author_peer_id=author_peer_id,
+                    author_kind=author_kind,
                     permalink=_permalink(request.peer.username_normalized or "", int(message.id)),
                 )
         except Exception as exc:  # noqa: BLE001
@@ -162,13 +167,16 @@ class TelethonMessageMixin:
             published = published.replace(tzinfo=UTC)
         elif published is None:
             published = datetime.now(UTC)
+        author_kind, author_peer_id = classify_message_author(message)
         return TelegramMessageDTO(
-            schema_version=1,
+            schema_version=2,
             source_id=source.source_id,
             telegram_message_id=int(message.id),
             published_at=published,
             text=message.message or "",
             telegram_peer_id=source.telegram_id,
+            author_peer_id=author_peer_id,
+            author_kind=author_kind,
         )
 
     async def _resolve_peer_entity(self, peer: TelegramPeerRef) -> Any:

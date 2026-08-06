@@ -1,27 +1,50 @@
 from __future__ import annotations
 
-from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
-
-from telegram_lead_discovery.source_discovery.worker_parts.core import (
-    _FloodWaitControl, _SessionFatal, _WorkerContext, _ensure_utc, _utcnow,
-)
+from telegram_lead_discovery.source_discovery.active_chat import MIN_CLIENT_AUTHORS
 from telegram_lead_discovery.source_discovery.worker_parts.control import (
-    _bump_counter, _check_cancel, _commit_before_network, _maybe_heartbeat,
+    _bump_counter,
+    _check_cancel,
+    _commit_before_network,
+    _maybe_heartbeat,
 )
-from telegram_lead_discovery.source_discovery.worker_parts.history_state import (
-    _load_history_cursor, _run_history_scanned,
+from telegram_lead_discovery.source_discovery.worker_parts.core import (
+    _ensure_utc,
+    _FloodWaitControl,
+    _SessionFatal,
+    _utcnow,
+    _WorkerContext,
+)
+
+# ruff: noqa: F403,F405
+from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
+from telegram_lead_discovery.source_discovery.worker_parts.history_evidence import (
+    _classify_history_message,
+    _history_evidence_record,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.history_progress import (
-    _history_request, _save_history_progress,
+    _history_request,
+    _save_history_progress,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.history_state import (
+    _load_history_cursor,
+    _run_history_scanned,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.persistence import _insert_evidence
 from telegram_lead_discovery.source_discovery.worker_parts.query_state import (
-    _handle_transient, _mark_query_terminal,
+    _handle_transient,
+    _mark_query_terminal,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.truth_state import (
-    _apply_source_truth, _may_persist_evidence, _source_meta_for_telegram_id,
+    _apply_source_truth,
+    _may_persist_evidence,
+    _source_meta_for_telegram_id,
     _username_for_telegram_id,
 )
+from telegram_lead_discovery.source_discovery.worker_parts.verification_terminal import (
+    _apply_inaccessible_truth,
+    _is_terminal_history_stop,
+)
+
 
 async def _resume_source_verification(
     ctx: _WorkerContext,
@@ -29,11 +52,7 @@ async def _resume_source_verification(
     *,
     max_pages: int | None = None,
 ) -> None:
-    """Bounded public history scan newest→older (SRC-024 / D-068).
-
-    ``max_pages`` limits pages for fair waterfill scheduling (technical policy).
-    ``None`` drains until a terminal stop (legacy full-source scan).
-    """
+    """Scan public history newest-to-oldest; ``max_pages`` enables fair scheduling."""
     if (
         query.state == "retry_wait"
         and query.available_at
@@ -49,14 +68,18 @@ async def _resume_source_verification(
     cursor = _load_history_cursor(query)
     scanned = int(cursor.get("scanned", 0))
     offset_id = int(cursor.get("offset_id", 0) or 0)
-    distinct_hashes: set[str] = set(cursor.get("distinct_hashes", []) or [])
     noise_kept = int(cursor.get("noise_kept", 0))
-    now = _utcnow()
-    window_start = quality_window_start(now, days=RUNTIME_CONFIG.QUALITY_WINDOW_DAYS)
+    reference_at = ctx.run.reference_at or ctx.run.started_at
+    if reference_at is None:
+        raise RuntimeError("active_chat_reference_at_missing")
+    active_payload = cursor.get("active_chat")
+    accumulator = (
+        ActiveChatAccumulator.from_cursor(active_payload)
+        if isinstance(active_payload, dict)
+        else ActiveChatAccumulator(reference_at=reference_at)
+    )
+    accumulator.assert_reference_at(reference_at)
     stop_reason: str | None = None
-    window_complete = False
-    hit_source_cap = False
-    hit_run_cap = False
     result_count = int(query.result_count or 0)
     pages_done = 0
     source_meta = await _source_meta_for_telegram_id(ctx, telegram_id)
@@ -67,14 +90,12 @@ async def _resume_source_verification(
         await _maybe_heartbeat(ctx)
         run_scanned = await _run_history_scanned(ctx)
         if scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_SOURCE:
-            hit_source_cap = True
             stop_reason = "source_cap"
             break
         if run_scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN:
-            hit_run_cap = True
             stop_reason = "run_cap"
             break
-        if len(distinct_hashes) >= 7:
+        if all(active_chat_thresholds(accumulator.counters(), reference_at=reference_at).values()):
             stop_reason = "quality_reached"
             break
 
@@ -84,9 +105,11 @@ async def _resume_source_verification(
             RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN - run_scanned,
         )
         if page_limit <= 0:
-            hit_run_cap = run_scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN
-            hit_source_cap = scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_SOURCE
-            stop_reason = "run_cap" if hit_run_cap else "source_cap"
+            stop_reason = (
+                "run_cap"
+                if run_scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN
+                else "source_cap"
+            )
             break
         request = _history_request(
             telegram_id=telegram_id,
@@ -107,8 +130,8 @@ async def _resume_source_verification(
                 query,
                 offset_id=offset_id,
                 scanned=scanned,
-                distinct_hashes=distinct_hashes,
                 noise_kept=noise_kept,
+                active_chat_cursor=accumulator.to_cursor(),
                 stop_reason="flood_wait",
             )
             query.state = "retry_wait"
@@ -119,15 +142,8 @@ async def _resume_source_verification(
         except GatewaySourceInaccessible:
             stop_reason = "inaccessible"
             await _mark_query_terminal(query, "failed", error_code="source_inaccessible")
-            await _apply_source_truth(
-                ctx,
-                telegram_id=telegram_id,
-                distinct_count=len(distinct_hashes),
-                scanned=scanned,
-                window_complete=False,
-                hit_source_cap=False,
-                hit_run_cap=False,
-                stop_reason=stop_reason,
+            await _apply_inaccessible_truth(
+                ctx, telegram_id=telegram_id, accumulator=accumulator, scanned=scanned
             )
             return
         except GatewayUnauthorized as exc:
@@ -139,94 +155,101 @@ async def _resume_source_verification(
                 query,
                 offset_id=offset_id,
                 scanned=scanned,
-                distinct_hashes=distinct_hashes,
                 noise_kept=noise_kept,
+                active_chat_cursor=accumulator.to_cursor(),
             )
             if await _handle_transient(ctx, query, "transient_error"):
                 raise _FloodWaitControl(query.available_at or _utcnow(), query) from exc
+            await _apply_inaccessible_truth(
+                ctx, telegram_id=telegram_id, accumulator=accumulator, scanned=scanned
+            )
             return
         except GatewayPermanentError:
             await _mark_query_terminal(query, "failed", error_code="permanent_error")
             await _bump_counter(ctx, "failed_queries", 1)
+            await _apply_inaccessible_truth(
+                ctx, telegram_id=telegram_id, accumulator=accumulator, scanned=scanned
+            )
             return
         if not page_msgs:
-            window_complete = True
-            stop_reason = "source_exhausted"
+            stop_reason = "history_exhausted"
             break
         scanned_this_page = 0
         for dto in page_msgs:
             published = _ensure_utc(dto.published_at)
-            if published < window_start:
-                window_complete = True
-                stop_reason = "window_reached"
-                # Do not count messages past the 14d boundary toward caps.
+            if published < _ensure_utc(reference_at) - timedelta(days=30):
+                stop_reason = "window_complete"
                 break
             scanned += 1
             scanned_this_page += 1
             offset_id = int(dto.telegram_message_id)
-            excerpt, normalized_hash, detection = qualify_excerpt_text(
-                dto.text or "",
-                detect_fn=seed_catalog_detect,
+            classified = _classify_history_message(
+                ctx,
+                telegram_id=telegram_id,
+                dto=dto,
+                published_at=published,
             )
-            client = is_client_request(
-                category=detection.category,
-                service_profiles=detection.service_profiles,
-                hard_exclusion=detection.hard_exclusion,
+            evidence_author_needed = (
+                classified.active_message.author_key not in accumulator.request_author_keys
+                and len(accumulator.request_author_keys) < MIN_CLIENT_AUTHORS
             )
-            persist = False
-            if client and is_within_quality_window(published, now=now):
-                if normalized_hash not in distinct_hashes:
-                    distinct_hashes.add(normalized_hash)
-                    persist = True
+            client = accumulator.consume(
+                classified.active_message,
+                required_service_profiles=ctx.required_service_profiles,
+            )
+            if client and evidence_author_needed:
+                if not await _may_persist_evidence(ctx, is_qualified=True):
+                    raise _SessionFatal("evidence_capacity_invariant")
+                persist = True
+            elif client:
+                persist = False
             elif (
-                detection.hard_exclusion
+                classified.active_message.hard_exclusion
                 and noise_kept < RUNTIME_CONFIG.NOISE_EVIDENCE_CAP_PER_SOURCE
             ):
                 noise_kept += 1
-                persist = True
+                persist = await _may_persist_evidence(ctx, is_qualified=False)
+            else:
+                persist = False
 
-            if persist and await _may_persist_evidence(ctx, is_qualified=client):
+            if persist:
                 identity = resolve_source_identity(
                     telegram_id=telegram_id,
                     username=username,
                     registry=ctx.registry,
                 )
-                record = EvidenceRecord(
+                record = _history_evidence_record(
                     run_id=ctx.run.id,
-                    source_telegram_id=identity.canonical_telegram_id,
-                    source_username=identity.username_normalized or username,
-                    source_title=str(source_meta.get("title") or username or str(telegram_id)),
+                    telegram_id=identity.canonical_telegram_id,
+                    username=identity.username_normalized or username,
+                    title=str(source_meta.get("title") or username or str(telegram_id)),
                     source_type=str(source_meta.get("source_type") or "megagroup"),
-                    telegram_message_id=int(dto.telegram_message_id),
-                    published_at=published,
-                    permalink=dto.permalink,
-                    excerpt=excerpt,
-                    normalized_hash=normalized_hash,
-                    matched_query_ordinals=(query.ordinal,),
-                    discovery_channels=("source_verification",),
-                    detection_category=detection.category,
-                    is_qualified=client,
-                    hard_exclusion=detection.hard_exclusion,
-                    hard_exclusion_rule_id=detection.hard_exclusion_rule_id,
-                    service_profiles=detection.service_profiles,
-                    rule_set_checksum=detection.rule_set_checksum,
-                    matched_rule_ids=tuple(m.stable_rule_id for m in detection.matched_rules),
+                    dto=dto,
+                    excerpt=classified.excerpt,
+                    normalized_hash=classified.normalized_hash,
+                    detection=classified.detection,
+                    query_ordinal=query.ordinal,
+                    client=client,
+                    author_key=classified.active_message.author_key,
+                    author_kind=classified.active_message.author_kind,
+                    hard_exclusion=classified.active_message.hard_exclusion,
+                    exclusion_reason=classified.exclusion_reason,
                 )
                 await _insert_evidence(ctx, record)
                 result_count += 1
 
-            if len(distinct_hashes) >= 7:
+            if all(
+                active_chat_thresholds(accumulator.counters(), reference_at=reference_at).values()
+            ):
                 stop_reason = "quality_reached"
                 break
             if scanned >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_SOURCE:
-                hit_source_cap = True
                 stop_reason = "source_cap"
                 break
             if (
                 await _run_history_scanned(ctx) + scanned_this_page
                 >= RUNTIME_CONFIG.HISTORY_SCAN_CAP_PER_RUN
             ):
-                hit_run_cap = True
                 stop_reason = "run_cap"
                 break
         if scanned_this_page:
@@ -236,65 +259,38 @@ async def _resume_source_verification(
             query,
             offset_id=offset_id,
             scanned=scanned,
-            distinct_hashes=distinct_hashes,
             noise_kept=noise_kept,
+            active_chat_cursor=accumulator.to_cursor(),
             stop_reason=stop_reason,
         )
         query.result_count = result_count
         await ctx.session.flush()
-        if stop_reason in {
-            "quality_reached",
-            "window_reached",
-            "source_cap",
-            "run_cap",
-            "source_exhausted",
-        }:
-            if stop_reason == "run_cap":
-                hit_run_cap = True
-            if stop_reason == "source_cap":
-                hit_source_cap = True
-            if stop_reason == "window_reached":
-                window_complete = True
+        if _is_terminal_history_stop(stop_reason):
             break
         if len(page_msgs) < page_limit:
-            window_complete = True
-            stop_reason = stop_reason or "source_exhausted"
+            stop_reason = stop_reason or "history_exhausted"
             break
         if max_pages is not None and pages_done >= max_pages:
-            await _apply_source_truth(
-                ctx,
-                telegram_id=telegram_id,
-                distinct_count=len(distinct_hashes),
-                scanned=scanned,
-                window_complete=False,
-                hit_source_cap=False,
-                hit_run_cap=False,
-                stop_reason=None,
-            )
             query.state = "running"
             await ctx.session.flush()
             return
     if stop_reason is None:
-        window_complete = True
-        stop_reason = "source_exhausted"
+        stop_reason = "history_exhausted"
 
     query.result_count = result_count
     _save_history_progress(
         query,
         offset_id=offset_id,
         scanned=scanned,
-        distinct_hashes=distinct_hashes,
         noise_kept=noise_kept,
+        active_chat_cursor=accumulator.to_cursor(),
         stop_reason=stop_reason,
     )
     await _apply_source_truth(
         ctx,
         telegram_id=telegram_id,
-        distinct_count=len(distinct_hashes),
+        counters=accumulator.counters(),
         scanned=scanned,
-        window_complete=window_complete,
-        hit_source_cap=hit_source_cap,
-        hit_run_cap=hit_run_cap,
         stop_reason=stop_reason,
     )
     await _mark_query_terminal(query, "succeeded")

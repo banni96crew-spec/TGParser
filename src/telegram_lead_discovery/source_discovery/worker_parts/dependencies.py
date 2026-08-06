@@ -38,7 +38,7 @@ from telegram_lead_discovery.collector.ports import (
     TelegramGateway,
     TelegramPeerRef,
 )
-from telegram_lead_discovery.detection.engine import seed_catalog_detect
+from telegram_lead_discovery.detection.engine import detect
 from telegram_lead_discovery.observability.discovery import (
     log_query_progress,
     log_run_finished,
@@ -96,6 +96,14 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     resolve_source_identity,
 )
 from telegram_lead_discovery.source_discovery.profile_service import version_as_normalized
+from telegram_lead_discovery.source_discovery.active_chat import (
+    ActiveChatAccumulator,
+    ActiveChatCounters,
+    ActiveChatMessage,
+    active_chat_thresholds,
+    evaluate_active_client_chat,
+    source_scoped_author_key,
+)
 from telegram_lead_discovery.source_discovery.quality_truth import (
     GATE_MIN_GLOBAL_DISTINCT_CLIENT_REQUESTS,
     GATE_MIN_QUALITY_SOURCES,
@@ -123,6 +131,7 @@ from telegram_lead_discovery.storage.jobs import (
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
+    DiscoveryTerminalOutcome,
     DismissedKeywordSource,
     Job,
     KeywordDiscoveryProfileVersion,

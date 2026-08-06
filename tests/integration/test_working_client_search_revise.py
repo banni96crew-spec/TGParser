@@ -228,8 +228,8 @@ async def test_crash_running_state_is_resumed_not_skipped(db_env) -> None:
     src = make_source(
         telegram_id=777,
         username="crash_chat",
-        source_type="channel",
-        title="Crash Channel",
+        source_type="megagroup",
+        title="Crash Chat",
     )
     gw.register_source("crash_chat", src)
     gw.set_directory_results([src])
@@ -245,6 +245,8 @@ async def test_crash_running_state_is_resumed_not_skipped(db_env) -> None:
                 published_at=_fresh(i),
                 text=_client_text(i + 1),
                 telegram_peer_id=777,
+                author_peer_id=100 + i,
+                author_kind="user",
             )
             for i in range(8)
         ],
@@ -255,6 +257,8 @@ async def test_crash_running_state_is_resumed_not_skipped(db_env) -> None:
         started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
         run = started.run
         run.state = "running"
+        run.started_at = datetime.now(UTC)
+        run.reference_at = run.started_at
         run.phase = "H"
         run.cursor_json = json.dumps(
             {
@@ -262,8 +266,8 @@ async def test_crash_running_state_is_resumed_not_skipped(db_env) -> None:
                     {
                         "telegram_id": 777,
                         "username": "crash_chat",
-                        "title": "Crash Channel",
-                        "source_type": "channel",
+                        "title": "Crash Chat",
+                        "source_type": "megagroup",
                         "public_url": "https://t.me/crash_chat",
                     }
                 ],
@@ -271,8 +275,8 @@ async def test_crash_running_state_is_resumed_not_skipped(db_env) -> None:
                     {
                         "telegram_id": 777,
                         "username": "crash_chat",
-                        "title": "Crash Channel",
-                        "source_type": "channel",
+                        "title": "Crash Chat",
+                        "source_type": "megagroup",
                         "public_url": "https://t.me/crash_chat",
                     }
                 ],
@@ -356,9 +360,11 @@ async def test_empty_finalize_writes_gate_fail(db_env) -> None:
         run = await session.get(DiscoveryRun, run_id)
         assert run is not None
         counters = json.loads(run.counters_json or "{}")
-        assert counters.get("gate_status") == "fail"
+        assert counters.get("gate_status") == "inconclusive"
+        assert run.pool_exhausted is False
+        assert run.run_termination_reason == "quota_skipped_remaining"
         assert counters.get("quality_sources") == 0
-        assert counters.get("globally_distinct_client_requests") == 0
+        assert counters.get("countable_client_requests") == 0
         assert counters.get("evidence_count") == 0
 
 
@@ -426,6 +432,8 @@ async def test_noise_filled_quota_still_persists_later_qualified(db_env) -> None
                 published_at=_fresh(i),
                 text=_client_text(i + 1),
                 telegram_peer_id=1002,
+                author_peer_id=200 + i,
+                author_kind="user",
             )
             for i in range(8)
         ],
@@ -536,10 +544,11 @@ async def test_pool_continues_past_first_25_until_gate(
         run = await session.get(DiscoveryRun, run_id)
         assert run is not None
         counters = json.loads(run.counters_json or "{}")
-        assert counters.get("quality_sources", 0) >= 5
-        assert counters.get("globally_distinct_client_requests", 0) >= 35
-        assert counters.get("gate_status") == "pass"
-        # Verified more than soft preference of 25
+        assert counters.get("quality_sources", 0) == 0
+        assert counters.get("gate_status") == "inconclusive"
+        assert run.pool_exhausted is False
+        assert run.run_termination_reason == "deep_candidate_cap"
+        # D-070 hard deep quota: candidates beyond 25 are not verified.
         ver_q = (
             await session.execute(
                 select(func.count())
@@ -550,7 +559,7 @@ async def test_pool_continues_past_first_25_until_gate(
                 )
             )
         ).scalar_one()
-        assert ver_q >= 30
+        assert ver_q == 25
 
 
 @pytest.mark.asyncio
@@ -559,7 +568,7 @@ async def test_directory_pool_survives_restart(db_env) -> None:
     only_dir = make_source(
         telegram_id=3333,
         username="dir_only",
-        source_type="channel",
+        source_type="megagroup",
         title="Directory Only pool Title",
     )
     gw.register_source("dir_only", only_dir)
@@ -578,6 +587,8 @@ async def test_directory_pool_survives_restart(db_env) -> None:
                 published_at=_fresh(),
                 text=_client_text(1),
                 telegram_peer_id=3333,
+                author_peer_id=333,
+                author_kind="user",
             )
         ],
     )
@@ -634,4 +645,4 @@ async def test_directory_pool_survives_restart(db_env) -> None:
         )
         assert snaps
         assert snaps[0].title == "Directory Only pool Title"
-        assert snaps[0].source_type == "channel"
+        assert snaps[0].source_type == "megagroup"

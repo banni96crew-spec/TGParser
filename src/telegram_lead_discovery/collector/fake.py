@@ -355,6 +355,7 @@ class FakeTelegramGateway:
                     author_peer_id=item.author_peer_id,
                     author_username=item.author_username,
                     author_display_name=item.author_display_name,
+                    author_kind=item.author_kind,
                     permalink=item.permalink,
                     is_deleted=item.is_deleted,
                 )

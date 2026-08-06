@@ -14,6 +14,7 @@ from telegram_lead_discovery.detection.seed import (
     SEED_RULES,
     SEED_RULES_RU_MVP_2,
     SEED_RULES_RU_MVP_3,
+    SEED_RULES_RU_MVP_4,
     catalog_canonical_json,
     catalog_checksum,
 )
@@ -121,10 +122,10 @@ def test_seed_catalog_versions_are_byte_stable(
     assert all(item["enabled"] is True for item in payload)
 
 
-def test_active_seed_catalog_is_exactly_ru_mvp_3() -> None:
-    assert ACTIVE_SEED_RULES is SEED_RULES_RU_MVP_3
-    assert catalog_canonical_json() == catalog_canonical_json(SEED_RULES_RU_MVP_3)
-    assert catalog_checksum() == catalog_checksum(SEED_RULES_RU_MVP_3)
+def test_active_seed_catalog_is_exactly_ru_mvp_4() -> None:
+    assert ACTIVE_SEED_RULES is SEED_RULES_RU_MVP_4
+    assert catalog_canonical_json() == catalog_canonical_json(SEED_RULES_RU_MVP_4)
+    assert catalog_checksum() == catalog_checksum(SEED_RULES_RU_MVP_4)
 
 
 def _opportunity(

@@ -3,7 +3,10 @@ from __future__ import annotations
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 
 from telegram_lead_discovery.source_discovery.worker_parts.core import _WorkerContext
-from telegram_lead_discovery.source_discovery.worker_parts.registry import _dismissed_canonical_id
+from telegram_lead_discovery.source_discovery.worker_parts.registry import (
+    _dismissed_canonical_id,
+    _presented_canonical_id,
+)
 
 
 async def _load_evidence_records(ctx: _WorkerContext) -> list[EvidenceRecord]:
@@ -25,6 +28,8 @@ async def _load_evidence_records(ctx: _WorkerContext) -> list[EvidenceRecord]:
                 source_username=row.source_username,
                 source_title=row.source_title,
                 source_type=row.source_type,
+                author_key=row.author_key,
+                author_kind=row.author_kind,
                 telegram_message_id=row.telegram_message_id,
                 published_at=row.published_at,
                 permalink=row.permalink,
@@ -78,6 +83,12 @@ async def _channel_telegram_ids(ctx: _WorkerContext) -> list[int]:
                 username=row.source_username,
             )
             is None
+            and _presented_canonical_id(
+                ctx,
+                telegram_id=row.source_telegram_id,
+                username=row.source_username,
+            )
+            is None
         ):
             ids.add(row.source_telegram_id)
     for snap in ctx.directory_sources:
@@ -85,6 +96,12 @@ async def _channel_telegram_ids(ctx: _WorkerContext) -> list[int]:
             snap.source_type == "channel"
             and snap.telegram_id not in known
             and _dismissed_canonical_id(
+                ctx,
+                telegram_id=snap.telegram_id,
+                username=snap.username,
+            )
+            is None
+            and _presented_canonical_id(
                 ctx,
                 telegram_id=snap.telegram_id,
                 username=snap.username,

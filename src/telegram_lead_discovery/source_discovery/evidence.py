@@ -78,6 +78,8 @@ class EvidenceRecord:
     service_profiles: tuple[str, ...]
     rule_set_checksum: str
     matched_rule_ids: tuple[str, ...] = ()
+    author_key: str | None = None
+    author_kind: str = "unknown"
 
     def matched_query_ordinals_json(self) -> str:
         return json.dumps(list(self.matched_query_ordinals), ensure_ascii=False)

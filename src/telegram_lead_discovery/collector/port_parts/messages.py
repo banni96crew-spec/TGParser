@@ -6,6 +6,8 @@ from typing import Literal
 
 from telegram_lead_discovery.collector.port_parts.sources import TelegramPeerRef
 
+AuthorKind = Literal["user", "bot", "channel", "anonymous", "unknown"]
+
 
 @dataclass(frozen=True, slots=True)
 class HistoryRequest:
@@ -36,6 +38,7 @@ class TelegramMessageDTO:
     telegram_peer_id: int | None = None
     edited_at: datetime | None = None
     author_peer_id: int | None = None
+    author_kind: AuthorKind = "unknown"
     author_username: str | None = None
     author_display_name: str | None = None
     permalink: str | None = None

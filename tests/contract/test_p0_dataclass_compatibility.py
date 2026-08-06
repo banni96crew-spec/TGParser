@@ -43,6 +43,8 @@ DATACLASS_FIELDS = {
         "service_profiles",
         "rule_set_checksum",
         "matched_rule_ids",
+        "author_key",
+        "author_kind",
     ),
     (KEYWORD_MODULE, "OpportunitySnapshotRecord"): (
         "run_id",

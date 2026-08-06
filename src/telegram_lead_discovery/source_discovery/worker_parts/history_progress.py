@@ -40,15 +40,15 @@ def _save_history_progress(
     *,
     offset_id: int,
     scanned: int,
-    distinct_hashes: set[str],
     noise_kept: int,
+    active_chat_cursor: dict[str, object],
     stop_reason: str | None | object = _MISSING,
 ) -> None:
     payload: dict[str, Any] = {
         "offset_id": offset_id,
         "scanned": scanned,
-        "distinct_hashes": sorted(distinct_hashes),
         "noise_kept": noise_kept,
+        "active_chat": active_chat_cursor,
     }
     if stop_reason is not _MISSING:
         payload["stop_reason"] = stop_reason

@@ -10,11 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
-    SEED_PROFILE_NAME,
     NormalizedProfileQueries,
     ProfileValidationError,
     SourceScope,
-    build_seed_normalized_profile,
     normalize_profile_queries,
     validate_profile_name,
 )
@@ -60,6 +58,7 @@ def version_as_normalized(row: KeywordDiscoveryProfileVersion) -> NormalizedProf
     return NormalizedProfileQueries(
         post_queries=loads_str_list(row.post_queries_json),
         directory_queries=loads_str_list(row.directory_queries_json),
+        replacement_directory_queries=loads_str_list(row.replacement_directory_queries_json),
         additional_exclusions=loads_str_list(row.additional_exclusions_json),
         source_scope=scope,
         required_service_profiles=loads_str_list(row.required_service_profiles_json),
@@ -78,6 +77,7 @@ def _build_version_row(
         version=version,
         post_queries_json=dumps_str_list(queries.post_queries),
         directory_queries_json=dumps_str_list(queries.directory_queries),
+        replacement_directory_queries_json=dumps_str_list(queries.replacement_directory_queries),
         required_service_profiles_json=dumps_str_list(queries.required_service_profiles),
         additional_exclusions_json=dumps_str_list(queries.additional_exclusions),
         source_scope=queries.source_scope,
@@ -138,6 +138,7 @@ async def create_keyword_discovery_profile(
     name: str,
     post_queries: list[str] | tuple[str, ...],
     directory_queries: list[str] | tuple[str, ...] = (),
+    replacement_directory_queries: list[str] | tuple[str, ...] = (),
     additional_exclusions: list[str] | tuple[str, ...] = (),
     source_scope: SourceScope = "all",
     required_service_profiles: list[str] | tuple[str, ...] = (),
@@ -151,6 +152,7 @@ async def create_keyword_discovery_profile(
     queries = normalize_profile_queries(
         post_queries=post_queries,
         directory_queries=directory_queries,
+        replacement_directory_queries=replacement_directory_queries,
         additional_exclusions=additional_exclusions,
         source_scope=source_scope,
         required_service_profiles=required_service_profiles,
@@ -183,6 +185,7 @@ async def create_keyword_discovery_profile_version(
     expected_version: int,
     post_queries: list[str] | tuple[str, ...],
     directory_queries: list[str] | tuple[str, ...] = (),
+    replacement_directory_queries: list[str] | tuple[str, ...] = (),
     additional_exclusions: list[str] | tuple[str, ...] = (),
     source_scope: SourceScope = "all",
     required_service_profiles: list[str] | tuple[str, ...] = (),
@@ -206,6 +209,7 @@ async def create_keyword_discovery_profile_version(
     prior_snapshot = (
         prior.post_queries_json,
         prior.directory_queries_json,
+        prior.replacement_directory_queries_json,
         prior.additional_exclusions_json,
         prior.required_service_profiles_json,
         prior.source_scope,
@@ -214,6 +218,7 @@ async def create_keyword_discovery_profile_version(
     queries = normalize_profile_queries(
         post_queries=post_queries,
         directory_queries=directory_queries,
+        replacement_directory_queries=replacement_directory_queries,
         additional_exclusions=additional_exclusions,
         source_scope=source_scope,
         required_service_profiles=required_service_profiles,
@@ -239,6 +244,7 @@ async def create_keyword_discovery_profile_version(
     if (
         reloaded_prior.post_queries_json,
         reloaded_prior.directory_queries_json,
+        reloaded_prior.replacement_directory_queries_json,
         reloaded_prior.additional_exclusions_json,
         reloaded_prior.required_service_profiles_json,
         reloaded_prior.source_scope,

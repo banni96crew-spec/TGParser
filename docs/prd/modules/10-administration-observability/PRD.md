@@ -56,6 +56,7 @@
 | OBS-019 | Система MUST публиковать novelty/suppress/exhaustion metrics aligned with SRC-037/038: `discovery_novel_presented_total`, `discovery_registry_suppressed_total`, `discovery_dismissed_suppressed_total`, `discovery_cooldown_suppressed_total`, `discovery_pool_exhausted_total{reason}`, `discovery_novelty_ratio`. Labels MUST NOT включать query text, source title, username, run ID или Telegram ID. |
 | OBS-020 | Loop health MUST reflect named runtime loops (INF-022): discovery claim, collector jobs, live updates, processing claim, notification outbox, reconciliation, health watchdog. Collector MUST NOT be reported permanent `STOPPED`/`deferred` when Telegram credentials and monitoring sources exist (D-066). |
 | OBS-021 | Capacity/latency/recovery metric names MUST cover NFR-PERF-006..008 / NFR-REL-008: monitoring source count, ingestion rate, burst backlog age, p95 `received_at→processed_at`, restart recovery duration, exact-dedupe counters. |
+| OBS-022 | ActiveClientChat v1 terminal metrics MUST be derived by SQL aggregation from immutable retained `DiscoveryTerminalOutcome`, not incremented in-memory: `discovery_active_chat_candidates_total{truth_status}`, `discovery_active_chat_quality_total`, `discovery_active_chat_threshold_met_total{dimension}`, `discovery_active_chat_unknown_author_messages_total`, `discovery_active_chat_verification_stop_total{reason}`. Allowed dimensions: `activity_messages|activity_days|activity_authors|client_requests|client_authors|freshness`; reasons use SRC-046 closed enum. Peer/run/query identifiers and author keys are forbidden labels. `_total` is the retained 90-day total and MAY decrease after retention. |
 
 ## 5. Acceptance criteria
 
@@ -82,6 +83,7 @@
 | AT-OBS-019 | Novelty/suppress/exhaustion metrics published with approved names; forbidden labels absent. |
 | AT-OBS-020 | With credentials + monitoring sources, collector loop is not permanent deferred/STOPPED; named loops report heartbeats. |
 | AT-OBS-021 | Capacity/latency/recovery metric names present for monitoring capacity, burst drain, p95 received-to-processed, and restart recovery. |
+| AT-OBS-022 | Crash before commit gives zero; commit then crash/retry gives one canonical outcome; repeated scrape/restart returns identical SQL-derived values including unknown-author count; labels are bounded; retention may reduce totals without changing suppress rows. |
 
 ## 6. Входные и выходные контракты
 
@@ -160,7 +162,7 @@
 - `OBS-REDACTION`: AT-OBS-004, AT-OBS-005.
 - `OBS-ADMIN`: AT-OBS-008, AT-OBS-009.
 - `OBS-RETENTION`: AT-OBS-006, AT-OBS-007.
-- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016, AT-OBS-017, AT-OBS-019, AT-OBS-021.
+- `OBS-MVP-METRICS`: AT-OBS-013, AT-OBS-016, AT-OBS-017, AT-OBS-019, AT-OBS-021, AT-OBS-022.
 
 ## 15. Decision log references
 

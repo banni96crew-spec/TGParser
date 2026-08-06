@@ -76,6 +76,7 @@ PRAGMA synchronous=NORMAL
 | `metric_samples` | metric name, dimensions, value, timestamp |
 | `deleted_record_tombstones` | entity type, external identity hash, deleted time |
 | `schema_migrations` | revision, checksum, applied time |
+| `discovery_terminal_outcomes` | immutable ActiveClientChat v1 terminal result keyed by run + canonical peer + outcome version |
 
 ### 6.2. Обязательные constraints
 
@@ -197,6 +198,7 @@ Cleanup запускается ежедневно в `04:00` по timezone `Euro
 | `KeywordDiscoveryProfileVersion` | без автоудаления | Сохраняются |
 | `DismissedSource` / dismiss suppress ledger | без автоудаления | Retention MUST NOT purge; immune to SRC-030/STO-016 matrix (D-062 / STO-017) |
 | `PresentedKeywordSource` / presented suppress ledger | без автоудаления | Retention MUST NOT purge; immune to SRC-030/STO-016 (D-069 / STO-020) |
+| `DiscoveryTerminalOutcome` | 90 дней вместе с terminal keyword `DiscoveryRun` | Удаляется в той же retention transaction; suppress ledgers не затрагиваются |
 
 `Lead.last_activity_at` обновляется при message edit, новом score, status transition, note и feedback. Чтение lead и отправка notification его не меняют.
 
@@ -262,6 +264,7 @@ Historical backfill invariant (Wave 02 migration semantics; code not in Wave 01)
 | STO-018 | Unified job lease/idempotency invariants (cross-type) | MUST | Lease 5 min; heartbeat 60 s; expired lease → queued; unique inbox/outbox keys; one unfinished collector job per `(source_id, type)` |
 | STO-019 | Opportunity truth_status + evidence matched_rule_ids (D-068) | MUST | Migration after `003` adds `truth_status`, `verification_scanned_count`, `verification_stop_reason` on `source_opportunity_snapshots` and `matched_rule_ids_json` on `source_discovery_evidence` (default `[]`); rehearsal on copy DB |
 | STO-020 | Presented suppress ledger retention immunity + historical backfill (D-069) | MUST | Table `presented_keyword_sources` never purged by SRC-030/STO-016; every historical opportunity snapshot yields ≥1 presented-suppress row after migrate (idempotent); migration `005` semantics |
+| STO-021 | ActiveClientChat v1 schema and terminal outcome (D-070) | MUST | Migration `006` adds pseudonymous evidence author fields, frozen qualification counters including exact 30d deduped `unknown_author_message_count`, qualification/run termination reasons, cursor v2 support and immutable `discovery_terminal_outcomes` unique by `(run_id, source_canonical_key, terminal_outcome_version)`; terminal snapshot+outcome one transaction; legacy rows remain `legacy`; 90d retention and suppress immunity verified |
 
 ## 15. Observability
 
@@ -312,6 +315,7 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-020 | STO-020 | Opportunity snapshots of all ages + purge after presented-suppress migrate | ≥1 presented-suppress row per presented identity; rows remain after retention purge |
 | AT-STO-018 | STO-018 | Cross-type jobs with expired lease and duplicate dedupe_key | Lease recovery to queued; no parallel duplicate jobs; unique outbox key holds |
 | AT-STO-019 | STO-019 | Apply migration 004 on empty DB and operator DB copy; DROP COLUMN simulate 003 with constraints kept | truth_status + matched_rule_ids_json present; head advances; integrity_check ok; live DB untouched |
+| AT-STO-021 | STO-021 | Upgrade empty/head005/operator-copy; crash before/after terminal commit; retry; retention; downgrade/restore | Head 006, checks/FKs/integrity ok; one immutable outcome per canonical peer; no duplicate after retry; legacy unchanged; outcome purged with run while suppress remains; restore matches source copy |
 
 ## 18. DEFERRED
 

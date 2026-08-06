@@ -288,8 +288,9 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-022 | Source/opportunity card fields | MUST | Card shows identity, aliases, provenance, evidence, score components, eligibility reason codes |
 | UI-023 | Lifecycle actions including reconsider-suppress | MUST | Opportunity: promote / dismiss / `ReconsiderDismissSuppress`; source: approve/reject/reconsider/pause/resume/disable; no auto-approve, send-to-author, or Stars controls |
 | UI-024 | Monitoring coverage page signals | MUST | Checkpoint/backlog/errors visible for up to `100` monitoring sources |
-| UI-025 | Keyword run truth UI (D-068) | MUST | Run page defaults to all truth buckets: качественные / почти (1–6) / недоказанные / отклонённые; shows `gate_status` and real counters (`quality_sources/5`, scanned/run cap, current source, flood wait until); MUST NOT hide weak/non-quality by default |
+| UI-025 | Keyword run truth UI (D-070) | MUST | Run page defaults to all truth buckets: качественные / почти / недоказанные / отклонённые; shows `gate_status` and real counters (`quality_sources/1`, countable requests/authors, scanned/run cap, current source, flood wait until); MUST NOT hide weak/non-quality by default |
 | UI-026 | Open in Telegram + manual monitoring (D-068) | MUST | Opportunity detail: «Открыть в Telegram» (public_url/permalink); promote→candidate then existing Sources approve→monitoring path (CSRF + optimistic version); no direct SQL; no outreach |
+| UI-027 | ActiveClientChat v1 evidence and explanation (D-070) | MUST | Result card/detail show six frozen counters, latest client request, qualification version, ordered reasons, truth/score/band and Telegram links; historical rows show `legacy`; raw/pseudonymous author identity is never rendered |
 
 ## 15. Observability
 
@@ -342,6 +343,7 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-024 | Monitoring coverage with ≤100 sources | Checkpoint/backlog/error signals rendered per source |
 | AT-UI-025 | Keyword run page default | All truth buckets visible; gate pass/fail and counters shown |
 | AT-UI-026 | Opportunity detail actions | Open-in-Telegram link present; promote + Sources monitoring handoff with CSRF |
+| AT-UI-027 | ActiveClientChat v1 and legacy fixtures | Exact counters/latest/version/reasons/links rendered; stable truth-score sort; no author key/ID/name/username in HTML |
 
 ## 18. DEFERRED
 

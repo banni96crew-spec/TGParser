@@ -163,6 +163,10 @@ Provider self-promotion (`#Помогу`, «под ключ»/portfolio offers, 
 
 Active catalog MUST advance to immutable `ru-mvp-3` = `ru-mvp-2` plus explainable hard exclusions for confirmed run14 false positives: provider self-promo with cases/portfolio, service solicitations, specialist/resume cards (`#специалист`, «что умею», marketplace manager cards), job-seeker resumes, out-of-scope referrals (accountant), marketplace news/ops commentary, operational shipping chatter, and support-hiring vacancies — without broadly excluding all marketplace language or all first-person text, and without losing the plausible automation-need ask. Regex timeout/`4096` input cap MUST remain. Reports MUST separate metrics for: live C01–C20, run14 regression (`operator_run_14_sanitized_excerpt`, not population), golden T*, and combined. Do not claim population readiness from fixtures.
 
+### DET-019 — Active-client intent catalog `ru-mvp-4` (D-070)
+
+Active catalog MUST advance to immutable `ru-mvp-4` = `ru-mvp-3` plus narrowly scoped rules for explicit client orders, searches for a contractor and requests for a recommendation across all five service profiles. New stable rules MUST distinguish a buyer phrase (`нужен|ищу|требуется|посоветуйте|порекомендуйте` + contractor/action + supported service) from a provider offer, portfolio/case card, vacancy/resume, marketplace news, shipping/orders/support chatter and course content. Bare `WB|Wildberries|Ozon|маркетплейс|заказы|доставка|отгрузка|поддержка` MUST NOT by itself establish a development service. Existing `potential_need` remains available to the Lead pipeline but SRC ActiveClientChat v1 excludes it from countable requests. `ru-mvp-1..3` and their checksums remain immutable. C*, R14, T* and new boundary fixtures MUST be reported separately; combined precision and recall remain ≥`0.80` under NFR-QLT-007.
+
 ## 7. Data ownership и contracts
 
 Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult; Source Discovery потребляет pure detect для scouting text.
@@ -227,7 +231,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 12. MVP и исключённые функции
 
-MVP включает DET-001—DET-018 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
+MVP включает DET-001—DET-019 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -251,6 +255,7 @@ MVP включает DET-001—DET-018 и приложение DET-A. Исклю
 | `AT-DET-016` | DET-016 | Runtime load with wrong checksum; bootstrap seed path | RULE_SET_INVALID / no silent SEED_RULES fallback; seed only at bootstrap |
 | `AT-DET-017` | DET-017 | Live run13 C01–C20 sanitized + DET-A T1–T5 golden; provenance split | `ru-mvp-2`; C02–C04 advertising; C01/C05 same normalized client; C06 ecommerce; C07–C20 live negatives; T* not labeled live; live-only + combined ≥80/80 reported separately |
 | `AT-DET-018` | DET-018 | Run14 sanitized FP regression + keep automation ask; C/T unchanged ≥80/80 | `ru-mvp-3`; FPs hard-excluded; KEEP retained; separate C* / R14 / T* / combined metrics; provenance `operator_run_14_sanitized_excerpt` |
+| `AT-DET-019` | DET-019 | Paired buyer/provider/vacancy/marketplace-ops fixtures for every service family | `ru-mvp-4`; explicit buyers retain direct/contractor/recommendation; provider and operational chatter excluded; bare marketplace tokens do not establish service; separate reports and combined ≥80/80 |
 
 Golden classification fixtures:
 
@@ -276,13 +281,14 @@ Golden classification fixtures:
 - `DEC-DET-003`: active rules immutable; изменение создаёт version.
 - `DEC-DET-004`: hard exclusions выполняются до positive rules.
 - `DEC-DET-005`: нормативный начальный catalog равен DET-A.
-- `D-068`: remediation `ru-mvp-2` provider-offer exclusions + ecommerce product-photo semantics; corpus precision/recall ≥80/80 (`NFR-QLT-007` / DET-017).
+- `D-068`: historical remediation `ru-mvp-2` provider-offer exclusions + ecommerce product-photo semantics (`DET-017`).
+- `D-070`: immutable `ru-mvp-4`, explicit buyer intent and marketplace operational-noise boundary (`DET-019`).
 
 ---
 
 # Приложение DET-A — нормативный RU catalog
 
-`ru-mvp-1` / `ru-mvp-2` remain immutable historical seeds. Active remediation catalog is `ru-mvp-3` = `ru-mvp-2` plus NEG-ADV-007..015 and NEG-VAC-006 (DET-018). Tables below list the full `ru-mvp-2` normative set; v3 additions are listed after.
+`ru-mvp-1` / `ru-mvp-2` / `ru-mvp-3` remain immutable historical seeds. Active catalog after D-070 is `ru-mvp-4` = `ru-mvp-3` plus the exact DET-019 additions listed after the v3 block. Tables below list the full `ru-mvp-2` normative set; v3 and v4 additions are listed after.
 
 ## A.1 Общие правила исполнения
 
@@ -380,6 +386,22 @@ Golden classification fixtures:
 | `SIG-SPC-002` | 451 | `task_specificity` | `specificity` | 8 | `\b(?:оплата|авторизация|личный кабинет|админ(?:ка|панель)|каталог|корзина|уведомления|выгрузка|синхронизация)\b` | `signal_task_feature` |
 ```
 
-## A.6 Seed integrity
+## A.6 `ru-mvp-4` additions and overrides
+
+Version `ru-mvp-4` copies every v3 rule, adds the rows below and replaces only the `SVC-ECOM-002` pattern with the listed v4 pattern. Historical v1–v3 rows/checksums remain unchanged.
+
+```text
+| Rule ID | Priority | Target | Dimension | Weight | Exact pattern | Explanation code |
+|---|---:|---|---|---:|---|---|
+| `NEG-ADV-016` | 135 | `advertising` | `hard_exclusion` | 0 | `\b(?:предлагаю|оказываю|продаю)\b.{0,80}\b(?:услуг(?:у|и)|разработк(?:у|и)|создани(?:е|я)|настройк(?:у|и))\b.{0,80}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|магазин)\b` | `advertising_provider_offer_v4` |
+| `NEG-ADV-017` | 136 | `advertising` | `hard_exclusion` | 0 | `\b(?:мои кейсы|мой кейс|в портфолио|покажу портфолио|беру проекты|открыт(?:а|ы)? к заказам)\b.{0,120}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|маркетплейс)\b` | `advertising_portfolio_v4` |
+| `NEG-ADV-018` | 137 | `advertising` | `hard_exclusion` | 0 | `\b(?:курс|обучение|вебинар|интенсив|наставничество)\b.{0,100}\b(?:сайт|бот|автоматизац|маркетплейс|wildberries|ozon)\b` | `advertising_training_v4` |
+| `NEG-ADV-019` | 138 | `advertising` | `hard_exclusion` | 0 | `\b(?:возврат(?:ы|ов)?|поставка|отгрузка|остатки|склад|доставка|заказы|поддержка)\b.{0,80}\b(?:wildberries|wb|ozon|маркетплейс)\b` | `advertising_marketplace_operations_v4` |
+| `POS-DIR-006` | 305 | `direct_order` | `intent` | 16 | `\b(?:нужен|нужна|нужны|требуется|требуются)\b.{0,80}\b(?:сайт|лендинг|telegram[- ]?бот|телеграм[- ]?бот|чат[- ]?бот|интеграц(?:ия|ию)|api|автоматизац(?:ия|ию)|парсер|интернет[- ]?магазин)\b` | `intent_explicit_service_need_v4` |
+| `POS-REC-003` | 342 | `recommendation_request` | `intent` | 10 | `\b(?:посоветуйте|порекомендуйте|кого рекомендуете)\b.{0,100}\b(?:кто|человек|исполнитель|разработчик|специалист|команда)?\b.{0,80}\b(?:сделает|разработает|создаст|доработает|настроит|интегрирует|автоматизирует)?\b` | `intent_recommend_contractor_v4` |
+| `SVC-ECOM-002` | 241 | `ecommerce` | `service_fit` | 8 | `(?:\b(?:интеграц(?:ия|ии|ию|ией)|api|автоматизац(?:ия|ии|ию|ией)|бот|парсер|сайт|магазин|выгрузка|синхронизация)\b.{0,80}\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|wb|ozon|яндекс маркет)\b)|(?:\b(?:маркетплейс(?:а|е|ы|ов)?|wildberries|wb|ozon|яндекс маркет)\b.{0,80}\b(?:интеграц(?:ия|ии|ию|ией)|api|автоматизац(?:ия|ии|ию|ией)|бот|парсер|сайт|магазин|выгрузка|синхронизация)\b)` | `service_marketplace_technical_v4` |
+```
+
+## A.7 Seed integrity
 
 Data migration MUST сериализовать catalog в canonical JSON: UTF-8, keys sorted, separators `,` и `:`, без ASCII escaping. SHA-256 сохраняется в `RuleSetVersion.checksum`. Startup пересчитывает checksum и блокирует Detection при несовпадении.

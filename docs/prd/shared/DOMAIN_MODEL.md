@@ -14,7 +14,7 @@
 
 | Entity | Owner |
 |---|---|
-| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource`, logical `PresentedKeywordSource` | `SRC` |
+| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, `DiscoveryTerminalOutcome`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource`, logical `PresentedKeywordSource` | `SRC` |
 | `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` (gateway DTO) | `COL` |
 | `TelegramMessage`, `TelegramMessageRevision`, `DuplicateGroup`, `MessageDuplicate`, `ProcessingJob`, `ProcessingRun`, `ProcessingResult`, `ProcessingLog` | `PROC` |
 | `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `MatchedRule`, `DetectionResult` | `DET` |
@@ -159,6 +159,7 @@ Constraints:
 - `version: int`;
 - `post_queries_json`;
 - `directory_queries_json`;
+- `replacement_directory_queries_json`;
 - `required_service_profiles_json`;
 - `additional_exclusions_json`;
 - `source_scope: enum(groups, channels, all)`;
@@ -169,11 +170,12 @@ Constraints:
 
 - `1..20` post queries;
 - `0..10` directory queries;
+- `0..15` replacement directory queries;
 - каждый query — `3..128` Unicode code points после trim + casefold;
 - дубликаты запрещены;
 - после использования в `DiscoveryRun` версия immutable (D-055).
 
-Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
+Clean DB seed: immutable profile `ecommerce-development-ru`, version `3`; operator migration under D-070 is exact `6→7` or blocks.
 
 `DiscoveryRun`
 
@@ -187,6 +189,7 @@ Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
 - `state` для `graph`: `enum(queued, running, succeeded, failed, cancelled)`;
 - `state` для `keyword_scouting`: `enum(queued, running, retry_wait_flood, cancelling, cancelled, succeeded, partial, failed)`;
 - `phase: str | null` — для keyword (A–I);
+- `reference_at: timestamp | null` — для ActiveClientChat v1 равно immutable `started_at=T`, сохраняется до первого provider call;
 - `quota_snapshot_json`, `cursor_json`, `last_error_code`;
 - `version: int` — optimistic concurrency;
 - counters и timestamps;
@@ -196,7 +199,8 @@ Seed MVP: immutable profile `ecommerce-development-ru`, version `1`.
   - `qualified_total`, `presented_total`,
   - `novel_presented_total`, `replacement_fetches_total`;
 - `pool_exhausted: bool`;
-- `pool_exhausted_reason: enum(provider_empty, budget_cap_reached, quota_skipped_remaining, flood_wait_deferred, cancel_requested, no_unseen_after_suppress) | null`;
+- `pool_exhausted_reason: enum(provider_empty, no_unseen_after_suppress) | null`; only proven exhaustion sets it;
+- `run_termination_reason: enum(quality_reached, provider_empty, no_unseen_after_suppress, deep_candidate_cap, history_run_cap, acquisition_budget_cap, quota_skipped_remaining, cancelled, failed) | null`; caps/quota/cancel/failure without quality are inconclusive, not pool exhaustion;
 - `novelty_ratio: float` = `novel_presented_total / max(1, presented_total)` for completed keyword runs.
 
 `partial` означает, что часть queries пропущена из-за бесплатной квоты или permanent errors отдельных шагов.
@@ -220,6 +224,8 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 
 - `id`, `run_id`;
 - `source_telegram_id`, `source_username`, `source_title`, `source_type`;
+- `author_key: str | null` — source-scoped SHA-256 lowercase hex для `author_kind=user`, raw author identity не сохраняется;
+- `author_kind: enum(user, bot, channel, anonymous, unknown)`;
 - `telegram_message_id`, `published_at`, `permalink`;
 - `excerpt: str` — максимум `240` Unicode code points (D-056);
 - `normalized_hash`;
@@ -230,7 +236,7 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 - `created_at`;
 - unique `(run_id, source_telegram_id, telegram_message_id)`.
 
-Запрещено хранить: author ID/username/display name, телефон, медиа, entities, полный текст сверх `excerpt` (D-056). Evidence MUST NOT становиться `TelegramMessage` / Lead (D-052).
+Для non-null `author_key` действует `CHECK(length(author_key)=64)`. Запрещено хранить raw author ID/username/display name, телефон, медиа, entities, полный текст сверх `excerpt` (D-056/D-070). `author_key` запрещён в logs, metrics, exports и UI. Evidence MUST NOT становиться `TelegramMessage` / Lead (D-052).
 
 `SourceOpportunitySnapshot`
 
@@ -238,12 +244,15 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 - `source_id: int | null` — если источник уже в registry;
 - `source_telegram_id`, `username`, `title`, `source_type`, `public_url`;
 - `linked_parent_telegram_id: int | null`;
-- `qualified_count`, `excluded_count`, `active_week_count`, `ecommerce_qualified_count`;
-- `last_qualified_at`, `sample_message_count`, `sample_truncated`;
+- legacy fields `qualified_count`, `excluded_count`, `active_week_count`, `ecommerce_qualified_count` сохраняются для historical rows;
+- ActiveClientChat v1: `activity_message_count`, `activity_active_day_count`, `activity_distinct_author_count`, `client_request_count`, `client_request_author_count`, `hard_excluded_count`, `unknown_author_message_count`; unknown count = nonempty `[T-30d,T]`, `author_kind=unknown`, after Telegram identity then exact normalized-hash dedupe;
+- `latest_client_request_at`, `sample_message_count`, `sample_truncated`;
 - `score: int 0..100`, `band: enum(promising, review, weak)`;
-- `truth_status: enum(quality, near, inconclusive, rejected)` — working-client-search bucket (D-068 / SRC-046); default `inconclusive` until verification settles;
+- `truth_status: enum(quality, near, inconclusive, rejected)` — working-client-search bucket (D-070 / SRC-046); default `inconclusive` until verification settles;
 - `verification_scanned_count: int ≥ 0` — messages classified in history scan for this source/run;
 - `verification_stop_reason: str | null`;
+- `qualification_version: str` — `legacy` для historical rows, `active-client-chat-v1` для D-070;
+- `qualification_reasons_json: list[str]`;
 - `score_components_json`, `discovery_channels_json`;
 - `review_state: enum(unreviewed, promoted, dismissed)`;
 - `promoted_source_id: int | null`, `dismiss_reason: str | null`;
@@ -252,13 +261,24 @@ Concurrency (D-058): не более одного active `keyword_scouting` run 
 
 Opportunity score принадлежит `SRC` (D-054) и MUST NOT копироваться в `TelegramSource.quality_score`.
 
-Band mapping (frozen, D-054 / D-067): plan prose `strong` ≡ `promising` (`60–100`); `moderate` ≡ `review` (`35–59`); `weak` (`0–34`). Enums MUST NOT be renamed.
+Band mapping for ActiveClientChat v1 (D-070/SRC-025): `quality` with score `≥60` → `promising`; `near` with score `≥35` → `review`; every other truth/score combination → `weak`. Historical rows retain their stored legacy band. Enums MUST NOT be renamed.
 
-Truth status (D-068): `quality` (≥7 distinct clients / 14d); `near` (1–6); `inconclusive` (soft-cap/incomplete — «недоказанный»); `rejected` (completed 14d scan, 0 clients). Soft-cap MUST NOT map to `rejected`.
+Truth status (D-070): `quality` только при всех SRC-024 thresholds; `near` = completed 30d/exhausted + ≥1 countable request, но threshold failure; `inconclusive` = terminal incomplete scan; `rejected` = completed 30d/exhausted + 0 countable requests. Resumable FloodWait/crash не создают terminal truth.
 
-Keyword run counters (D-068 / SRC-047) additionally: `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `globally_distinct_client_requests`, `history_scanned_total`, `gate_status` (`pass`|`fail`|`inconclusive`). Semantics: `pass` = ≥5 quality sources and ≥35 globally distinct client requests; `inconclusive` = run soft-cap `7500` reached before candidate pool exhausted without PASS; `fail` = pool exhausted (or otherwise finished) without PASS and without that run-cap-before-exhaustion path.
+Keyword run counters (D-070 / SRC-047): `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `countable_client_requests`, `distinct_client_authors`, `history_scanned_total`, `gate_status` (`pass|fail|inconclusive`). `pass` = ≥1 quality source; run-cap-before-pool-exhaustion without quality = `inconclusive`; exhausted without quality = `fail`.
 
 Eligibility reason codes (SRC opportunity, not SCR): `directory_only_no_evidence`, `needs_verification` — directory-only / unverified linked discussion MUST NOT receive `review` or `promising` without deep verification evidence.
+
+`DiscoveryTerminalOutcome` (logical owner `SRC`, physical schema `STO`, metric consumer `OBS`)
+
+- `run_id`, `source_canonical_key`, `terminal_outcome_version=1`;
+- `source_canonical_key` after successful resolve MUST be `peer:<telegram_peer_id>` and MUST NOT be null;
+- `truth_status`, `verification_stop_reason` from the SRC-046 closed enum, frozen qualification counters including `unknown_author_message_count`, and threshold booleans;
+- `created_at`;
+- primary/unique `(run_id, source_canonical_key, terminal_outcome_version)`;
+- immutable after insert; retention follows terminal `DiscoveryRun` (`90 days`).
+
+Terminal snapshot and terminal outcome are committed in one transaction. OBS `_total` values are SQL aggregations from retained outcomes, so retry/restart cannot double-count and retention may reduce the reported 90-day total.
 
 `SourceDiscoveryEvent`
 

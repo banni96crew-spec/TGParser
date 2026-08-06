@@ -7,88 +7,25 @@ import json
 from dataclasses import dataclass
 from typing import Literal
 
-SourceScope = Literal["groups", "channels", "all"]
-
-MIN_QUERY_LEN = 3
-MAX_QUERY_LEN = 128
-MAX_POST_QUERIES = 20
-MIN_POST_QUERIES = 1
-MAX_DIRECTORY_QUERIES = 10
-MIN_DIRECTORY_QUERIES = 0
-MAX_PROFILE_NAME_LEN = 80
-MAX_EVIDENCE_EXCERPT_CODEPOINTS = 240
-
-SEED_PROFILE_NAME = "ecommerce-development-ru"
-SEED_PROFILE_VERSION = 2
-
-SEED_POST_QUERIES: tuple[str, ...] = (
-    # websites
-    "нужен сайт",
-    "ищу разработчика сайта",
-    "кто сделает сайт",
-    "нужен лендинг",
-    # telegram_bots
-    "нужен telegram бот",
-    "разработать telegram бота",
-    "нужен бот для заказов",
-    # integrations_api
-    "нужна интеграция api",
-    "интеграция сайта crm",
-    "интеграция с 1с",
-    # automation_parsers
-    "нужен парсер",
-    "автоматизировать заказы",
-    "нужна автоматизация",
-    # ecommerce
-    "нужен интернет-магазин",
-    "доработать интернет-магазин",
-    "интеграция ozon",
-    "интеграция wildberries",
-    "нужен магазин на сайте",
+from telegram_lead_discovery.source_discovery.keyword_profile_seed import (
+    SourceScope,
+    MIN_QUERY_LEN,
+    MAX_QUERY_LEN,
+    MAX_POST_QUERIES,
+    MIN_POST_QUERIES,
+    MAX_DIRECTORY_QUERIES,
+    MIN_DIRECTORY_QUERIES,
+    MAX_PROFILE_NAME_LEN,
+    MAX_EVIDENCE_EXCERPT_CODEPOINTS,
+    SEED_PROFILE_NAME,
+    SEED_PROFILE_VERSION,
+    SEED_POST_QUERIES,
+    SEED_DIRECTORY_QUERIES,
+    SEED_DIRECTORY_REPLACEMENT_QUERIES,
+    SEED_ADDITIONAL_EXCLUSIONS,
 )
-
-# Primary directory lane (SRC-018 cap 0..10): client/operator communities across
-# five service families — not marketplace-seller-only (D-069).
-SEED_DIRECTORY_QUERIES: tuple[str, ...] = (
-    "чат предпринимателей",
-    "сообщество предпринимателей",
-    "владельцы бизнеса",
-    "заказчики сайтов",
-    "чат владельцев ботов",
-    "интеграции api сообщество",
-    "автоматизация бизнеса чат",
-    "владельцы интернет-магазинов",
-    "основатели стартапов",
-    "сообщество заказчиков",
-)
-
-# Free replacement directory family after mass suppress (SRC-040 / D-069).
-# Not counted against SRC-018 profile directory cap; worker expansion only.
-SEED_DIRECTORY_REPLACEMENT_QUERIES: tuple[str, ...] = (
-    "ищу разработчика чат",
-    "нужен сайт сообщество",
-    "лендинг для бизнеса",
-    "telegram боты для бизнеса",
-    "чат заказчиков ботов",
-    "crm интеграция сообщество",
-    "1с интеграция чат",
-    "парсеры и автоматизация",
-    "чат автоматизации процессов",
-    "ecommerce владельцы чат",
-    "интернет магазин сообщество",
-    "чат предпринимателей рф",
-    "малый бизнес сообщество",
-    "заказчики it услуг",
-    "клиенты на разработку",
-)
-
-SEED_ADDITIONAL_EXCLUSIONS: tuple[str, ...] = (
-    "ищем в команду",
-    "резюме",
-    "ищу работу",
-    "предлагаю услуги",
-    "курс",
-    "обучение",
+from telegram_lead_discovery.source_discovery.keyword_profile_normalization import (
+    normalize_query,
 )
 
 
@@ -103,11 +40,6 @@ class NormalizedProfileQueries:
     additional_exclusions: tuple[str, ...]
     source_scope: SourceScope
     required_service_profiles: tuple[str, ...] = ()
-
-
-def normalize_query(raw: str) -> str:
-    """Trim whitespace and casefold a single query string."""
-    return raw.strip().casefold()
 
 
 def truncate_evidence_excerpt(
@@ -138,6 +70,7 @@ def _dedupe_normalized_queries(raw_queries: list[str] | tuple[str, ...]) -> tupl
         normalized = normalize_query(raw)
         _validate_query(normalized)
         if normalized in seen:
+
             raise ProfileValidationError(f"duplicate_query:{normalized}")
         seen.add(normalized)
         result.append(normalized)
@@ -245,106 +178,11 @@ def validate_profile_name(name: str) -> str:
     return cleaned
 
 
-# Service-code → query substrings used to prefer profile-bound deep queries (SRC-024/045).
-_SERVICE_QUERY_HINTS: dict[str, tuple[str, ...]] = {
-    "ecommerce": ("магазин", "ecommerce", "e-commerce", "ozon", "wildberries", "маркетплейс"),
-    "bot": ("бот", "telegram бот", "mini app"),
-    "web": ("сайт", "разработчик", "интеграция"),
-    "mobile": ("мобильн", "приложение"),
-    "parser": ("парсер",),
-}
-
-
-def match_additional_exclusion(
-    text: str,
-    exclusions: list[str] | tuple[str, ...],
-) -> str | None:
-    """Return explainable reason when text matches a profile additional exclusion."""
-    folded = text.casefold()
-    for raw in exclusions:
-        phrase = normalize_query(raw) if raw.strip() else ""
-        if phrase and phrase in folded:
-            return f"profile_additional_exclusion:{phrase}"
-    return None
-
-
-def select_deep_verification_queries(
-    post_queries: list[str] | tuple[str, ...],
-    *,
-    required_service_profiles: list[str] | tuple[str, ...] = (),
-    limit: int = 5,
-) -> tuple[str, ...]:
-    """Pick ≤limit profile queries for deep verification (not naive ``post_queries[:5]``).
-
-    When ``required_service_profiles`` is set, prefer queries matching those services.
-    Otherwise stride-sample across the full post query list for diversity (SRC-024).
-    """
-    if limit <= 0 or not post_queries:
-        return ()
-    posts = tuple(post_queries)
-    services = tuple(normalize_query(s) for s in required_service_profiles if s.strip())
-
-    preferred: list[str] = []
-    if services:
-        hints: list[str] = []
-        for svc in services:
-            hints.extend(_SERVICE_QUERY_HINTS.get(svc, (svc,)))
-        for query in posts:
-            folded = query.casefold()
-            if any(h in folded for h in hints):
-                preferred.append(query)
-            if len(preferred) >= limit:
-                return tuple(preferred[:limit])
-
-    # Fill remainder (or full selection) via stride sampling — avoids fixed prefix bias.
-    remaining = [q for q in posts if q not in preferred]
-    if not remaining and preferred:
-        return tuple(preferred[:limit])
-    need = limit - len(preferred)
-    if need <= 0:
-        return tuple(preferred[:limit])
-    if len(remaining) <= need:
-        return tuple([*preferred, *remaining][:limit])
-    stride = max(1, len(remaining) // need)
-    sampled: list[str] = []
-    for i in range(0, len(remaining), stride):
-        sampled.append(remaining[i])
-        if len(sampled) >= need:
-            break
-    # If stride undershoots, append from the end.
-    if len(sampled) < need:
-        for q in reversed(remaining):
-            if q not in sampled:
-                sampled.append(q)
-            if len(sampled) >= need:
-                break
-    return tuple([*preferred, *sampled][:limit])
-
-
-def schedule_balanced_query_kinds(
-    *,
-    post_count: int,
-    directory_count: int,
-    include_public_posts: bool = True,
-) -> tuple[str, ...]:
-    """Interleave global / directory / public_posts kinds for balanced seed scheduling."""
-    posts = max(0, post_count)
-    dirs = max(0, directory_count)
-    pub = posts if include_public_posts else 0
-    kinds: list[str] = []
-    pi = di = ui = 0
-    # Round-robin across available lanes so directory is not starved behind all globals.
-    while pi < posts or di < dirs or ui < pub:
-        if pi < posts:
-            kinds.append("global_message")
-            pi += 1
-        if di < dirs:
-            kinds.append("directory")
-            di += 1
-        if ui < pub:
-            kinds.append("public_posts")
-            ui += 1
-    return tuple(kinds)
+from telegram_lead_discovery.source_discovery.keyword_profile_selection import (
+    match_additional_exclusion,
+    schedule_balanced_query_kinds,
+    select_deep_verification_queries,
+)
 
 
 __all__ = [

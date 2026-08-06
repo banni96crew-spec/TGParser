@@ -203,6 +203,10 @@ Persist batch size MUST be ≤ **50** envelopes per SQLite write transaction. Ne
 
 Live `TelegramUpdateDTO` / envelope MUST carry stable identity `(telegram_peer_id, telegram_message_id)`, `event_type` ∈ `message_new|message_edited|message_deleted`, and map to monitoring `source_id` via registry. Live filter: only `lifecycle_state=monitoring`.
 
+### COL-027 — Sender kind for scouting history (D-070)
+
+Gateway DTO schema v2 MUST map each non-delete message to `author_kind=user|bot|channel|anonymous|unknown`. `user` requires Telethon `PeerUser`, a resolved sender entity with `bot=false`, and absent `via_bot`; a bot user maps to `bot`; `PeerChannel`/sender-as-channel maps to `channel`; anonymous-admin/post-author without a user identity maps to `anonymous`; missing or unresolvable sender maps to `unknown`. Raw `author_peer_id` MAY exist only in the in-memory DTO and MUST NOT require an additional per-message network request. SRC scouting persistence is governed by SEC-018.
+
 ## 8. Data ownership
 
 Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` gateway DTO и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
@@ -248,7 +252,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-026. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-027. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -280,6 +284,7 @@ MVP включает COL-001—COL-026. Исключены multiple sessions, ac
 | `AT-COL-024` | COL-024 | Backfill hits page before 14d/3000 goal | Continuation job + cursor advances without hard stop at 100 |
 | `AT-COL-025` | COL-025 | Persist >50 envelopes | Write TX batches ≤50; no network inside long write TX |
 | `AT-COL-026` | COL-026 | Live update for monitoring and non-monitoring | Only monitoring mapped; identity `(telegram_peer_id, telegram_message_id)` stable |
+| `AT-COL-027` | COL-027 | PeerUser human/bot, PeerChannel, anonymous admin, via_bot and missing sender fixtures | Exact closed `author_kind`; no extra per-message request; raw author identity absent from scouting persistence |
 
 ## 14. Принятые записи decision log
 

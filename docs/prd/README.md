@@ -251,6 +251,8 @@ Scheduled purge запускается ежедневно в `04:00`. Daily onli
 
 ## 14. Success metrics
 
+- `ActiveClientChat v1`: минимум один публичный `megagroup`, который проходит все пороги D-070; оператор подтверждает минимум три связанные evidence-сообщения как реальные задачи на разработку.
+- Уже показанный keyword peer любого `truth_status` не появляется в последующих keyword runs; suppress ledger не очищается для QA.
 - Calibration corpus: минимум `500` сообщений из минимум `10` sources.
 - Precision `hot + warm`: не ниже `80%`.
 - Recall `direct_order`: не ниже `70%`.
@@ -283,6 +285,7 @@ Rollback отключает новые collector jobs и notification delivery, 
 - Rule set воспроизводит category, score и explanation по сохранённой версии.
 - Security scan не находит secrets/session в database, logs, exports или backups.
 - Success metrics раздела 14 достигнуты.
+- Для working-client-search одних fixtures, зелёных тестов и успешных Telegram API calls недостаточно: обязательны один live `ActiveClientChat v1` и явное подтверждение оператором трёх actionable evidence messages (`NFR-QLT-008`).
 
 ## 17. Сопутствующие документы
 

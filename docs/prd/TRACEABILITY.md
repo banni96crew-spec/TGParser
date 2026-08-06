@@ -10,17 +10,17 @@
 
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
-| Source Discovery | `SRC-001..045` | `AT-SRC-001..045` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider |
-| Telegram Collector | `COL-001..026` | `AT-COL-001..026` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref for Telegram I/O |
+| Source Discovery | `SRC-001..050` | `AT-SRC-001..050` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider |
+| Telegram Collector | `COL-001..027` | `AT-COL-001..027` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O |
 | Message Processing | `PROC-001..019` | `AT-PROC-001..019` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum |
-| Lead Detection | `DET-001..016` | `AT-DET-001..016` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
+| Lead Detection | `DET-001..019` | `AT-DET-001..019` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
-| Lead Storage | `STO-001..018` | `AT-STO-001..018` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, keyword schema, suppress retention immunity, job lease |
-| Lead Dashboard | `UI-001..024` | `AT-UI-001..024` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults |
+| Lead Storage | `STO-001..021` | `AT-STO-001..021` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, job lease |
+| Lead Dashboard | `UI-001..027` | `AT-UI-001..027` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..015` | `AT-SET-001..015` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation и local-access suite |
-| Administration & Observability | `OBS-001..021` | `AT-OBS-001..021` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity metrics |
-| Security | `SEC-001..017` | `AT-SEC-001..017` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, injection suite |
+| Administration & Observability | `OBS-001..022` | `AT-OBS-001..022` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity and durable terminal metrics |
+| Security | `SEC-001..018` | `AT-SEC-001..018` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, pseudonymous scouting authors, injection suite |
 | Deployment & Infrastructure | `INF-001..022` | `AT-INF-001..022` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, named runtime loops, backup/restore suite |
 
 ## 3. Shared quality requirements
@@ -49,7 +49,8 @@
 | `NFR-QLT-004` | `DET`, `OBS` | Negative-category confusion matrix |
 | `NFR-QLT-005` | `DET`, `SCR` | Deterministic repeated-run suite |
 | `NFR-QLT-006` | `DET`, `SCR`, `SRC`, `OBS`, `UI` | Remediation calibration + discovery novelty gates (D-067) |
-| `NFR-QLT-007` | `DET`, `SRC`, `UI`, `OBS` | Working-client-search DET 80/80 + quality gate 5×7/35 (D-068) |
+| `NFR-QLT-007` | `DET`, `SRC`, `UI`, `OBS` | Working-client-search DET precision/recall ≥80/80; discovery threshold owned by D-070 |
+| `NFR-QLT-008` | `SRC`, `UI`, `OBS` | Live ActiveClientChat v1 plus explicit owner confirmation of three actionable evidence messages |
 | `NFR-SEC-001` | `SET`, `SEC`, `INF` | Listener inspection |
 | `NFR-SEC-002` | `SEC`, `STO`, `UI`, `INF` | Secret canary scan |
 | `NFR-SEC-003` | `SEC`, `INF` | Windows ACL inspection |
@@ -83,7 +84,7 @@
 | Journey | Requirements | Gate |
 |---|---|---|
 | Add and approve source | `SRC-001`, `SRC-007..014`, `COL-004..005`, `UI-006` | Candidate не мониторится до approve; backfill создаётся один раз |
-| Keyword scouting → promote → approve | `SRC-017..045`, `COL-021..022`, `DET-015`, `STO-015..017`, `UI-017..023`, `OBS-017..020`, `SEC-016..017`, `INF-021..022` | Evidence ∉ Lead pipeline; Zero Stars; promote → candidate only; approve starts backfill; registry/dismiss suppress; novelty/replacement; reconsider-suppress |
+| Keyword scouting → ActiveClientChat → promote → approve | `SRC-017..050`, `COL-021..027`, `DET-015..019`, `STO-015..021`, `UI-017..027`, `OBS-017..022`, `SEC-016..018`, `INF-021..022`, `NFR-QLT-008` | Public megagroup passes D-070; owner confirms 3 actionable messages; evidence ∉ Lead pipeline; Zero Stars; presented peers permanently suppressed; promote → candidate only |
 | Live lead | `COL-006`, `COL-023..026`, `PROC-001..004`, `PROC-019`, `DET-004..014`, `DET-016`, `SCR-001..013`, `STO-001..005`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s только при `delivery_mode=live`+secrets; в shadow Lead без outbox; peer-ref I/O |
 | Disconnect recovery | `COL-007..010`, `COL-017..020`, `STO-010`, `STO-018`, `OBS-001..016`, `OBS-020..021`, `INF-002..010`, `INF-022` | Gap ≤20 min; duplicates `0`; named loops not deferred |
 | Edit/delete/repost | `COL-013..015`, `PROC-005..014`, `STO-003..007`, `UI-012..014`, `NOT-009..015` | Revision/tombstone/canonical behavior детерминировано |
@@ -132,9 +133,17 @@ Release evidence включает:
   - `UI-019..026` ↔ `AT-UI-019..026` (truth buckets default, open Telegram, monitor handoff);
   - `OBS-019..021` ↔ `AT-OBS-019..021`;
   - `INF-022` ↔ `AT-INF-022`.
-- Shared quality: `NFR-PERF-006..008`, `NFR-REL-008`, `NFR-QLT-006`, `NFR-QLT-007` (D-068 working-client-search).
-- Bands remain `promising|review|weak` (D-054); plan `strong|moderate` are aliases only; truth_status is orthogonal (D-068).
+- Shared quality: `NFR-PERF-006..008`, `NFR-REL-008`, `NFR-QLT-006`; `NFR-QLT-007` retains historical DET corpus quality while D-070 owns discovery semantics.
+- Band enum remains `promising|review|weak`; ActiveClientChat v1 mapping is truth-dependent exactly as SRC-025, while historical rows keep stored legacy bands.
 - Graph depth remains `2` (D-017 / SRC-004 / SRC-042); plan Wave 04 `depth=1` does not override PRD.
 - Wave 02 remains mandatory for historical suppress backfill + provisional identity schema (STO-017); empty migration head alone is insufficient.
 - Product code for remediation begins only after Wave 01 PRD validator PASS.
-- Live acceptance (2 consecutive ≥5×7 Zero-Stars runs) is outside unit/integration green; build stage MUST NOT claim product ready.
+- Historical D-068 live acceptance is superseded by D-070/NFR-QLT-008; unit/integration green still cannot claim product ready.
+
+## 9. ActiveClientChat v1 contract freeze (D-070)
+
+- D-070 supersedes D-068 qualification/score/truth/run gate and only the D-069 clause about two live PASS runs; SRC-041/SRC-050 permanent suppress remains unchanged.
+- Updated owner requirements keep their existing AT IDs: `SRC-023`, `SRC-024`, `SRC-025`, `SRC-044`, `SRC-046`, `SRC-047`, `SRC-048`, `SRC-049`, `UI-025`, `NFR-QLT-007`.
+- New 1:1 module requirements: `COL-027` ↔ `AT-COL-027`; `DET-019` ↔ `AT-DET-019`; `STO-021` ↔ `AT-STO-021`; `UI-027` ↔ `AT-UI-027`; `OBS-022` ↔ `AT-OBS-022`; `SEC-018` ↔ `AT-SEC-018`.
+- `NFR-QLT-008` uses the shared quality acceptance/evidence mapping; `AT-NFR-QLT-008` does not exist.
+- Automated completion is insufficient: release requires one live quality public megagroup and explicit owner confirmation of three evidence messages. Until then status is not achieved.

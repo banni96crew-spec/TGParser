@@ -90,6 +90,8 @@ Gateway MUST use `peer`, never raw DB `source_id`, as the Telethon entity. Persi
 - maps to monitoring `source_id` via Source Registry;
 - live filter: only sources with `lifecycle_state=monitoring`.
 
+`TelegramMessageDTO.author_kind` (schema version 2 for new producer/consumers) is a closed enum `user|bot|channel|anonymous|unknown`. Gateway MAY expose raw `author_peer_id` in the in-memory DTO, but SRC scouting MUST transform a human user to source-scoped `author_key=SHA-256("active-chat-v1:" + source_telegram_id + ":" + author_peer_id)` before persistence. Raw scouting author identity MUST NOT enter persistence, logs, metrics, exports or UI. Pseudonymous `author_key` MAY persist only in evidence and cursor v2 for exact resume and follows their 90-day retention (COL-027/SEC-018).
+
 Gateway errors:
 
 | Error | Поведение consumer |
@@ -145,6 +147,10 @@ Isolation (D-052): keyword search hits записываются только в 
 Detection reuse: SRC вызывает pure DET evaluation на normalized scouting text через shared detect function / port с `analysis_text` и зафиксированными `rule_set_version_id` + checksum; результат сохраняется в evidence fields, не как pipeline `DetectionResult` row lead-path (см. DET-015 / DET-016). Pipeline detection MUST load rules only by pinned version+checksum; `SEED_RULES` is bootstrap-only (D-065).
 
 Acquisition stages (machine-readable, D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provider provenance method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`.
+
+ActiveClientChat v1 (D-070): channel hits are ephemeral parents only; registry/dismiss/presented suppress is applied before `get_linked_discussion`; only an unsuppressed public `megagroup` enters verification. `DiscoveryRun.started_at` is the immutable reference `T`. Cursor schema v2 persists T, continuation, frozen counters including `unknown_author_message_count`, UTC active dates, source-scoped human author keys, request identities, request-author keys, normalized hashes, hard-exclusion count, latest request and stop state. Unknown-author count uses unique nonempty `[T-30d,T]` messages after Telegram identity then exact normalized-hash dedupe. FloodWait/crash returns a resumable state and MUST NOT publish terminal truth, metric or presented suppress.
+
+Terminalization inserts `SourceOpportunitySnapshot` and immutable `DiscoveryTerminalOutcome` in one transaction. First inclusion of that terminal opportunity in a result set idempotently upserts `PresentedKeywordSource`. Before terminal transition the opportunity MUST NOT be visible or suppressed.
 
 ## 4. Telegram event envelope
 

@@ -163,11 +163,11 @@ UI MUST реализовать все ручные переходы lifecycle. �
 
 ### SRC-017 — Keyword discovery profile
 
-Система MUST поддерживать `KeywordDiscoveryProfile` с уникальным `name` (`1..80`), состояниями `active|archived` и указателем `current_version`. Seed MVP MUST создать immutable профиль `ecommerce-development-ru` version `1` с post queries, directory queries и additional exclusions из утверждённого плана keyword discovery. Редактирование профиля MUST создавать новую version, не изменяя уже сохранённые версии.
+Система MUST поддерживать `KeywordDiscoveryProfile` с уникальным `name` (`1..80`), состояниями `active|archived` и указателем `current_version`. Clean DB seed MUST создать immutable профиль `ecommerce-development-ru` version `3` с exact catalogs SRC-049. Operator migration допускает только version `6→7`. Редактирование профиля MUST создавать новую version, не изменяя уже сохранённые версии.
 
 ### SRC-018 — Версионирование профиля
 
-`KeywordDiscoveryProfileVersion` MUST хранить `post_queries_json` (`1..20`), `directory_queries_json` (`0..10`), `required_service_profiles_json`, `additional_exclusions_json`, `source_scope` (`groups|channels|all`). Каждый query после trim + casefold MUST иметь длину `3..128` Unicode code points; дубликаты запрещены. После ссылки из любого `DiscoveryRun` version MUST быть immutable (D-055). Run MUST фиксировать `profile_version_id`, активный `rule_set_version_id` и `rule_set_checksum`.
+`KeywordDiscoveryProfileVersion` MUST хранить `post_queries_json` (`1..20`), `directory_queries_json` (`0..10`), `replacement_directory_queries_json` (`0..15`), `required_service_profiles_json`, `additional_exclusions_json`, `source_scope` (`groups|channels|all`). Каждый query после trim + casefold MUST иметь длину `3..128` Unicode code points; дубликаты запрещены внутри и между query lists. После ссылки из любого `DiscoveryRun` version MUST быть immutable (D-055). Run MUST фиксировать `profile_version_id`, активный `rule_set_version_id` и `rule_set_checksum`.
 
 ### SRC-019 — Ручной запуск keyword scouting
 
@@ -179,7 +179,7 @@ Keyword run MUST использовать только Gateway methods: `search_
 
 ### SRC-021 — Граница scouting-evidence
 
-`SourceDiscoveryEvidence` MUST NOT создавать `TelegramMessage`, `TelegramEventEnvelope`, `Lead`, `LeadScore`, notification outbox и MUST NOT изменять `CollectorCheckpoint` (D-052). Полный текст сверх excerpt, авторы и медиа MUST NOT сохраняться (D-056).
+`SourceDiscoveryEvidence` MUST NOT создавать `TelegramMessage`, `TelegramEventEnvelope`, `Lead`, `LeadScore`, notification outbox и MUST NOT изменять `CollectorCheckpoint` (D-052). Полный текст сверх excerpt, raw author identity и медиа MUST NOT сохраняться (D-056/D-070); разрешены только SEC-018 `author_key`/`author_kind`.
 
 ### SRC-022 — Дедупликация scouting-источников
 
@@ -187,40 +187,46 @@ Identity MUST применяться в порядке: `telegram_id` → сущ
 
 ### SRC-023 — Linked discussion
 
-Для найденных каналов система MUST через Gateway `get_linked_discussion` искать связанную публичную discussion group с username. Linked discussion MUST сохраняться как отдельный opportunity result с `linked_parent_telegram_id` (D-053). Auto-join и автоматическое создание `TelegramSource` запрещены. Provenance method при promotion — `linked_discussion`.
+Opportunity для `ActiveClientChat v1` MUST создаваться только для публичного `megagroup`. Прямо найденный публичный `megagroup` поступает в deep verification. Найденный `channel` является только ephemeral parent: до Gateway call к нему применяются registry/dismiss/presented suppress ledgers; suppressed parent не вызывает `get_linked_discussion`. Для разрешённого parent система через Gateway ищет связанную discussion group и принимает её только если это публичный `megagroup` с username и её собственная canonical identity не suppressed. Parent-channel не получает evidence/snapshot и не считается presented. Linked discussion получает отдельный opportunity с `linked_parent_telegram_id`; auto-join и автоматическое создание `TelegramSource` запрещены. Provenance method при promotion — `linked_discussion`.
 
-### SRC-024 — Глубокая проверка источника (history scan, D-068)
+### SRC-024 — Глубокая проверка `ActiveClientChat v1` (D-070)
 
 После seed search система MUST выбрать не более `25` источников для deep verification по предварительному рейтингу (число запросов, seed evidence, directory match, приоритет megagroup/linked discussion, свежесть, tie-break Telegram ID).
 
-Deep verification MUST читать публичную историю источника через Gateway `iter_history` (newest→older), классифицируя каждое доступное сообщение pinned DET version. Exact-phrase `search_source_messages` verification MUST NOT быть единственным механизмом доказательства.
+До первого provider call run MUST сохранить единый reference instant `T=DiscoveryRun.started_at` в UTC. Deep verification MUST читать публичную историю `megagroup` через Gateway `iter_history` newest→older, классифицируя каждое доступное сообщение pinned DET version. Все resume/restart используют тот же `T`. Exact-phrase `search_source_messages` verification MUST NOT быть единственным механизмом доказательства.
 
 Остановка скана источника при первом из:
 
-1. ≥`7` globally-distinct client requests внутри окна `14` дней (quality reached);
-2. достигнута граница `<14` дней от `now` (window complete);
+1. доказаны все quality-пороги ActiveClientChat v1;
+2. достигнута граница сообщения `<T-30d` или история исчерпана;
 3. просканировано `1500` сообщений источника (source soft-cap);
 4. суммарно по run просканировано `7500` сообщений (run soft-cap);
-5. история исчерпана / источник недоступен / cancel.
+5. источник окончательно недоступен после утверждённых retries или получен explicit cancel.
 
-Technical scheduling (не новый product cap): deep verification MUST выделять историю page-based fair waterfill / round-robin по `HISTORY_PAGE_SIZE` между незавершёнными кандидатами (минимум scanned → следующий), углубляя источники с qualified evidence и заменяя exhausted/low-yield, пока не достигнуты `5` quality, pool exhausted или run soft-cap `7500`. Слабый источник MUST NOT монополизировать `1500`, пока в pool остаются непроверенные кандидаты. Per-source cursor/progress и acquisition pool MUST persist для exact FloodWait/restart resume.
+Technical scheduling: page-based fair waterfill / round-robin по `HISTORY_PAGE_SIZE` между незавершёнными кандидатами, minimum scanned first, пока не найден один quality source, pool exhausted или run cap `7500`. Слабый источник MUST NOT монополизировать `1500`, пока остаются непроверенные кандидаты. Cursor schema v2 MUST сохранять `T`, continuation, counters, UTC active-date set, human-author set, countable-request identities, request-author set, normalized hashes, `hard_excluded_count`, `unknown_author_message_count`, latest request и stop state.
 
-Client request = DET category ∈ `{direct_order, contractor_search, recommendation_request, potential_need}` + ≥1 service profile ∈ `{websites, telegram_bots, integrations_api, automation_parsers, ecommerce}` + нет hard exclusion. Distinct identity: `(telegram_peer_id, telegram_message_id)` ∪ `normalized_hash`; exact repost не удваивает счёт.
+Замкнутые окна: activity `[T-14d,T]`; demand и hard-excluded `[T-30d,T]`; freshness `[T-7d,T]`. Timestamp `>T` не учитывается. Active UTC date считается по сообщениям activity window.
+
+Quality требует одновременно: ≥`100` уникальных непустых сообщений activity window, ≥`10` active UTC dates, ≥`20` distinct human `author_key`, ≥`3` countable client requests demand window, ≥`3` distinct human request authors и latest countable request в freshness window. Activity messages/dates включают любые уникальные непустые сообщения независимо от `author_kind`; author counters включают только `author_kind=user`. `unknown_author_message_count` = число непустых сообщений с `author_kind=unknown` в `[T-30d,T]` после Telegram message-identity dedupe и затем exact `normalized_hash` repost dedupe; timestamp `>T` и пустой text исключаются.
+
+Countable client request = DET category ∈ `{direct_order, contractor_search, recommendation_request}` + ≥1 service profile ∈ `{websites, telegram_bots, integrations_api, automation_parsers, ecommerce}` + нет hard exclusion + `author_kind=user`. `potential_need` не считается. Для `ecommerce` требуется явный технический заказ; отдельные упоминания WB/Ozon/marketplace/orders/shipping/support недостаточны. Message identity `(telegram_peer_id, telegram_message_id)` применяется первой; exact `normalized_hash` не позволяет одному repost увеличить request count. Fuzzy/semantic dedupe запрещён.
 
 Persist только scouting evidence (не `TelegramMessage`/Lead/outbox/checkpoint). Soft-cap без доказательства ⇒ `truth_status=inconclusive`, не reject. `required_service_profiles` и `additional_exclusions` MUST влиять на eligibility/score с explainable reason codes (SRC-045).
 
-### SRC-025 — Source Opportunity Score
+### SRC-025 — Source Opportunity Score ActiveClientChat v1
 
 Система MUST рассчитывать детерминированный score `0–100`, принадлежащий `SRC` (D-054), по компонентам:
 
-- qualified messages `0–40` (0/1/2/3/4/5+ → 0/8/16/24/32/40);
-- regularity `0–25` по числу календарных недель с qualified (0/1/2/3/4+ → 0/8/14/20/25);
-- ecommerce `0–20` = `min(20, ecommerce_qualified_count × 5)`;
-- recency `0–15` (≤3d→15, 4–7d→10, 8–14d→5, >14d→0);
-- noise penalty `0–30` = `floor(30 × excluded / max(1, qualified+excluded))`;
-- `score = clamp(qualified + regularity + ecommerce + recency − noise, 0, 100)`.
+- requests: `0/1/2/≥3 → 0/12/24/40`;
+- distinct request authors: `0/1/2/≥3 → 0/8/16/25`;
+- activity messages: `min(8, floor(8 × activity_message_count / 100))`;
+- activity days: `min(6, floor(6 × activity_active_day_count / 10))`;
+- activity authors: `min(6, floor(6 × activity_distinct_author_count / 20))`;
+- recency from `T`: `0..3d→15`, `(3d..7d]→10`, `(7d..30d]→5`, `>30d`/none→0;
+- noise penalty: `floor(30 × hard_excluded_count / max(1, client_request_count + hard_excluded_count))`, где hard exclusions — уникальные непустые сообщения `[T-30d,T]` после identity dedupe;
+- `score = clamp(sum(positive components) − noise, 0, 100)`; ecommerce bonus отсутствует.
 
-Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Plan prose aliases (D-067): `strong` ≡ `promising`, `moderate` ≡ `review` — enums MUST NOT be renamed. Tie-break: score DESC, qualified DESC, active weeks DESC, last qualified DESC, Telegram ID ASC. Score MUST NOT копироваться в `TelegramSource.quality_score`.
+Band: `quality` с score ≥`60` → `promising`; `near` с score ≥`35` → `review`; остальные → `weak`. Enums не переименовываются. Sort: truth `quality,near,inconclusive,rejected`, затем score DESC, latest client request DESC NULLS LAST, Telegram ID ASC. Score MUST NOT копироваться в `TelegramSource.quality_score`.
 
 ### SRC-026 — Продвижение в кандидаты
 
@@ -239,43 +245,48 @@ Bands: `promising` `60–100`, `review` `35–59`, `weak` `0–34`. Plan prose a
 Один keyword run MUST соблюдать:
 
 - page size global search `50`, максимум `2` страницы на query/scope;
-- seed/global/public_posts hits вне окна quality `14` дней не квалифицируют source (D-068); acquisition MAY всё ещё видеть более старые hits для ranking seed;
+- seed/global/public_posts hits вне demand window `[T-30d,T]` не квалифицируют source; acquisition MAY видеть более старые hits только для seed ranking;
 - общий cap `500` уникальных **persisted** evidence rows; сверх лимита — `budget_skipped` (history scan counters `scanned_*` независимы);
 - directory search максимум `20` peer results на query;
 - deep verification максимум `25` источников; per-source history soft-cap `1500`; whole-run history soft-cap `7500`;
 - FloodWait: persist exact cursor/source progress, query `available_at=until`, Job `retry_wait`, run `retry_wait_flood`; worker MUST NOT долго спать в event loop, MUST NOT restart run и MUST NOT retry раньше `until`;
 - transient query retry максимум `3` attempts с delays `30`, `120`, `600` секунд.
 
-### SRC-046 — Truth status источника (D-068)
+### SRC-046 — Truth status источника (D-070)
 
 Каждый opportunity после verification MUST получить `truth_status`:
 
 | Status | Условие |
 |---|---|
-| `quality` | ≥`7` distinct client requests в `14` днях |
-| `near` | `1..6` distinct при завершённом сканe без soft-cap interruption |
-| `inconclusive` | soft-cap `1500`/`7500` без quality, либо скан не завершён; soft-cap interruption overrides `near` |
-| `rejected` | завершённый 14-дневный скан доказал `0` distinct client requests (noise/none) |
+| `quality` | Публичный `megagroup`; все шесть порогов SRC-024 доказаны |
+| `near` | Завершённый 30-дневный scan/exhaustion, ≥1 countable request, но любой quality-порог не выполнен |
+| `inconclusive` | Terminal incomplete scan из-за source/run cap, окончательной недоступности или explicit cancel |
+| `rejected` | Завершённый 30-дневный scan/exhaustion, `0` countable requests |
 
-`inconclusive` MUST отображаться оператору как «недоказанный». Soft-cap MUST NOT silently map to `rejected`.
+Closed `verification_stop_reason`: `quality_reached|window_complete|history_exhausted|source_cap|run_cap|inaccessible|cancelled`. Ordered qualification reasons: `quality_pass`, `activity_messages_below_100`, `activity_days_below_10`, `activity_authors_below_20`, `client_requests_below_3`, `client_authors_below_3`, `latest_request_older_than_7d`, `source_cap_incomplete`, `run_cap_incomplete`, `inaccessible_incomplete`, `cancelled_incomplete`. `inconclusive` отображается как «недоказанный»; incomplete path не маппится в `near`/`rejected`.
 
-### SRC-047 — Working-run gate (D-068)
+### SRC-047 — Working-run gate (D-070)
 
 Keyword run MUST вычислять `gate_status`:
 
-- `pass` только при `quality_sources ≥ 5` И `globally_distinct_client_requests ≥ 35`;
-- `inconclusive` если run soft-cap `7500` достигнут до исчерпания candidate pool и PASS не доказан (не `fail`);
-- `fail` если pool exhausted без PASS и без run-cap-before-exhaustion path; иначе при отсутствии PASS.
+1. `pass`, если `quality_sources ≥ 1`, независимо от остальных результатов;
+2. `inconclusive`, если PASS нет и run достиг `7500`, лимита `25` deep-verification sources или иного acquisition budget до доказанного provider exhaustion, потерял оставшиеся free queries из-за quota, отменён, завершился `partial|failed`, имеет необработанные candidates либо хотя бы один terminal source `inconclusive` из-за source cap/inaccessible/cancel;
+3. `fail` только если PASS нет, acquisition pool действительно exhausted, все acquired candidates получили terminal `near|rejected`, необработанных/inconclusive candidates нет;
+4. active `queued|running|retry_wait_flood|cancelling` run хранит provisional `gate_status=inconclusive`, который не является release evidence.
 
-Counters MUST включать `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `globally_distinct_client_requests`, `history_scanned_total`, `gate_status` (и `hit_run_cap` / `pool_exhausted` для честного отображения).
+Counters MUST включать `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `countable_client_requests`, `distinct_client_authors`, `history_scanned_total`, `gate_status`, `hit_run_cap`, `pool_exhausted`.
 
-### SRC-048 — FloodWait resume для history verification (D-068)
+### SRC-048 — FloodWait/crash resume для history verification (D-070)
 
-На любом history/provider call FloodWait MUST: сохранить cursor/progress источника, перевести run в `retry_wait_flood` до exact `until`, затем продолжить тот же источник без duplicate committed evidence effects.
+На любом history/provider call FloodWait MUST сохранить cursor v2, перевести run в `retry_wait_flood` до exact `until`, затем продолжить тот же run/source с прежним `T`. FloodWait и process crash не создают terminal truth, terminal metrics, presented result или suppress membership. Atomic page commit и resume MUST исключать duplicate counters/evidence. Crash recovery продолжает тот же cursor; новый run не создаётся.
 
-### SRC-049 — Acquisition coverage пяти услуг (D-068)
+### SRC-049 — Immutable acquisition profile v3/v7 (D-070)
 
-Keyword profile seed/post queries MUST покрывать все service profiles `websites|telegram_bots|integrations_api|automation_parsers|ecommerce`. Directory queries MUST ориентироваться на клиентские сообщества (роль клиента + тип сообщества), не на конкурентные «разработка сайтов» directory hits. Public posts Premium/Stars boundary: `premium_required` и `quota_exhausted` сообщаются правдиво; `allow_paid_stars=None`; Premium MUST NOT считаться успехом поиска.
+Clean DB seed `ecommerce-development-ru` MUST быть immutable version `3`. Для operator upgrade migration разрешена только observed current version `6` → immutable version `7`; другое значение блокирует activation. Post queries version 3/7 ровно: `нужен сайт`, `ищу разработчика сайта`, `кто сделает сайт`, `нужен лендинг`, `нужен telegram бот`, `разработать telegram бота`, `нужен бот для заказов`, `нужна интеграция api`, `интеграция сайта crm`, `интеграция с 1с`, `нужен парсер`, `автоматизировать заказы`, `нужна автоматизация`, `нужен интернет-магазин`, `доработать интернет-магазин`, `интеграция ozon`, `интеграция wildberries`, `нужен магазин на сайте`.
+
+Primary directory queries ровно: `чат предпринимателей`, `сообщество предпринимателей`, `владельцы бизнеса`, `основатели стартапов`, `владельцы интернет-магазинов`, `чат селлеров`, `рестораторы чат`, `владельцы салонов чат`, `онлайн-школы чат`, `малый бизнес чат`.
+
+Replacement queries ровно: `предприниматели москва`, `предприниматели спб`, `предприниматели казань`, `предприниматели екатеринбург`, `предприниматели краснодар`, `малый бизнес сообщество`, `владельцы кафе чат`, `владельцы ресторанов чат`, `владельцы салонов красоты чат`, `онлайн школы сообщество`, `частные клиники чат`, `турбизнес чат`, `риелторы предприниматели чат`, `производители чат`, `локальный бизнес чат`. Runtime-generated variants/grammar запрещены. Directory candidates с provider/developer/service-offer tokens отбрасываются до deep quota с explainable reason. Public posts Premium/Stars outcomes различаются; `allow_paid_stars=None` неизменен.
 
 ### SRC-030 — Retention keyword artifacts
 
@@ -356,7 +367,7 @@ Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063 / D-069): `
 
 ### SRC-038 — pool_exhausted terminal reason codes
 
-When replacement cannot fill presented quota, run MUST set `pool_exhausted=true` and `pool_exhausted_reason` from closed enum: `provider_empty`, `budget_cap_reached`, `quota_skipped_remaining`, `flood_wait_deferred`, `cancel_requested`, `no_unseen_after_suppress`.
+Only proven exhaustion of all allowed free replacement paths sets `pool_exhausted=true`, with closed reason `provider_empty|no_unseen_after_suppress`. Reaching deep cap `25`, history run cap `7500`, another bounded acquisition budget or `quota_skipped_remaining` while provider paths may remain sets `pool_exhausted=false`, `gate_status=inconclusive` and `run_termination_reason=deep_candidate_cap|history_run_cap|acquisition_budget_cap|quota_skipped_remaining`. `FloodWait` is resumable and sets neither exhaustion nor terminal reason. Explicit cancel uses `run_termination_reason=cancelled` plus SRC-046 inconclusive outcomes and MUST NOT set pool exhaustion.
 
 ### SRC-039 — Acquisition / qualification / presentation stages
 
@@ -398,7 +409,7 @@ Directory-only opportunities (no message/member/activity evidence) MUST NOT rece
 
 ### SRC-044 — Neutral noise sampling
 
-Deep verification noise sample MUST include up to `20` messages in a `30`-day window that are neutral (not only exact-query hits), same caps as SRC-024.
+Deep verification MUST classify all fetched unique non-empty messages, not only query hits. UI evidence sample сохраняет не более `20` neutral/hard-excluded excerpts from `[T-30d,T]`; cursor/snapshot сохраняют полный `hard_excluded_count` after dedupe для SRC-025. Те же caps и frozen `T`, что SRC-024.
 
 ### SRC-045 — Profile semantics enforcement
 
@@ -507,7 +518,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-049 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-050 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -529,15 +540,15 @@ MVP включает SRC-001—SRC-049 полностью. Исключены se
 | `AT-SRC-014` | SRC-014 | Выполнить все допустимые переходы | История точна и immutable |
 | `AT-SRC-015` | SRC-015 | Дважды запустить одинаковые seeds | Source не дублируется и state не меняется |
 | `AT-SRC-016` | SRC-016 | Завершить mixed-outcome run | Все счётчики равны fixture |
-| `AT-SRC-017` | SRC-017 | Создать/загрузить seed `ecommerce-development-ru` | Profile active; version `1` с утверждёнными queries |
-| `AT-SRC-018` | SRC-018 | Изменить queries профиля после run | Создана version `2`; version `1` неизменна и referenced run сохраняет v1 |
+| `AT-SRC-017` | SRC-017 | Создать clean DB seed `ecommerce-development-ru` | Profile active; immutable version `3` с exact SRC-049 catalogs |
+| `AT-SRC-018` | SRC-018 | Изменить любую primary/replacement query после run | Создана следующая version; referenced version неизменна; cross-list duplicate отклонён |
 | `AT-SRC-019` | SRC-019 | Запустить keyword run вручную при отсутствии active run | Созданы run+queries+Job; UI redirect на run |
 | `AT-SRC-020` | SRC-020 | Free quota есть / Stars required / Premium required | Free search выполнен; paid/Premium → `quota_skipped`; `allow_paid_stars is None` |
 | `AT-SRC-021` | SRC-021 | Завершить keyword run с hits | Нет `TelegramMessage`/Lead/outbox/checkpoint изменений |
 | `AT-SRC-022` | SRC-022 | Один Telegram ID найден двумя queries | Один snapshot; ≥2 evidence rows |
-| `AT-SRC-023` | SRC-023 | Канал с публичной linked discussion | Отдельный opportunity с `linked_parent_telegram_id`; join не вызван |
-| `AT-SRC-024` | SRC-024 | History scan fixture: 7 distinct in 14d; older excluded; caps | Quality at 7; messages older than 14d excluded; source cap 1500→inconclusive; run cap 7500→inconclusive; phrase-only fake path not required |
-| `AT-SRC-025` | SRC-025 | Фикстура qualified/weeks/ecommerce/recency/noise | Score и band совпадают с формулой; `quality_score` источника не изменён |
+| `AT-SRC-023` | SRC-023 | Direct megagroup; unseen/suppressed channel parents; linked group wrong type/suppressed/valid | Verification получает только unsuppressed public megagroup; parent не получает snapshot; join не вызван |
+| `AT-SRC-024` | SRC-024 | Fixed-clock history crosses 7/14/30d, all 100/10/20/3/3 boundaries, unknown-author replay and caps | Counters use immutable T; unknown counts nonempty 30d after identity+hash dedupe; all thresholds required; caps incomplete→inconclusive |
+| `AT-SRC-025` | SRC-025 | Boundary fixtures for every component, recency range and noise | Exact integer score/band/sort match; ecommerce has no bonus; `quality_score` source unchanged |
 | `AT-SRC-026` | SRC-026 | Promote нового и существующего snapshot | Candidate создан один раз / linked; monitoring не стартовал |
 | `AT-SRC-027` | SRC-027 | Повтор start при active run и повтор promote | Conflict / идемпотентный promote без дубля |
 | `AT-SRC-028` | SRC-028 | Cancel во время running | `cancelling`→`cancelled`; сетевые вызовы прекращены после текущей page |
@@ -556,12 +567,12 @@ MVP включает SRC-001—SRC-049 полностью. Исключены se
 | `AT-SRC-041` | SRC-041 | Present quality/near/rejected peer; next run finds same peer | No evidence/snapshot/deep for peer; `presented_suppressed` ≥ 1; survives restart + snapshot retention; alias/canonical merge does not bypass |
 | `AT-SRC-042` | SRC-042 | Private invite and depth-3 public link | Private skipped; depth>2 not resolved; depth stays `2`, caps `100`/`25` |
 | `AT-SRC-043` | SRC-043 | Directory-only peer without message evidence | Band `weak`, reason `directory_only_no_evidence` |
-| `AT-SRC-044` | SRC-044 | Deep sample includes non-query hits | History classify-all; bounded noise samples persisted; caps 1500/14d |
+| `AT-SRC-044` | SRC-044 | Deep sample includes query/non-query/hard-excluded duplicates | All unique messages classified; ≤20 samples; exact 30d hard-excluded count persisted |
 | `AT-SRC-045` | SRC-045 | Profile with `required_service_profiles` + exclusion | Eligibility/score reflect profile; exclusion reason explainable |
-| `AT-SRC-046` | SRC-046 | 6 distinct vs 7; incomplete/cap vs completed 0 | 6→near; 7→quality; cap→inconclusive; completed 0→rejected |
-| `AT-SRC-047` | SRC-047 | 4 quality sources vs 5×7 distinct | gate fail / gate pass |
-| `AT-SRC-048` | SRC-048 | FloodWait mid history page | Cursor persisted; resume same source; no duplicate evidence |
-| `AT-SRC-049` | SRC-049 | Profile covers 5 services; Premium vs Stars quota | All services present in seed queries; premium_required≠quota_exhausted; Stars=0 |
+| `AT-SRC-046` | SRC-046 | Complete/incomplete scans over full threshold matrix | Exact quality/near/inconclusive/rejected and ordered closed reasons |
+| `AT-SRC-047` | SRC-047 | Zero/one quality plus provider exhaustion, deep cap 25, acquisition/history caps, quota, cancel, failed and source-inconclusive paths | Complete ordered table gives exact pass/fail/inconclusive; any stop before proven pool exhaustion is inconclusive |
+| `AT-SRC-048` | SRC-048 | FloodWait/process restart crosses time boundaries | Same T/cursor/source; byte-equivalent outcome; no pre-terminal metric/presentation/suppress |
+| `AT-SRC-049` | SRC-049 | Clean seed; operator 6→7; wrong version; exact query catalogs | v3/v7 exact and immutable; wrong operator version blocks; no generated variants; Stars=0 |
 | `AT-SRC-050` | SRC-050 | Presentation creates ledger row; purge snapshots | Presented suppress membership remains; registry/dismiss/presented reasons distinguishable |
 
 ## 14. Принятые записи decision log
@@ -577,6 +588,6 @@ MVP включает SRC-001—SRC-049 полностью. Исключены se
 - `D-061`: provisional identity + peer merge (SRC-033/034).
 - `D-062`: suppress ledger + `ReconsiderDismissSuppress` (SRC-035/036).
 - `D-063`: acquisition≠qualification, novelty, pool_exhausted (SRC-037..041).
-- `D-068`: working-client-search quality gate, history verification, truth_status, FloodWait resume (SRC-024 amended, SRC-046..049).
+- `D-070`: ActiveClientChat v1 supersedes D-068 qualification/score/truth/run gate; frozen time, human authors, deterministic resume and live owner evidence (SRC-023..025, SRC-044, SRC-046..049).
 - `D-069`: durable presented-source suppress supersedes 24h cooldown; free replacement acquisition after mass suppress (SRC-041/050, SRC-040).
 - `D-067`: opportunity bands stay `promising|review|weak`; plan `strong|moderate` aliases only.

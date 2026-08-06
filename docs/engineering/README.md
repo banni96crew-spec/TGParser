@@ -4,6 +4,7 @@
 
 ## Навигация
 
+- [Карта репозитория для LLM-агентов](REPOSITORY_MAP.md) — задача → владелец → требования → код → проверки; навигация без дублирования product PRD.
 - [LLM Assurance Model](LLM_ASSURANCE_MODEL.md) — versioned owner contract, требования `GOV-001..GOV-013` и acceptance tests `AT-GOV-001..AT-GOV-013`.
 - [Change Evidence](CHANGE_EVIDENCE.md) — правила evidence claims и разделение local/CI evidence.
 - [LLM Quality Recovery](LLM_QUALITY_RECOVERY.md) — восстановление после нарушения governance contract.

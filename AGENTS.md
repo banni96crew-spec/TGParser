@@ -6,6 +6,8 @@
 
 Engineering-governance для качества работы LLM-агентов вынесен в [docs/engineering/README.md](docs/engineering/README.md). Его owner contract регулирует только процесс изменения репозитория, не входит в product PRD/`TRACEABILITY.md`, не разрешает AI/LLM в product runtime и не расширяет допустимый scope задачи. Feature flags и shadow/preventive matrix — в [.cursor/hooks/policy-manifest.json](.cursor/hooks/policy-manifest.json). Локальные evidence claims проверяются независимо (`tools/quality/verify-local-claim.mjs`) и важнее самоотчёта `### Compliance`. Authoritative CI / required merge blocked until [GIT_HOSTING_PREREQUISITE.md](docs/engineering/GIT_HOSTING_PREREQUISITE.md) (`AT-GOV-009`).
 
+Подробная [карта репозитория для LLM-агентов](docs/engineering/REPOSITORY_MAP.md) связывает задачу с нормативным владельцем, фактическим кодом и релевантными проверками. Она является только навигацией и не заменяет product PRD, decision log или shared contracts.
+
 ## Обязательный порядок чтения
 
 1. `docs/prd/README.md`.

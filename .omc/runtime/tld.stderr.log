@@ -1,0 +1,118 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [uvicorn.error] Started server process [17348]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:56653 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56653 - "GET /static/css/app.css HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:56655 - "GET /static/vendor/htmx-2.0.10.min.js HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:56674 - "GET /static/fonts/IBMPlexSans-Medium.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:56674 - "GET /static/fonts/IBMPlexMono-Regular.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:56675 - "GET /static/fonts/IBMPlexSans-Regular.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:56675 - "GET /favicon.ico HTTP/1.1" 404
+INFO  [uvicorn.access] 127.0.0.1:56722 - "GET /sources HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56727 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56727 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/9 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/9/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/9/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/9/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/10 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/10/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/10/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/11 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56730 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56802 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56809 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56809 - "GET /discovery/results/39 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/11 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/11/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/12 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/12/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/13 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56883 - "GET /discovery/results/48 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56929 - "GET /discovery/runs/13 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56929 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56929 - "GET /discovery/results/47 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/13 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/13/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/14 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57088 - "GET /discovery/results/81 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57238 - "POST /discovery/results/81/dismiss HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:57238 - "GET /discovery/results/81 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57241 - "GET /discovery/runs/14 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57241 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57241 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57241 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57241 - "GET /discovery/results/52 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57284 - "GET /discovery/runs/14 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57284 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57284 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57284 - "GET /discovery/results/83 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/runs/14/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/runs/15 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/runs/15/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/runs/15/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57328 - "GET /discovery/results/85 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57386 - "POST /discovery/results/85/promote HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:57386 - "GET /discovery/results/85 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57386 - "GET /discovery/runs/15 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57386 - "GET /discovery/runs/15/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57386 - "GET /discovery/results/88 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery/runs/15 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery/runs/15/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery/runs/15/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery/runs/16 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57417 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57425 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57425 - "GET /discovery/results/109 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57487 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57487 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57487 - "GET /discovery/results/91 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57504 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57504 - "GET /discovery/results/92 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57509 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:57509 - "GET /discovery/runs/16/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes

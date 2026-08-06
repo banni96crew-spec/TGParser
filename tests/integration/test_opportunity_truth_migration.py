@@ -128,6 +128,8 @@ def test_operator_db_copy_rehearsal_to_004(tmp_path: Path) -> None:
         pytest.skip("operator DB not present")
 
     live_before = current_revision(OPERATOR_DB)
+    if live_before not in {PREV_REVISION, HEAD_REVISION}:
+        pytest.skip(f"operator DB is newer than migration 004: {live_before}")
     copy_path = tmp_path / "operator_copy_app.sqlite3"
     # WAL-safe copy via SQLite backup API (never opens live for write).
     src = sqlite3.connect(f"file:{OPERATOR_DB}?mode=ro", uri=True)

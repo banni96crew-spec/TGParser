@@ -118,6 +118,13 @@ EXPECTED_ROUTES = (
     ("Route", "/openapi.json", ("GET", "HEAD"), "openapi", ""),
     ("APIRoute", "/health/live", ("GET",), "health_live", ""),
     ("APIRoute", "/health/ready", ("GET",), "health_ready", ""),
+    (
+        "APIRoute",
+        "/metrics/discovery/active-chat",
+        ("GET",),
+        "active_chat_metrics",
+        "",
+    ),
     ("APIRoute", "/", ("GET",), "home", "HTMLResponse"),
     ("APIRoute", "/inbox/fragment", ("GET",), "inbox_fragment", "HTMLResponse"),
     ("APIRoute", "/leads/{lead_id}", ("GET",), "lead_detail", "HTMLResponse"),

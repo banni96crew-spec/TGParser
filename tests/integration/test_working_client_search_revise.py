@@ -469,7 +469,10 @@ async def test_noise_filled_quota_still_persists_later_qualified(db_env) -> None
                 .scalars()
                 .all()
             )
-            assert len(q_ev) >= 7
+            # D-070 retains one qualified proof per distinct request author;
+            # three independent authors are sufficient and leave global capacity.
+            assert len(q_ev) == 3
+            assert len({row.author_key for row in q_ev}) == 3
             # Rule IDs persisted
             assert any(
                 json.loads(getattr(e, "matched_rule_ids_json", "[]") or "[]") for e in q_ev

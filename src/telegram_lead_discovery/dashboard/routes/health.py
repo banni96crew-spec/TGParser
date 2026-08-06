@@ -6,12 +6,17 @@ from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from telegram_lead_discovery.dashboard.view_helpers import _template
+from telegram_lead_discovery.observability.active_chat_metrics import (
+    active_chat_terminal_metric_samples,
+    terminal_metrics_payload,
+)
 from telegram_lead_discovery.observability.health import get_health_registry
 from telegram_lead_discovery.observability.loops import (
     NAMED_RUNTIME_LOOPS,
     ensure_named_loop_components,
     named_loop_views,
 )
+from telegram_lead_discovery.storage.db import session_scope
 
 
 def create_health_api_router() -> APIRouter:
@@ -27,6 +32,12 @@ def create_health_api_router() -> APIRouter:
         payload = registry.ready_payload()
         code = 200 if payload["status"] == "ready" else 503
         return JSONResponse(payload, status_code=code)
+
+    @router.get("/metrics/discovery/active-chat")
+    async def active_chat_metrics() -> dict[str, object]:
+        async with session_scope() as session:
+            samples = await active_chat_terminal_metric_samples(session)
+        return terminal_metrics_payload(samples)
 
     return router
 

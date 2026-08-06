@@ -22,7 +22,7 @@ from telegram_lead_discovery.storage.migrate import (
     upgrade_head,
 )
 
-HEAD_REVISION = "005_presented_keyword_suppress"
+HEAD_REVISION = "006_active_client_chat_v1"
 PREV_REVISION = "002_keyword_source_discovery"
 
 

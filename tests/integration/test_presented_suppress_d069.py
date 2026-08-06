@@ -70,6 +70,7 @@ async def _make_profile(session, *, name: str, directory_queries: list[str] | No
         name=name,
         post_queries=["нужен сайт"],
         directory_queries=directory_queries or ["чат предпринимателей"],
+        replacement_directory_queries=list(SEED_DIRECTORY_REPLACEMENT_QUERIES),
         source_scope="groups",
     )
 

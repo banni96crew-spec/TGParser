@@ -38,16 +38,38 @@
       · scanned <span class="mono">{{ result.verification_scanned_count or 0 }}</span>
       · stop <span class="mono">{{ result.verification_stop_reason or "—" }}</span>
     </li>
+    <li>Версия квалификации:
+      <span class="mono">{{ result.qualification_version }}</span>
+      {% if result.is_legacy %}<span class="faint">(историческая запись)</span>{% endif %}
+    </li>
     <li>Review: {{ result.review_state }}</li>
     <li>Version: <span class="mono">{{ result.version }}</span></li>
     <li>Lifecycle: <span class="mono">{{ result.lifecycle_state }}</span></li>
     <li>Sampling: {{ result.sampling_label }}</li>
-    <li>Evidence counts:
-      qualified=<span class="mono">{{ result.evidence_counts.qualified }}</span>,
-      excluded=<span class="mono">{{ result.evidence_counts.excluded }}</span>,
-      sample=<span class="mono">{{ result.evidence_counts.sample }}</span>,
-      weeks=<span class="mono">{{ result.evidence_counts.active_weeks }}</span>,
-      ecom=<span class="mono">{{ result.evidence_counts.ecommerce_qualified }}</span>
+    <li>Активность за 14 дней:
+      сообщений <span class="mono">{{ result.activity_message_count }}/100</span>,
+      UTC-дней <span class="mono">{{ result.activity_active_day_count }}/10</span>,
+      авторов <span class="mono">{{ result.activity_distinct_author_count }}/20</span>
+    </li>
+    <li>Клиентский спрос за 30 дней:
+      запросов <span class="mono">{{ result.client_request_count }}/3</span>,
+      авторов <span class="mono">{{ result.client_request_author_count }}/3</span>
+    </li>
+    <li>Последний клиентский запрос:
+      <span class="mono">{{ result.latest_client_request_at or "—" }}</span>
+      <span class="faint">(порог свежести: 7 дней)</span>
+    </li>
+    <li>Hard exclusions:
+      <span class="mono">{{ result.hard_excluded_count }}</span>
+      · сообщений с неизвестным типом автора:
+      <span class="mono">{{ result.unknown_author_message_count }}</span>
+    </li>
+    <li>Причины квалификации:
+      {% if result.qualification_reasons %}
+        <span class="mono">{{ result.qualification_reasons|join(" → ") }}</span>
+      {% else %}
+        —
+      {% endif %}
     </li>
     {% if result.linked_parent_telegram_id %}
     <li>Linked parent: <span class="mono">{{ result.linked_parent_telegram_id }}</span></li>
@@ -100,7 +122,7 @@
     {% endfor %}
   </ul>
 
-  <h2 class="section-title">Evidence (до 7+ для quality)</h2>
+  <h2 class="section-title">Доказательства клиентского спроса</h2>
   {% if evidence_message %}
   <p class="retention-message">{{ evidence_message }}</p>
   {% elif evidence_items %}

@@ -20,6 +20,7 @@ from telegram_lead_discovery.dashboard.discovery.http_helpers import (
 from telegram_lead_discovery.dashboard.discovery.queries import (
     _apply_band_filter,
     _lifecycle_map,
+    _order_opportunities,
 )
 from telegram_lead_discovery.dashboard.discovery.view_models import (
     _normalize_band_filter,
@@ -100,17 +101,14 @@ def create_run_router(templates: Jinja2Templates) -> APIRouter:
             band_mode = _normalize_band_filter(None)
             result_rows = (
                 await session.execute(
-                    _apply_band_filter(
-                        select(SourceOpportunitySnapshot).where(
-                            SourceOpportunitySnapshot.run_id == run_id
-                        ),
-                        band_mode,
-                    )
-                    .order_by(
-                        SourceOpportunitySnapshot.score.desc(),
-                        SourceOpportunitySnapshot.id.asc(),
-                    )
-                    .limit(100)
+                    _order_opportunities(
+                        _apply_band_filter(
+                            select(SourceOpportunitySnapshot).where(
+                                SourceOpportunitySnapshot.run_id == run_id
+                            ),
+                            band_mode,
+                        )
+                    ).limit(100)
                 )
             ).scalars().all()
             lifecycle_map = await _lifecycle_map(session, result_rows)
@@ -213,10 +211,7 @@ def create_run_router(templates: Jinja2Templates) -> APIRouter:
                 stmt = stmt.where(
                     SourceOpportunitySnapshot.review_state == review_state
                 )
-            stmt = stmt.order_by(
-                SourceOpportunitySnapshot.score.desc(),
-                SourceOpportunitySnapshot.id.asc(),
-            ).limit(100)
+            stmt = _order_opportunities(stmt).limit(100)
             rows = (await session.execute(stmt)).scalars().all()
             lifecycle_map = await _lifecycle_map(session, rows)
             results = [

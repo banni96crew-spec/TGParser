@@ -493,16 +493,9 @@ async def process_next_envelope(
 async def _load_pinned_catalog(session: AsyncSession) -> LoadedRuleCatalog:
     """Load active ruleset by explicit version id + checksum (no SEED fallback)."""
     loader = get_default_loader()
-    pin = loader.peek_active_pin()
-    if pin is not None:
-        cached = loader.peek_cache(pin[1])
-        if cached is not None and cached.rule_set_version_id == pin[0]:
-            return cached
-        return await loader.load(
-            session,
-            rule_set_version_id=pin[0],
-            checksum=pin[1],
-        )
+    # The process may switch databases in restore/recovery and test isolation.
+    # A process-global active pin contains a DB-local primary key, so it cannot
+    # prove that the referenced row exists in the current session's database.
     ruleset = await get_active_ruleset(session)
     if ruleset is None:
         raise RuleSetInvalidError("missing_rule_set_version")

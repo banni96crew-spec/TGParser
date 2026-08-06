@@ -48,7 +48,10 @@
           <th>Band</th>
           <th>Title</th>
           <th>Username</th>
-          <th>Qualified</th>
+          <th>Активность (сообщ./дни/авторы)</th>
+          <th>Спрос (запросы/авторы)</th>
+          <th>Последний запрос</th>
+          <th>Квалификация</th>
           <th>Scanned</th>
           <th>Stop</th>
           <th>Review</th>
@@ -63,7 +66,21 @@
           <td><span class="band-chip band-{{ item.band }}">{{ item.band }}</span></td>
           <td><a href="/discovery/results/{{ item.id }}">{{ item.title }}</a></td>
           <td class="mono">{{ item.username or "—" }}</td>
-          <td class="mono">{{ item.qualified_count }}</td>
+          <td class="mono">
+            {{ item.activity_message_count }}/100 ·
+            {{ item.activity_active_day_count }}/10 ·
+            {{ item.activity_distinct_author_count }}/20
+          </td>
+          <td class="mono">
+            {{ item.client_request_count }}/3 · {{ item.client_request_author_count }}/3
+          </td>
+          <td class="mono">{{ item.latest_client_request_at or "—" }}</td>
+          <td>
+            <span class="mono">{{ item.qualification_version }}</span>
+            {% if item.qualification_reasons %}
+            <br><span class="faint mono">{{ item.qualification_reasons|join(", ") }}</span>
+            {% endif %}
+          </td>
           <td class="mono">{{ item.verification_scanned_count }}</td>
           <td class="mono">{{ item.verification_stop_reason or "—" }}</td>
           <td>{{ item.review_state }}</td>
@@ -89,8 +106,8 @@
   {% set near = results|selectattr("truth_status", "equalto", "near")|list %}
   {% set inconclusive = results|selectattr("truth_status", "equalto", "inconclusive")|list %}
   {% set rejected = results|selectattr("truth_status", "equalto", "rejected")|list %}
-  {{ render_bucket("Качественные (≥7 / 14д)", quality) }}
-  {{ render_bucket("Почти (1–6)", near) }}
+  {{ render_bucket("Качественные", quality) }}
+  {{ render_bucket("Почти", near) }}
   {{ render_bucket("Недоказанные", inconclusive) }}
   {{ render_bucket("Отклонённые", rejected) }}
 {% else %}

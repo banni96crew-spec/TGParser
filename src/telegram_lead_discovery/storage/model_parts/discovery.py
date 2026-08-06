@@ -12,7 +12,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    event,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -43,8 +42,12 @@ class DiscoveryRun(Base):
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     counters_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     reference_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    gate_status: Mapped[str] = mapped_column(String(16), nullable=False, default="inconclusive")
-    pool_exhausted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    gate_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="inconclusive", server_default="inconclusive"
+    )
+    pool_exhausted: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     pool_exhausted_reason: Mapped[str | None] = mapped_column(String(64))
     run_termination_reason: Mapped[str | None] = mapped_column(String(64))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -104,7 +107,9 @@ class SourceDiscoveryEvidence(Base):
     source_title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     source_type: Mapped[str] = mapped_column(String(32), nullable=False)
     author_key: Mapped[str | None] = mapped_column(String(64))
-    author_kind: Mapped[str] = mapped_column(String(16), nullable=False, default="unknown")
+    author_kind: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="unknown", server_default="unknown"
+    )
     telegram_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     permalink: Mapped[str | None] = mapped_column(String(512))
@@ -156,19 +161,37 @@ class SourceOpportunitySnapshot(Base):
     truth_status: Mapped[str] = mapped_column(String(16), nullable=False, default="inconclusive")
     verification_scanned_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     verification_stop_reason: Mapped[str | None] = mapped_column(String(64))
-    activity_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    activity_active_day_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    activity_distinct_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    client_request_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    client_request_author_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    hard_excluded_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    unknown_author_message_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    latest_client_request_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    sample_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    qualification_version: Mapped[str] = mapped_column(
-        String(32), nullable=False, default="legacy"
+    activity_message_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
     )
-    qualification_reasons_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    activity_active_day_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    activity_distinct_author_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    client_request_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    client_request_author_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    hard_excluded_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    unknown_author_message_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    latest_client_request_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sample_truncated: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    qualification_version: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="legacy", server_default="legacy"
+    )
+    qualification_reasons_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]", server_default="[]"
+    )
 
     score_components_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     discovery_channels_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")

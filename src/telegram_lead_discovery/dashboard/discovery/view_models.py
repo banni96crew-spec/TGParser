@@ -1,8 +1,9 @@
 """View-model construction for keyword-discovery pages."""
 
+# ruff: noqa: E402,F401 -- compatibility facade re-exports decomposed helpers
+
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from fastapi import Request
@@ -14,7 +15,6 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
 from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
-    SourceDiscoveryEvidence,
     SourceOpportunitySnapshot,
 )
 
@@ -142,15 +142,21 @@ def _run_view(
         "seed_hits": int(prog.get("seed_hits", 0)),
         "verified_sources": int(prog.get("verified_sources", 0)),
         "flood_wait_until": prog.get("flood_wait_until"),
-        "gate_status": counters.get("gate_status", "fail"),
+        "gate_status": counters.get("gate_status", "inconclusive"),
         "quality_sources": int(counters.get("quality_sources") or 0),
         "near_sources": int(counters.get("near_sources") or 0),
         "inconclusive_sources": int(counters.get("inconclusive_sources") or 0),
         "rejected_sources": int(counters.get("rejected_sources") or 0),
-        "globally_distinct_client_requests": int(
-            counters.get("globally_distinct_client_requests") or 0
+        "countable_client_requests": int(
+            counters.get("countable_client_requests") or 0
         ),
+        "distinct_client_authors": int(counters.get("distinct_client_authors") or 0),
         "history_scanned_total": int(counters.get("history_scanned_total") or 0),
+        "hit_run_cap": bool(int(counters.get("hit_run_cap") or 0)),
+        "run_termination_reason": (
+            run.run_termination_reason or counters.get("run_termination_reason")
+        ),
+        "current_source": prog.get("current_source"),
         "is_active": bool(prog.get("is_active", run.state in _ACTIVE_RUN_STATES)),
         "is_loading": run.state in _ACTIVE_RUN_STATES,
         "is_degraded": run.state == "retry_wait_flood" or bool(run.last_error_code),
@@ -180,10 +186,33 @@ async def _run_progress(session: Any, run: DiscoveryRun) -> dict[str, Any]:
         if q.query_kind == "source_verification" and q.state == "succeeded"
     )
     flood_until = None
+    current_source = None
     for q in queries:
         if q.state == "retry_wait" and q.available_at is not None:
             if flood_until is None or q.available_at > flood_until:
                 flood_until = q.available_at
+        if (
+            current_source is None
+            and q.query_kind == "source_verification"
+            and q.state in {"running", "retry_wait"}
+            and q.source_telegram_id is not None
+        ):
+            snapshot = (
+                await session.execute(
+                    select(SourceOpportunitySnapshot).where(
+                        SourceOpportunitySnapshot.run_id == run.id,
+                        SourceOpportunitySnapshot.source_telegram_id
+                        == q.source_telegram_id,
+                    )
+                )
+            ).scalar_one_or_none()
+            current_source = (
+                snapshot.title
+                if snapshot is not None and snapshot.title
+                else snapshot.username
+                if snapshot is not None and snapshot.username
+                else f"Telegram source {q.source_telegram_id}"
+            )
     return {
         "queries_total": total,
         "queries_done": done,
@@ -191,6 +220,7 @@ async def _run_progress(session: Any, run: DiscoveryRun) -> dict[str, Any]:
         "seed_hits": seed_hits,
         "verified_sources": verified,
         "flood_wait_until": flood_until,
+        "current_source": current_source,
         "is_active": run.state in _ACTIVE_RUN_STATES,
     }
 

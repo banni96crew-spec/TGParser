@@ -13,10 +13,10 @@ from telegram_lead_discovery.storage.models import (
 _DEFAULT_BANDS = frozenset({"review", "promising"})
 _BAND_FILTER_DEFAULT = "all"
 _TRUTH_LABELS = {
-    "quality": "Качественные",
-    "near": "Почти (1–6)",
-    "inconclusive": "Недоказанные",
-    "rejected": "Отклонённые",
+    "quality": "Качественный",
+    "near": "Почти",
+    "inconclusive": "Недоказанный",
+    "rejected": "Отклонённый",
 }
 
 
@@ -32,9 +32,11 @@ def _loads_json_obj(raw: str | None, default: Any) -> Any:
 def _rank_reason(view: dict[str, Any]) -> str:
     components = view.get("score_components") or {}
     ordered = (
-        "qualified",
-        "regularity",
-        "ecommerce",
+        "requests",
+        "client_authors",
+        "activity_messages",
+        "activity_days",
+        "activity_authors",
         "recency",
         "noise_penalty",
     )
@@ -93,6 +95,12 @@ def _opportunity_view(
     lifecycle = lifecycle_state or ("existing" if existing else "new")
     noise = components.get("noise_penalty", row.excluded_count)
     truth_status = getattr(row, "truth_status", None) or "inconclusive"
+    qualification_version = getattr(row, "qualification_version", None) or "legacy"
+    qualification_reasons = _loads_json_obj(
+        getattr(row, "qualification_reasons_json", None), []
+    )
+    if not isinstance(qualification_reasons, list):
+        qualification_reasons = []
     identity = {
         "telegram_id": row.source_telegram_id,
         "username": row.username,
@@ -131,6 +139,23 @@ def _opportunity_view(
         "truth_label": _truth_label(truth_status),
         "verification_scanned_count": getattr(row, "verification_scanned_count", 0) or 0,
         "verification_stop_reason": getattr(row, "verification_stop_reason", None),
+        "activity_message_count": getattr(row, "activity_message_count", 0) or 0,
+        "activity_active_day_count": getattr(row, "activity_active_day_count", 0) or 0,
+        "activity_distinct_author_count": (
+            getattr(row, "activity_distinct_author_count", 0) or 0
+        ),
+        "client_request_count": getattr(row, "client_request_count", 0) or 0,
+        "client_request_author_count": (
+            getattr(row, "client_request_author_count", 0) or 0
+        ),
+        "hard_excluded_count": getattr(row, "hard_excluded_count", 0) or 0,
+        "unknown_author_message_count": (
+            getattr(row, "unknown_author_message_count", 0) or 0
+        ),
+        "latest_client_request_at": getattr(row, "latest_client_request_at", None),
+        "qualification_version": qualification_version,
+        "is_legacy": qualification_version == "legacy",
+        "qualification_reasons": [str(item) for item in qualification_reasons],
         "score_components": components,
         "eligibility_reasons": _eligibility_reasons(components),
         "discovery_channels": channels,

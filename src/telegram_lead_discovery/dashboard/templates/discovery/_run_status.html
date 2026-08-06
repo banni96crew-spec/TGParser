@@ -31,10 +31,17 @@
     <li>FloodWait until:
       <span class="mono">{% if run.flood_wait_until %}{{ run.flood_wait_until }}{% else %}—{% endif %}</span>
     </li>
+    <li>Текущий источник:
+      <span class="mono">{{ run.current_source or "—" }}</span>
+    </li>
     <li>Gate:
       <span class="mono">{% if run.gate_status == "pass" %}pass{% elif run.gate_status == "inconclusive" %}inconclusive (недоказанный){% else %}{{ run.gate_status or "fail" }}{% endif %}</span>
-      · quality <span class="mono">{{ run.quality_sources }}/5</span>
-      · global distinct <span class="mono">{{ run.globally_distinct_client_requests }}/35</span>
+      · quality <span class="mono">{{ run.quality_sources }}/1</span>
+      {% if run.is_active %}<span class="faint">(предварительно)</span>{% endif %}
+    </li>
+    <li>Клиентский спрос:
+      запросов <span class="mono">{{ run.countable_client_requests }}</span>,
+      авторов <span class="mono">{{ run.distinct_client_authors }}</span>
     </li>
     <li>Truth buckets:
       quality=<span class="mono">{{ run.quality_sources }}</span>,
@@ -44,6 +51,10 @@
     </li>
     <li>History scanned / run cap:
       <span class="mono">{{ run.history_scanned_total }}</span> / 7500
+      {% if run.hit_run_cap %}<span class="status-warn"> · лимит достигнут</span>{% endif %}
+    </li>
+    <li>Причина завершения:
+      <span class="mono">{{ run.run_termination_reason or "—" }}</span>
     </li>
     <li>Ошибка: <span class="mono">{{ run.last_error_code or "—" }}</span></li>
   </ul>

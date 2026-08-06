@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 
 from telegram_lead_discovery.dashboard.discovery.view_models import _loads_json_obj
 from telegram_lead_discovery.storage.dismissed_suppress import get_suppress_by_canonical_key
@@ -22,6 +22,23 @@ def _apply_band_filter(stmt: Any, band_mode: str) -> Any:
     if band_mode == "promising" or band_mode == "review" or band_mode == "weak":
         return stmt.where(SourceOpportunitySnapshot.band == band_mode)
     return stmt
+
+
+def _order_opportunities(stmt: Any) -> Any:
+    """Apply the frozen ActiveClientChat truth/score ordering."""
+    truth_rank = case(
+        (SourceOpportunitySnapshot.truth_status == "quality", 0),
+        (SourceOpportunitySnapshot.truth_status == "near", 1),
+        (SourceOpportunitySnapshot.truth_status == "inconclusive", 2),
+        (SourceOpportunitySnapshot.truth_status == "rejected", 3),
+        else_=4,
+    )
+    return stmt.order_by(
+        truth_rank.asc(),
+        SourceOpportunitySnapshot.score.desc(),
+        SourceOpportunitySnapshot.latest_client_request_at.desc().nulls_last(),
+        SourceOpportunitySnapshot.source_telegram_id.asc(),
+    )
 
 
 async def _lifecycle_map(

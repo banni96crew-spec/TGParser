@@ -116,3 +116,1015 @@ WARNI [telethon.network.connection.connection] Server closed the connection: 0 b
 WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
 WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
 WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: ConnectionAbortedError: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+INFO  [uvicorn.access] 127.0.0.1:61303 - "GET /health/live HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61446 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61446 - "GET /static/css/app.css HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61447 - "GET /static/vendor/htmx-2.0.10.min.js HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61446 - "GET /static/fonts/IBMPlexSans-Medium.woff2 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61447 - "GET /static/fonts/IBMPlexSans-Regular.woff2 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61448 - "GET /static/fonts/IBMPlexMono-Regular.woff2 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61448 - "GET /favicon.ico HTTP/1.1" 404
+INFO  [uvicorn.access] 127.0.0.1:61488 - "POST /discovery/runs HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:61488 - "GET /discovery/runs/17 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61488 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61488 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61503 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61532 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61535 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61550 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61550 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61550 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61550 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61550 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61587 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61587 - "GET /discovery/profiles/1 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61625 - "GET /discovery/runs/17 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61625 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61642 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61645 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61652 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61678 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61689 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61690 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61697 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61700 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61734 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61753 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61766 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61793 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61810 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61815 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61826 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61831 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61836 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61839 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61840 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61851 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61854 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61859 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61864 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61869 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61876 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61877 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61884 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61887 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61892 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61901 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61906 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61907 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61914 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61921 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61922 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61925 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61932 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61938 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61946 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61957 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61964 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61967 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61968 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61975 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61988 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61991 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61998 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62001 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62008 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62015 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62061 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62147 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+INFO  [uvicorn.access] 127.0.0.1:49805 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49874 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49927 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49984 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50095 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50199 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50271 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50314 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50375 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50463 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50568 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50616 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50700 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 1236] Подключение к сети было разорвано локальной системой
+INFO  [uvicorn.access] 127.0.0.1:50846 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+INFO  [uvicorn.access] 127.0.0.1:50984 - "GET /discovery/runs/17/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 10054] Удаленный хост принудительно разорвал существующее подключение
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 4 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 5 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 6 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 4 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 5 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 6 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 4 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 5 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 6 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 4 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 5 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 6 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 1 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 2 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 3 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 4 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 5 at connecting failed: TimeoutError: 
+WARNI [telethon.network.mtprotosender] Attempt 6 at connecting failed: TimeoutError: 
+ERROR [telethon.network.mtprotosender] Automatic reconnection failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'ConnectionError'>: Connection to Telegram failed 5 time(s)
+INFO  [uvicorn.access] 127.0.0.1:58545 - "GET /favicon.ico HTTP/1.1" 404

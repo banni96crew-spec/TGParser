@@ -1,0 +1,98 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotostate] Server resent the older message 7671635492506996737, ignoring
+INFO  [uvicorn.error] Started server process [18348]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO  [uvicorn.access] 127.0.0.1:63517 - "GET /health/live HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63809 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63809 - "GET /static/css/app.css HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:63810 - "GET /static/vendor/htmx-2.0.10.min.js HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:63810 - "GET /favicon.ico HTTP/1.1" 404
+INFO  [uvicorn.access] 127.0.0.1:63872 - "POST /discovery/runs HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:63872 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63872 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63882 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63881 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63939 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64025 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64256 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64256 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63940 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64404 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64403 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64571 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64600 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64617 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64638 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64680 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64689 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64704 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64713 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64742 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64753 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64819 - "GET /discovery/runs/18 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64819 - "GET /static/css/app.css HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:64862 - "GET /static/vendor/htmx-2.0.10.min.js HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:64888 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64888 - "GET /static/fonts/IBMPlexSans-Regular.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:64889 - "GET /static/fonts/IBMPlexSans-Medium.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:64890 - "GET /static/fonts/IBMPlexMono-Regular.woff2 HTTP/1.1" 304
+INFO  [uvicorn.access] 127.0.0.1:64890 - "GET /favicon.ico HTTP/1.1" 404
+INFO  [uvicorn.access] 127.0.0.1:64965 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65060 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64993 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65108 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65125 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65158 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65193 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65213 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65213 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65282 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65283 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65294 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:65301 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65301 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65456 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65456 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65456 - "GET /discovery/results/128 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65456 - "GET /discovery/runs/18/results-fragment HTTP/1.1" 200

@@ -68,6 +68,7 @@ from telegram_lead_discovery.source_discovery.ranking import (
     PreliminarySourceCandidate,
     build_preliminary_candidates,
     preliminary_rank_key,
+    select_preliminary_candidates,
     select_sources_for_deep_verification,
 )
 
@@ -122,6 +123,7 @@ __all__ = [
     "resolve_dismissed_identity",
     "resolve_presented_identity",
     "resolve_source_identity",
+    "select_preliminary_candidates",
     "select_sources_for_deep_verification",
     "sort_opportunity_snapshots",
 ]

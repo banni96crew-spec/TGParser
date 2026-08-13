@@ -64,6 +64,7 @@ KEYWORD_EXPORTS = (
     "resolve_dismissed_identity",
     "resolve_presented_identity",
     "resolve_source_identity",
+    "select_preliminary_candidates",
     "select_sources_for_deep_verification",
     "sort_opportunity_snapshots",
 )

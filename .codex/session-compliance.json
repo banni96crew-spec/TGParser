@@ -1,0 +1,16 @@
+{
+  "session_id": null,
+  "sequential_thinking_done": true,
+  "preflight_announced": false,
+  "complex": null,
+  "skills_declared": [],
+  "subagents_declared": [],
+  "subagents_used": [
+    "qa-tester",
+    "executor",
+    "codebase-explorer"
+  ],
+  "sequential_thinking_calls": 18,
+  "last_sequential_thinking_at": "2026-07-27T21:28:32.576Z",
+  "started_at": "2026-07-27T18:14:34.062Z"
+}

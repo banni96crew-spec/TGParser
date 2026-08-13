@@ -1,0 +1,28 @@
+---
+description: Apply repository LLM-assurance governance when governance artifacts are changed.
+globs: "{.cursor/**/*,docs/engineering/**/*,schemas/quality/**/*,tools/quality/**/*,tests/quality/**/*,tests/fixtures/quality/**/*}"
+alwaysApply: false
+---
+
+# LLM assurance и agent preflight
+
+При конфликте действует универсальное ядро, явный scope пользователя и
+owner contract этой области.
+
+- `docs/engineering/LLM_ASSURANCE_MODEL.md` — source of truth для `GOV-*`,
+  task profiles, capability boundaries и допустимых evidence claims.
+- Выбери ровно один task profile: `read_only`, `documentation_mutation` или
+  `product_mutation`. Не расширяй разрешённые пути и действия самостоятельно.
+- Product hard invariants и product PRD выше engineering-governance. Этот контур
+  не разрешает product code, Git/hosting или user-level configuration.
+- Local evidence не является CI evidence. Не выводи `pass` из declaration,
+  отсутствия ошибки, self-report или результата другого evidence scope.
+- Не изменяй hooks, policy manifest, schemas, tests или enforcement tooling,
+  если они не входят в явный scope задачи.
+- Если Cursor hooks требуют preflight, sequential-thinking или compliance output,
+  следуй `.cursor/skills/agent-preflight/SKILL.md` и не подменяй tool evidence
+  текстовым самоотчётом.
+- Не включай preventive enforcement и не заявляй CI/merge protection без
+  подтверждённых prerequisites и отдельного owner approval.
+- При неизвестном tool contract, повреждённом journal или неподтверждённой
+  capability сохраняй fail-closed/unsupported semantics owner contract.

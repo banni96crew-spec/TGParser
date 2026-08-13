@@ -1,0 +1,83 @@
+{
+  "claim": "local governance checkpoint",
+  "claim_id": "claim-783076f27c9a1a79",
+  "conversation_id": "llm-quality-enforcement-2026-07-16",
+  "evidence_refs": [
+    "tools/quality/validate-governance.mjs",
+    "tools/quality/validate-prd.py"
+  ],
+  "evidence_scope": "local",
+  "observed_files": [
+    {
+      "path": ".cursor/hooks/lib/quality-hook-adapter.mjs",
+      "sha256": "aabc40090520a3007f667ce42a27a8aaa7a8c2f435de4e9105bc8a06077eefb0"
+    },
+    {
+      "path": ".cursor/hooks/policy-manifest.json",
+      "sha256": "38791c7c544c12f6eaa7fa78f80d6321a985c05cd7c31ebf409b267c9f2579e3"
+    },
+    {
+      "path": ".cursor/skills/INVENTORY.md",
+      "sha256": "917991ad008e5740cf1d1e66d895e75fbeac9f38719be593789e131ddafcad01"
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "9978fb254313aae1963a23487cc1663441267148b0a9c5e1fa93a1e06d8cebe5"
+    },
+    {
+      "path": "docs/engineering/CHANGE_EVIDENCE.md",
+      "sha256": "284f5ff2ba69381982c43e76a0fd325c4a9770992e5b470dbf47e29a2a8b2b8e"
+    },
+    {
+      "path": "docs/engineering/CI_OBSERVE_ONLY.md",
+      "sha256": "6857e69240539e395ef84f24ae95d3ccee8af6b049a19b346303401cf6ff8a75"
+    },
+    {
+      "path": "docs/engineering/GIT_HOSTING_PREREQUISITE.md",
+      "sha256": "64378956d3db81e61c914ee7c23ab095cf7910e78832864e86b8c2f0665a77eb"
+    },
+    {
+      "path": "docs/engineering/LLM_ASSURANCE_MODEL.md",
+      "sha256": "4f17d120c02a56d092755541f9ac3710bd930db957a556f5472daa45f25c26e8"
+    },
+    {
+      "path": "docs/engineering/LLM_QUALITY_RECOVERY.md",
+      "sha256": "d90ddb49f5732e04029e507615a8f8029e447fd4e8e69eb3c47606f32a77abc3"
+    },
+    {
+      "path": "docs/engineering/WINDOWS_SMOKE_CHECKLIST.md",
+      "sha256": "317fc47dbe2e618fa09b2fa9e67d1596968a5333ada7ca2e076ce22dcc5d12d3"
+    },
+    {
+      "path": "tools/quality/ci-recompute.mjs",
+      "sha256": "10a2de2c3581370a9dd2ac2ddb9bf58d015dc2dd844d76defcf41dd546f2cce6"
+    },
+    {
+      "path": "tools/quality/lib/evidence-checkpoint.mjs",
+      "sha256": "16539b99f2e96fdeaea9cb669efbb10c95983a174e2b78aaa1fceafd31d39582"
+    },
+    {
+      "path": "tools/quality/run-quality-suite.mjs",
+      "sha256": "80a5d02fa10ac8dd4c02fb335a813c0d46e98f5679115c629c532e79e573f653"
+    },
+    {
+      "path": "tools/quality/verify-local-claim.mjs",
+      "sha256": "a23d2798a8d26887c0cedbbcca3dc3c92a33dfb420f46b45033927d7d55659ac"
+    }
+  ],
+  "recorded_at": "2026-07-16T12:50:22.061Z",
+  "requested_checks": [
+    "secret-scope-scan",
+    "validate-governance",
+    "validate-prd"
+  ],
+  "requirement_ids": [
+    "GOV-007",
+    "GOV-008"
+  ],
+  "schema_version": "1.1.0",
+  "status": "pass",
+  "task_id": "local-checkpoint",
+  "trust": "untrusted_local_claim",
+  "unresolved_failures": []
+}

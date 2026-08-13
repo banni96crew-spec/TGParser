@@ -1,0 +1,21 @@
+---
+description: Apply local dashboard UI boundaries to templates, styles and dashboard code.
+globs: "src/telegram_lead_discovery/dashboard/**/*"
+alwaysApply: false
+---
+
+# Dashboard и UI
+
+При конфликте действуют UI owner PRD, security contract и универсальное ядро.
+
+- UI остаётся RU-first локальным интерфейсом на FastAPI, Jinja2, HTMX и обычном CSS;
+  не создавай отдельный SPA или frontend build.
+- Dashboard вызывает application ports владельцев модулей и отображает safe views;
+  routes не выполняют direct SQL, detection, scoring или Telegram collection.
+- Списки используют bounded pagination и не загружают весь набор записей.
+- Пользовательский текст экранируется для HTML и Telegram formatting;
+  state-changing routes соблюдают CSRF и same-origin requirements.
+- Не добавляй auth, network exposure, telemetry, remote assets или cloud calls без
+  изменения owner PRD и security boundary.
+- Не меняй визуальный язык, fonts, theme и assets вне явного UI scope задачи.
+- Vendored assets не редактируются вручную; источник и лицензия сохраняются рядом.

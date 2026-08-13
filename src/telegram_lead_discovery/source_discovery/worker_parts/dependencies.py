@@ -94,6 +94,7 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     resolve_dismissed_identity,
     resolve_presented_identity,
     resolve_source_identity,
+    select_preliminary_candidates,
 )
 from telegram_lead_discovery.source_discovery.profile_service import version_as_normalized
 from telegram_lead_discovery.source_discovery.active_chat import (

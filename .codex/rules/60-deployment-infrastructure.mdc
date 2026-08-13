@@ -1,0 +1,22 @@
+---
+description: Apply Windows local-runtime, deployment and recovery boundaries.
+globs: "{deploy/**/*,src/telegram_lead_discovery/infrastructure/**/*.py,src/telegram_lead_discovery/main.py}"
+alwaysApply: false
+---
+
+# Deployment и infrastructure
+
+При конфликте действуют deployment/infrastructure owner PRD и security contract.
+
+- Целевая среда — Windows 10/11 x64, локальный single-process runtime и
+  утверждённый механизм Task Scheduler.
+- Не добавляй отдельные backend processes, distributed workers, containers,
+  cloud deployment или network-accessible режим без нового owner decision.
+- Startup, shutdown и recovery сохраняют bounded behavior, process ownership,
+  health visibility и документированные timeouts.
+- Backup/restore не включает Telegram session и secrets; destructive recovery
+  требует явного scope, предварительной проверки target и плана отката.
+- Platform-specific scripts должны быть non-interactive, повторяемыми и безопасными
+  для повторного запуска. Не хардкодь machine-specific absolute paths.
+- Не заявляй Windows compatibility по unit tests: указывай фактически выполненный
+  smoke/runtime scope.

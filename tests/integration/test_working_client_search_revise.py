@@ -19,6 +19,7 @@ from telegram_lead_discovery.infrastructure.paths import database_path, ensure_d
 from telegram_lead_discovery.source_discovery.keyword_run import start_keyword_discovery_run
 from telegram_lead_discovery.source_discovery.keyword_search import (
     MAX_NOISE_EVIDENCE_PER_RUN,
+    build_preliminary_candidates,
 )
 from telegram_lead_discovery.source_discovery.profile_service import (
     create_keyword_discovery_profile,
@@ -30,6 +31,11 @@ from telegram_lead_discovery.source_discovery.worker import (
     _load_history_cursor,
     claim_and_process_keyword_job,
     process_keyword_discovery_job,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.history_state import (
+    _persist_directory_pool,
+    _restore_directory_pool,
+    _verification_started,
 )
 from telegram_lead_discovery.storage.db import dispose_engine, init_engine, session_scope
 from telegram_lead_discovery.storage.migrate import upgrade_head
@@ -111,6 +117,86 @@ async def test_finished_verification_excludes_running_and_retry_wait(db_env) -> 
         assert done == {1, 2, 5}
         assert "running" not in _TERMINAL_VERIFICATION_STATES
         assert "retry_wait" not in _TERMINAL_VERIFICATION_STATES
+
+
+@pytest.mark.asyncio
+async def test_cycle1_verification_started_uses_persisted_query_existence(db_env) -> None:
+    async with session_scope() as session:
+        profile = await _make_profile(session, name="cycle1-verification-started")
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+
+        class _Ctx:
+            pass
+
+        ctx = _Ctx()
+        ctx.session = session
+        ctx.run = started.run
+        assert await _verification_started(ctx) is False  # type: ignore[arg-type]
+        session.add(
+            DiscoveryRunQuery(
+                run_id=started.run.id,
+                ordinal=999,
+                query_kind="source_verification",
+                query_text=HISTORY_SCAN_QUERY_TEXT,
+                source_telegram_id=777,
+                state="queued",
+            )
+        )
+        await session.flush()
+        assert await _verification_started(ctx) is True  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_cycle1_directory_and_linked_provenance_survives_restart(db_env) -> None:
+    async with session_scope() as session:
+        profile = await _make_profile(session, name="cycle1-provenance")
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+        directory = make_source(
+            telegram_id=701,
+            username="directory_701",
+            source_type="megagroup",
+            title="Directory source",
+        )
+        linked = make_source(
+            telegram_id=702,
+            username="linked_702",
+            source_type="megagroup",
+            title="Linked source",
+        )
+
+        class _Ctx:
+            pass
+
+        ctx = _Ctx()
+        ctx.session = session
+        ctx.run = started.run
+        ctx.directory_sources = [directory, linked]
+        ctx.linked_parents = {702: 70}
+        await _persist_directory_pool(ctx)  # type: ignore[arg-type]
+        first = json.loads(started.run.cursor_json or "{}")
+        await _persist_directory_pool(ctx)  # type: ignore[arg-type]
+        second = json.loads(started.run.cursor_json or "{}")
+        assert second["directory_pool"] == first["directory_pool"]
+
+        ctx.directory_sources = []
+        await _restore_directory_pool(ctx)  # type: ignore[arg-type]
+        restored = json.loads(started.run.cursor_json or "{}")
+        directory_ids = {
+            int(item["telegram_id"])
+            for item in restored["directory_pool"]
+            if item.get("is_directory_candidate", True)
+        }
+        candidates = build_preliminary_candidates(
+            [],
+            directory_sources=ctx.directory_sources,
+            directory_candidate_ids=directory_ids,
+            linked_parent_ids=ctx.linked_parents,
+        )
+        by_id = {item.telegram_id: item for item in candidates}
+        assert by_id[701].is_directory_candidate is True
+        assert by_id[701].is_linked_discussion is False
+        assert by_id[702].is_directory_candidate is False
+        assert by_id[702].is_linked_discussion is True
 
 
 @pytest.mark.asyncio

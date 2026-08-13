@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# ruff: noqa: F403,F405,I001
+
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 
 from telegram_lead_discovery.source_discovery.worker_parts.core import (
@@ -25,6 +27,18 @@ async def _verification_scanned_by_source(ctx: _WorkerContext) -> dict[int, int]
         cursor = _load_history_cursor(row)
         out[int(row.source_telegram_id)] = int(cursor.get("scanned", 0) or 0)
     return out
+
+
+async def _verification_started(ctx: _WorkerContext) -> bool:
+    result = await ctx.session.execute(
+        select(DiscoveryRunQuery.id)
+        .where(
+            DiscoveryRunQuery.run_id == ctx.run.id,
+            DiscoveryRunQuery.query_kind == "source_verification",
+        )
+        .limit(1)
+    )
+    return result.scalar_one_or_none() is not None
 
 
 async def _get_or_create_verification_query(
@@ -85,12 +99,20 @@ async def _persist_directory_pool(ctx: _WorkerContext) -> None:
         if isinstance(item, dict) and "telegram_id" in item:
             seen[int(item["telegram_id"])] = item
     for snap in ctx.directory_sources:
+        existing = seen.get(snap.telegram_id, {})
         seen[snap.telegram_id] = {
+            **existing,
             "telegram_id": snap.telegram_id,
             "username": snap.username,
             "title": snap.title,
             "source_type": snap.source_type,
             "public_url": snap.public_url,
+            "is_directory_candidate": bool(
+                existing.get(
+                    "is_directory_candidate",
+                    snap.telegram_id not in ctx.linked_parents,
+                )
+            ),
         }
     payload["directory_pool"] = list(seen.values())
     ctx.run.cursor_json = json.dumps(payload, ensure_ascii=False)

@@ -1,0 +1,24 @@
+---
+description: Apply normative product-documentation ownership and traceability rules.
+globs: "docs/prd/**/*.md"
+alwaysApply: false
+---
+
+# Product PRD и traceability
+
+При конфликте применяй иерархию из корневого `AGENTS.md`.
+
+- Документация пишется по-русски; identifiers, entities, DTO и protocol names —
+  по-английски.
+- Полное определение requirement, entity, enum, event или DTO существует у одного
+  владельца. Потребители ссылаются на него и не копируют нормативное определение.
+- MVP requirement имеет уникальный ID и `MUST`; исключённая функция имеет
+  `DEFERRED` и точную границу.
+- Не оставляй TBD, открытые вопросы и неопределённые limits, intervals, thresholds,
+  retries или states.
+- Изменение контракта одновременно обновляет owner PRD, shared contract,
+  непосредственных consumers и `docs/prd/TRACEABILITY.md`.
+- Acceptance test имеет уникальный `AT-<PREFIX>-NNN` и проверяет конкретное
+  requirement того же владельца.
+- Перед завершением проверь уникальность IDs, локальные ссылки, integration events
+  и traceability. Не изменяй product code в PRD-only задаче.

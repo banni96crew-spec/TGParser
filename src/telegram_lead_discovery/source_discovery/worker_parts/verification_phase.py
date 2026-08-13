@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+# ruff: noqa: F403,F405,I001
+
+from typing import Any
+
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 
 from telegram_lead_discovery.source_discovery.worker_parts.cap_finalize import (
@@ -23,6 +27,7 @@ from telegram_lead_discovery.source_discovery.worker_parts.history_state import 
     _load_run_cursor,
     _restore_directory_pool,
     _run_history_scanned,
+    _verification_started,
     _verification_scanned_by_source,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.persistence import (
@@ -54,15 +59,61 @@ from telegram_lead_discovery.source_discovery.worker_parts.verification_resume i
 )
 
 
+def _candidate_pool_item(candidate: Any) -> dict[str, Any]:
+    freshest = candidate.freshest_seed_evidence_at
+    return {
+        "telegram_id": candidate.telegram_id,
+        "username": candidate.username,
+        "title": candidate.title,
+        "source_type": candidate.source_type,
+        "public_url": f"https://t.me/{candidate.username}",
+        "selection_phase": candidate.selection_phase,
+        "selected_lane": candidate.selected_lane,
+        "selection_reason": candidate.selection_reason,
+        "preliminary_position": candidate.preliminary_position,
+        "strong_buyer_intent_count": candidate.strong_buyer_intent_count,
+        "qualified_evidence_count": candidate.qualified_evidence_count,
+        "qualified_distinct_query_count": candidate.qualified_distinct_query_count,
+        "potential_need_count": candidate.potential_need_count,
+        "raw_evidence_count": candidate.raw_evidence_count,
+        "hard_excluded_count": candidate.hard_excluded_count,
+        "freshest_seed_evidence_at": freshest.isoformat() if freshest else None,
+        "is_search_candidate": candidate.is_search_candidate,
+        "is_directory_candidate": candidate.is_directory_candidate,
+        "is_linked_discussion": candidate.is_linked_discussion,
+        "linked_parent_telegram_id": candidate.linked_parent_telegram_id,
+    }
+
+
+def _should_rebuild_acquisition_pool(
+    existing_pool: Any, *, verification_started: bool
+) -> bool:
+    return not (
+        verification_started and isinstance(existing_pool, list) and bool(existing_pool)
+    )
+
+
 async def _phase_deep_verification(ctx: _WorkerContext) -> None:
     ctx.run.phase = "G"
     await ctx.session.flush()
     await _restore_directory_pool(ctx)
+    run_cursor = _load_run_cursor(ctx)
+    directory_candidate_ids = {
+        int(item["telegram_id"])
+        for item in run_cursor.get("directory_pool") or []
+        if isinstance(item, dict)
+        and "telegram_id" in item
+        and bool(item.get("is_directory_candidate", True))
+    }
     evidence_rows = await _load_evidence_records(ctx)
     candidates = build_preliminary_candidates(
         evidence_rows,
         directory_sources=ctx.directory_sources,
-        directory_query_texts=ctx.directory_queries,
+        directory_query_texts=(
+            *ctx.directory_queries,
+            *ctx.replacement_directory_queries,
+        ),
+        directory_candidate_ids=directory_candidate_ids,
         linked_parent_ids=ctx.linked_parents,
         registry=ctx.registry,
         dismissed=ctx.dismissed,
@@ -103,101 +154,85 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         | set(ctx.presented_suppressed_ids)
     )
 
-    run_cursor = _load_run_cursor(ctx)
     existing_pool = run_cursor.get("acquisition_pool")
-    if isinstance(existing_pool, list) and existing_pool:
-        pool = [
-            item for item in existing_pool
-            if isinstance(item, dict) and item.get("source_type") == "megagroup"
-        ]
+    verification_started = await _verification_started(ctx)
+    if not _should_rebuild_acquisition_pool(
+        existing_pool, verification_started=verification_started
+    ):
+        # Once any source_verification query exists, persisted membership, order,
+        # and diagnostics are immutable for this run.
+        pool = [item for item in existing_pool if isinstance(item, dict)]
+        suppressed_ids.difference_update(
+            int(item["telegram_id"]) for item in pool if "telegram_id" in item
+        )
         cursor = int(run_cursor.get("acquisition_pool_cursor") or 0)
     else:
-        ranked = [
-            candidate for candidate in sorted(candidates, key=preliminary_rank_key)
-            if candidate.source_type == "megagroup" and candidate.username
+        eligible_candidates = [
+            candidate for candidate in candidates if candidate.telegram_id not in suppressed_ids
         ]
-        pages = [
-            tuple(c.telegram_id for c in ranked[:40]),
-            tuple(c.telegram_id for c in ranked[40:80]),
-            tuple(c.telegram_id for c in ranked[80:]),
-        ]
-        acquisition = acquire_with_replacement(
-            [p for p in pages if p],
-            is_suppressed=lambda tid, _s=suppressed_ids: tid in _s,
-            target_quota=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
+        selected = select_preliminary_candidates(
+            eligible_candidates,
+            capacity=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
         )
-        replacement_fetches = acquisition.replacement_fetches_total
-        pool_ids = [
-            tid for tid in acquisition.qualified_candidate_ids if tid not in suppressed_ids
-        ][: RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES]
-        meta_by_id = {
-            c.telegram_id: {
-                "telegram_id": c.telegram_id,
-                "username": c.username,
-                "title": c.title,
-                "source_type": c.source_type,
-                "public_url": (f"https://t.me/{c.username}" if c.username else None),
-            }
-            for c in ranked
-        }
-        for snap in ctx.directory_sources:
-            meta_by_id.setdefault(
-                snap.telegram_id,
-                {
-                    "telegram_id": snap.telegram_id,
-                    "username": snap.username,
-                    "title": snap.title,
-                    "source_type": snap.source_type,
-                    "public_url": snap.public_url,
-                },
-            )
+        replacement_fetches = 0
 
         # SRC-040 / D-069: after mass suppress, expand free directory queries
         # before declaring no_unseen_after_suppress.
-        if len(pool_ids) < RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES:
-            extra_fetches, expanded_ids = await _expand_directory_replacement(
+        if len(selected) < RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES:
+            extra_fetches, _expanded_ids = await _expand_directory_replacement(
                 ctx,
                 suppressed_ids=suppressed_ids,
                 target_quota=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
-                already_qualified=len(pool_ids),
+                already_qualified=len(selected),
             )
             replacement_fetches += extra_fetches
-            for tid in expanded_ids:
-                snap = next(
-                    (s for s in ctx.directory_sources if s.telegram_id == tid),
-                    None,
-                )
-                if snap is not None and snap.source_type == "megagroup" and snap.username:
-                    if tid not in pool_ids and tid not in suppressed_ids:
-                        pool_ids.append(tid)
-                    meta_by_id.setdefault(
-                        tid,
-                        {
-                            "telegram_id": snap.telegram_id,
-                            "username": snap.username,
-                            "title": snap.title,
-                            "source_type": snap.source_type,
-                            "public_url": snap.public_url,
-                        },
-                    )
-            # Refresh suppress sets after expansion may have noted more.
+            # Replacement rejoins the full builder -> selector path; no direct
+            # pool append and no synthetic buyer metrics.
             suppressed_ids = (
                 set(ctx.registry_suppressed_ids)
                 | set(ctx.dismissed_suppressed_ids)
                 | set(ctx.presented_suppressed_ids)
             )
-            pool_ids = [tid for tid in pool_ids if tid not in suppressed_ids]
+            refreshed_cursor = _load_run_cursor(ctx)
+            directory_candidate_ids = {
+                int(item["telegram_id"])
+                for item in refreshed_cursor.get("directory_pool") or []
+                if isinstance(item, dict)
+                and "telegram_id" in item
+                and bool(item.get("is_directory_candidate", True))
+            }
+            candidates = build_preliminary_candidates(
+                await _load_evidence_records(ctx),
+                directory_sources=ctx.directory_sources,
+                directory_query_texts=(
+                    *ctx.directory_queries,
+                    *ctx.replacement_directory_queries,
+                ),
+                directory_candidate_ids=directory_candidate_ids,
+                linked_parent_ids=ctx.linked_parents,
+                registry=ctx.registry,
+                dismissed=ctx.dismissed,
+                presented=ctx.presented,
+            )
+            selected = select_preliminary_candidates(
+                [
+                    candidate
+                    for candidate in candidates
+                    if candidate.telegram_id not in suppressed_ids
+                ],
+                capacity=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
+            )
 
         if replacement_fetches:
             await _bump_counter(ctx, "replacement_fetches_total", replacement_fetches)
 
-        pool = [meta_by_id[tid] for tid in pool_ids if tid in meta_by_id]
+        pool = [_candidate_pool_item(candidate) for candidate in selected]
         cursor = 0
         await _persist_acquisition_pool(ctx, pool=pool, pool_cursor=cursor)
         pool_exhausted, reason, termination_reason = await _classify_acquisition_stop(
             ctx,
             pool_size=len(pool),
-            acquired_total=max(acquisition.acquired_total, len(meta_by_id)),
+            acquired_total=len(candidates),
         )
         if pool_exhausted:
             if reason is None:
@@ -207,7 +242,7 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
                 counters,
                 pool_exhausted=True,
                 pool_exhausted_reason=reason,
-                acquired_total=max(acquisition.acquired_total, len(meta_by_id), len(pool)),
+                acquired_total=max(len(candidates), len(pool)),
                 suppressed_total=len(suppressed_ids),
                 replacement_fetches_total=replacement_fetches,
             )

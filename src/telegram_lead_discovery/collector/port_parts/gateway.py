@@ -6,6 +6,7 @@ from typing import Protocol
 from telegram_lead_discovery.collector.port_parts.graph import (
     GraphEdgeDTO,
     GraphSampleRequest,
+    GraphSampleResultDTO,
 )
 from telegram_lead_discovery.collector.port_parts.messages import (
     HistoryRequest,
@@ -34,6 +35,8 @@ class TelegramGateway(Protocol):
     async def disconnect(self) -> None: ...
 
     async def resolve_public_source(self, ref: PublicSourceRef) -> SourceSnapshot: ...
+
+    async def resolve_graph_source(self, ref: SourceRef) -> SourceSnapshot: ...
 
     async def validate_source(self, ref: PublicSourceRef | int) -> SourceSnapshot: ...
 
@@ -66,3 +69,7 @@ class TelegramGateway(Protocol):
     async def sample_public_graph_edges(
         self, request: GraphSampleRequest
     ) -> list[GraphEdgeDTO]: ...
+
+    async def sample_public_graph(
+        self, request: GraphSampleRequest
+    ) -> GraphSampleResultDTO: ...

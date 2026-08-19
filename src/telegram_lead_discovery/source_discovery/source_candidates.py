@@ -22,18 +22,22 @@ async def add_manual_candidate(
     *,
     username_or_url: str,
     gateway: TelegramGateway | None = None,
+    run: DiscoveryRun | None = None,
+    method: str = "manual",
 ) -> tuple[TelegramSource, DiscoveryRun]:
     username = normalize_username(username_or_url)
-    run = DiscoveryRun(
-        root_source_ids_json="[]",
-        max_depth=0,
-        expansion_cap=0,
-        candidate_cap=1,
-        state="running",
-        started_at=datetime.now(UTC),
-    )
-    session.add(run)
-    await session.flush()
+    owns_run = run is None
+    if run is None:
+        run = DiscoveryRun(
+            root_source_ids_json="[]",
+            max_depth=0,
+            expansion_cap=0,
+            candidate_cap=1,
+            state="running",
+            started_at=datetime.now(UTC),
+        )
+        session.add(run)
+        await session.flush()
 
     existing = await session.execute(
         select(TelegramSource).where(TelegramSource.username_normalized == username)
@@ -66,13 +70,14 @@ async def add_manual_candidate(
         session.add(source)
         await session.flush()
 
-    run.root_source_ids_json = f"[{source.id}]"
+    if owns_run:
+        run.root_source_ids_json = f"[{source.id}]"
     session.add(
         SourceDiscoveryEvent(
             event_id=str(uuid.uuid4()),
             run_id=run.id,
             source_id=source.id,
-            method="manual",
+            method=method,
             parent_source_id=None,
             raw_reference=username_or_url,
             normalized_reference=username,
@@ -80,8 +85,9 @@ async def add_manual_candidate(
             depth=0,
         )
     )
-    run.state = "succeeded"
-    run.finished_at = datetime.now(UTC)
+    if owns_run:
+        run.state = "succeeded"
+        run.finished_at = datetime.now(UTC)
     await session.flush()
     return source, run
 

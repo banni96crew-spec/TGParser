@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from telegram_lead_discovery.collector.port_parts.messages import TelegramMessageDTO
 from telegram_lead_discovery.collector.port_parts.sources import SourceRef, SourceSnapshot
-
 
 GraphEdgeType = Literal[
     "recommendation",
@@ -34,4 +34,13 @@ class GraphSampleRequest:
 
     schema_version: int
     source: SourceRef
-    message_limit: int = 50
+    message_limit: int = 100
+
+
+@dataclass(frozen=True, slots=True)
+class GraphSampleResultDTO:
+    """One raw history response with both graph edges and received posts."""
+
+    schema_version: int
+    edges: tuple[GraphEdgeDTO, ...]
+    messages: tuple[TelegramMessageDTO, ...]

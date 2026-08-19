@@ -21,6 +21,17 @@ from telegram_lead_discovery.storage.model_parts.base import Base, utcnow
 
 class DiscoveryRun(Base):
     __tablename__ = "discovery_runs"
+    __table_args__ = (
+        Index(
+            "uq_discovery_runs_one_active_telegram",
+            text("1"),
+            unique=True,
+            sqlite_where=text(
+                "run_type IN ('graph','keyword_scouting') AND "
+                "state IN ('queued','running','retry_wait_flood','cancelling')"
+            ),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_type: Mapped[str] = mapped_column(String(32), nullable=False, default="graph")

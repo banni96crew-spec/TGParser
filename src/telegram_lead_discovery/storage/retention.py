@@ -44,6 +44,8 @@ class RetentionPurgeResult:
     terminal_deliveries_deleted: int
     evidence_excerpts_cleared: int
     evidence_rows_deleted: int
+    graph_post_texts_cleared: int
+    graph_post_rows_deleted: int
     unpromoted_snapshots_deleted: int
     terminal_outcomes_deleted: int
     keyword_queries_deleted: int
@@ -120,6 +122,10 @@ from telegram_lead_discovery.storage.retention_discovery import (
     purge_keyword_discovery_queries, purge_terminal_keyword_runs,
     purge_terminal_discovery_outcomes, purge_unpromoted_opportunity_snapshots,
 )
+from telegram_lead_discovery.storage.retention_graph import (
+    clear_graph_post_texts,
+    purge_graph_post_rows,
+)
 
 
 async def run_retention_purge(
@@ -136,6 +142,8 @@ async def run_retention_purge(
     )
     excerpts_cleared = await clear_evidence_excerpts(session, now=clock)
     evidence_deleted = await purge_empty_evidence_rows(session, now=clock)
+    graph_texts_cleared = await clear_graph_post_texts(session, now=clock)
+    graph_rows_deleted = await purge_graph_post_rows(session, now=clock)
     snapshots_deleted = await purge_unpromoted_opportunity_snapshots(session, now=clock)
     outcomes_deleted = await purge_terminal_discovery_outcomes(session, now=clock)
     queries_deleted = await purge_keyword_discovery_queries(session, now=clock)
@@ -147,6 +155,8 @@ async def run_retention_purge(
         terminal_deliveries_deleted=deliveries_deleted,
         evidence_excerpts_cleared=excerpts_cleared,
         evidence_rows_deleted=evidence_deleted,
+        graph_post_texts_cleared=graph_texts_cleared,
+        graph_post_rows_deleted=graph_rows_deleted,
         unpromoted_snapshots_deleted=snapshots_deleted,
         terminal_outcomes_deleted=outcomes_deleted,
         keyword_queries_deleted=queries_deleted,

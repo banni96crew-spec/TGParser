@@ -192,6 +192,8 @@ Cleanup запускается ежедневно в `04:00` по timezone `Euro
 | Временные CSV files | 1 час | Files удаляются |
 | `SourceDiscoveryEvidence.excerpt` | 30 дней | Excerpt очищается |
 | Evidence rows без текста | 90 дней | Rows удаляются |
+| `GraphDiscoveryPost.message_text` | 30 дней | Полный текст очищается; ссылка и идентичность остаются |
+| `GraphDiscoveryPost` | 90 дней | Rows удаляются |
 | Unpromoted `SourceOpportunitySnapshot` | 90 дней | Rows удаляются |
 | Keyword `DiscoveryRunQuery` rows | 90 дней | Rows удаляются |
 | Terminal keyword `DiscoveryRun` | 90 дней | Rows удаляются |
@@ -265,6 +267,8 @@ Historical backfill invariant (Wave 02 migration semantics; code not in Wave 01)
 | STO-019 | Opportunity truth_status + evidence matched_rule_ids (D-068) | MUST | Migration after `003` adds `truth_status`, `verification_scanned_count`, `verification_stop_reason` on `source_opportunity_snapshots` and `matched_rule_ids_json` on `source_discovery_evidence` (default `[]`); rehearsal on copy DB |
 | STO-020 | Presented suppress ledger retention immunity + historical backfill (D-069) | MUST | Table `presented_keyword_sources` never purged by SRC-030/STO-016; every historical opportunity snapshot yields ≥1 presented-suppress row after migrate (idempotent); migration `005` semantics |
 | STO-021 | ActiveClientChat v1 schema and terminal outcome (D-070) | MUST | Migration `006` adds pseudonymous evidence author fields, frozen qualification counters including exact 30d deduped `unknown_author_message_count`, qualification/run termination reasons, cursor v2 support and immutable `discovery_terminal_outcomes` unique by `(run_id, source_canonical_key, terminal_outcome_version)`; terminal snapshot+outcome one transaction; legacy rows remain `legacy`; 90d retention and suppress immunity verified |
+| STO-022 | Graph request-control schema and mode exclusion (D-071) | MUST | Migration `007` adds nullable `telegram_sources.access_hash` and partial unique expression index on one active `graph|keyword_scouting` run; preflight with >1 active run raises `active_telegram_discovery_conflict:<ids>` before DDL; upgrade/downgrade and model parity verified |
+| STO-023 | Durable graph response storage (D-072) | MUST | Migration `008` creates `graph_discovery_posts` with unique run/source/message identity, source/provenance/request fields, full text/link and pseudonymous author constraints; stage receipt and rows commit before next Telegram request; text/rows purge at 30/90 days |
 
 ## 15. Observability
 
@@ -316,6 +320,8 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-018 | STO-018 | Cross-type jobs with expired lease and duplicate dedupe_key | Lease recovery to queued; no parallel duplicate jobs; unique outbox key holds |
 | AT-STO-019 | STO-019 | Apply migration 004 on empty DB and operator DB copy; DROP COLUMN simulate 003 with constraints kept | truth_status + matched_rule_ids_json present; head advances; integrity_check ok; live DB untouched |
 | AT-STO-021 | STO-021 | Upgrade empty/head005/operator-copy; crash before/after terminal commit; retry; retention; downgrade/restore | Head 006, checks/FKs/integrity ok; one immutable outcome per canonical peer; no duplicate after retry; legacy unchanged; outcome purged with run while suppress remains; restore matches source copy |
+| AT-STO-022 | STO-022 | Upgrade 006→007, downgrade, conflicting active rows, concurrent inserts | Column/index parity; exact preflight error with no DDL; DB rejects second active mode; terminal state releases index |
+| AT-STO-023 | STO-023 | Upgrade 007→008, insert/replay graph response, fault before next call, 30/90-day purge, downgrade | Schema/integrity valid; one row per message; committed response survives restart; text then row purged at boundaries |
 
 ## 18. DEFERRED
 

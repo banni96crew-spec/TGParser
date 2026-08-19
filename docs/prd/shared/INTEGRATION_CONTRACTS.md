@@ -19,6 +19,7 @@ class TelegramGateway(Protocol):
     async def connect(self) -> AccountSnapshot: ...
     async def disconnect(self) -> None: ...
     async def resolve_public_source(self, ref: PublicSourceRef) -> SourceSnapshot: ...
+    async def resolve_graph_source(self, ref: SourceRef) -> SourceSnapshot: ...
     async def validate_source(self, ref: PublicSourceRef | int) -> SourceSnapshot: ...
     async def get_recommendations(self, source: SourceRef, limit: int) -> list[SourceSnapshot]: ...
     async def iter_history(self, request: HistoryRequest) -> AsyncIterator[TelegramMessageDTO]: ...
@@ -30,6 +31,8 @@ class TelegramGateway(Protocol):
     async def search_public_posts(self, request: PublicPostSearchRequest) -> SearchPageDTO: ...
     async def search_source_messages(self, request: SourceMessageSearchRequest) -> SearchPageDTO: ...
     async def get_linked_discussion(self, source: SourceRef) -> SourceSnapshot | None: ...
+    async def sample_public_graph_edges(self, request: GraphSampleRequest) -> list[GraphEdgeDTO]: ...
+    async def sample_public_graph(self, request: GraphSampleRequest) -> GraphSampleResultDTO: ...
 ```
 
 Методы `iter_messages` и `register_live_handler` отсутствуют. Live-канал — только `iter_updates`.
@@ -62,6 +65,14 @@ Zero Stars invariant (D-050, D-051): adapter MUST всегда передава�
 - `schema_version=1`;
 - `username_or_url`;
 - private invite/import fields отсутствуют.
+
+Graph DTO (schema_version=`1`, D-071/D-072):
+
+- `SourceRef` and `SourceSnapshot` include nullable `access_hash`;
+- `GraphSampleRequest.message_limit=100`;
+- `GraphSampleResultDTO` contains edges and every `TelegramMessageDTO` returned by the same raw `GetHistoryRequest`; it MUST NOT perform per-message lookups;
+- `TelegramRequestController` is a neutral context-scoped port with `before_request` / `after_request`; default null means no control and preserves ordinary COL/search behavior;
+- control errors are `RequestBudgetExhausted`, `UnsupportedBatchRequest`, `NestedTelegramRequest` under base `RequestControlError` and MUST pass through adapter mapping unchanged.
 
 `TelegramPeerRef`
 
@@ -96,7 +107,7 @@ Gateway errors:
 
 | Error | Поведение consumer |
 |---|---|
-| `GatewayFloodWait(until)` | Job → `retry_wait` до точного `until` |
+| `GatewayFloodWait(until)` | Ordinary/keyword job → `retry_wait` до точного `until`; graph run → immediate terminal `failed/flood_wait` (D-071) |
 | `GatewayUnauthorized` | Account → `unauthorized`, collector останавливается |
 | `GatewayFrozen` | Account → `frozen`, collector останавливается |
 | `GatewaySourceInaccessible` | Source → `inaccessible` после повторной проверки |

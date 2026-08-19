@@ -8,14 +8,31 @@ from telegram_lead_discovery.collector.ports import (
     GatewayInvalidSearchQuery,
     GatewayPermanentError,
     GatewayPremiumRequired,
+    GatewaySearchQuotaExhausted,
     GatewaySearchUnavailable,
     GatewaySourceInaccessible,
     GatewayTransientError,
     GatewayUnauthorized,
+    RequestControlError,
 )
 
 
 def _raise_mapped(exc: BaseException) -> BaseException:
+    if isinstance(
+        exc,
+        RequestControlError
+        | GatewayFloodWait
+        | GatewayFrozen
+        | GatewayInvalidSearchQuery
+        | GatewayPermanentError
+        | GatewayPremiumRequired
+        | GatewaySearchQuotaExhausted
+        | GatewaySearchUnavailable
+        | GatewaySourceInaccessible
+        | GatewayTransientError
+        | GatewayUnauthorized,
+    ):
+        return exc
     mapped = _map_telethon_error(exc)
     if mapped is not None:
         return mapped
@@ -29,12 +46,20 @@ def _map_telethon_error(exc: BaseException) -> Exception | None:
     except ImportError:  # pragma: no cover
         return None
 
-    if isinstance(exc, te.FloodWaitError):
+    flood_types = tuple(
+        cls
+        for cls in (
+            getattr(te, "FloodWaitError", None),
+            getattr(te, "FloodPremiumWaitError", None),
+            getattr(te, "FloodTestPhoneWaitError", None),
+            getattr(te, "SlowModeWaitError", None),
+            getattr(te, "PeerFloodError", None),
+        )
+        if cls is not None
+    )
+    if flood_types and isinstance(exc, flood_types):
         seconds = int(getattr(exc, "seconds", 0) or 0)
-        return GatewayFloodWait(datetime.now(UTC) + timedelta(seconds=seconds))
-    if isinstance(exc, getattr(te, "FloodPremiumWaitError", ())):
-        seconds = int(getattr(exc, "seconds", 0) or 0)
-        return GatewayFloodWait(datetime.now(UTC) + timedelta(seconds=seconds))
+        return GatewayFloodWait(datetime.now(UTC) + timedelta(seconds=max(seconds, 1)))
 
     if isinstance(
         exc,
@@ -71,7 +96,7 @@ def _map_telethon_error(exc: BaseException) -> Exception | None:
         message = (getattr(exc, "message", "") or str(exc)).upper()
         if "PREMIUM" in message:
             return GatewayPremiumRequired(str(exc))
-        if "FLOOD" in message:
+        if "FLOOD" in message or "TOO MANY REQUESTS" in message:
             seconds = int(getattr(exc, "seconds", 0) or 0)
             return GatewayFloodWait(datetime.now(UTC) + timedelta(seconds=max(seconds, 1)))
         if getattr(exc, "code", None) in {400, 403}:

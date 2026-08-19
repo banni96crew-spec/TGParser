@@ -16,6 +16,7 @@ class SourceRef:
     source_id: int
     telegram_id: int | None = None
     username: str | None = None
+    access_hash: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,3 +50,4 @@ class SourceSnapshot:
     source_type: Literal["channel", "megagroup", "group"]
     public_url: str | None
     accessible: bool = True
+    access_hash: int | None = None

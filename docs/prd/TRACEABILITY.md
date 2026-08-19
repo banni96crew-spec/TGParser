@@ -10,18 +10,18 @@
 
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
-| Source Discovery | `SRC-001..050` | `AT-SRC-001..050` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider |
-| Telegram Collector | `COL-001..027` | `AT-COL-001..027` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O |
+| Source Discovery | `SRC-001..054` | `AT-SRC-001..054` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider; durable graph cursor/results |
+| Telegram Collector | `COL-001..029` | `AT-COL-001..029` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response |
 | Message Processing | `PROC-001..019` | `AT-PROC-001..019` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum |
 | Lead Detection | `DET-001..019` | `AT-DET-001..019` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
-| Lead Storage | `STO-001..021` | `AT-STO-001..021` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, job lease |
+| Lead Storage | `STO-001..023` | `AT-STO-001..023` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence migrations |
 | Lead Dashboard | `UI-001..027` | `AT-UI-001..027` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..015` | `AT-SET-001..015` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation и local-access suite |
 | Administration & Observability | `OBS-001..022` | `AT-OBS-001..022` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity and durable terminal metrics |
 | Security | `SEC-001..018` | `AT-SEC-001..018` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, pseudonymous scouting authors, injection suite |
-| Deployment & Infrastructure | `INF-001..022` | `AT-INF-001..022` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, named runtime loops, backup/restore suite |
+| Deployment & Infrastructure | `INF-001..023` | `AT-INF-001..023` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, named runtime loops, backup/restore suite, Telegram discovery execution lock |
 
 ## 3. Shared quality requirements
 
@@ -147,3 +147,21 @@ Release evidence включает:
 - New 1:1 module requirements: `COL-027` ↔ `AT-COL-027`; `DET-019` ↔ `AT-DET-019`; `STO-021` ↔ `AT-STO-021`; `UI-027` ↔ `AT-UI-027`; `OBS-022` ↔ `AT-OBS-022`; `SEC-018` ↔ `AT-SEC-018`.
 - `NFR-QLT-008` uses the shared quality acceptance/evidence mapping; `AT-NFR-QLT-008` does not exist.
 - Automated completion is insufficient: release requires one live quality public megagroup and explicit owner confirmation of three evidence messages. Until then status is not achieved.
+
+## 10. Graph request-control isolation (D-071)
+
+- Coverage ranges: `SRC-051..053`, `AT-SRC-051..053`, `COL-028..028`, `AT-COL-028..028`, `STO-022..022`, `AT-STO-022..022`, `INF-023..023`, `AT-INF-023..023`.
+- `SRC-051` ↔ `AT-SRC-051`: 6-second spacing, rolling 10/minute, 200/run, durable reservation, first graph Flood terminal.
+- `SRC-052` ↔ `AT-SRC-052`: graph cursor v2, stage reuse, current-node recovery and deterministic event idempotency.
+- `SRC-053` ↔ `AT-SRC-053`: one active Telegram discovery mode across graph and keyword.
+- `COL-028` ↔ `AT-COL-028`: context-only Telethon retry disabling, raw one-request graph operations, offline session cache and limit 100.
+- `STO-022` ↔ `AT-STO-022`: migration `007`, nullable `access_hash`, conflict preflight and partial unique active-run index.
+- `INF-023` ↔ `AT-INF-023`: shared runtime execution lock; keyword/global discovery cannot execute during graph.
+- D-071 is a narrow exception to COL-017 and the D-070 resumable FloodWait rule only for `DiscoveryRun.run_type=graph`; keyword/history behavior is unchanged.
+
+## 11. Durable graph results (D-072)
+
+- Coverage ranges: `SRC-054` ↔ `AT-SRC-054`; `COL-029` ↔ `AT-COL-029`; `STO-023` ↔ `AT-STO-023`.
+- `SRC-054`: graph post rows and cursor v3 stage receipt commit before the next Telegram call; saved stage never repeats the request.
+- `COL-029`: one raw history response returns edges plus every message field required for durable qualification, with no per-message lookup.
+- `STO-023`: migration `008`, unique post identity, provenance/request metadata, pseudonymous authors and 30/90-day retention.

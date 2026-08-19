@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import csv
 import io
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -13,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from telegram_lead_discovery.collector.ports import TelegramGateway
 from telegram_lead_discovery.source_discovery.normalization import InvalidUsernameError
 from telegram_lead_discovery.source_discovery.source_candidates import add_manual_candidate
-from telegram_lead_discovery.storage.models import DiscoveryRun, SourceDiscoveryEvent
+from telegram_lead_discovery.storage.models import DiscoveryRun
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,21 +59,11 @@ async def import_csv(
             break
         try:
             source, _ = await add_manual_candidate(
-                session, username_or_url=raw, gateway=gateway
-            )
-            # Re-link discovery event to this CSV run
-            session.add(
-                SourceDiscoveryEvent(
-                    event_id=str(uuid.uuid4()),
-                    run_id=run.id,
-                    source_id=source.id,
-                    method="seed_import",
-                    parent_source_id=None,
-                    raw_reference=raw,
-                    normalized_reference=source.username_normalized or "",
-                    outcome="candidate",
-                    depth=0,
-                )
+                session,
+                username_or_url=raw,
+                gateway=gateway,
+                run=run,
+                method="seed_import",
             )
             root_ids.append(source.id)
             results.append(

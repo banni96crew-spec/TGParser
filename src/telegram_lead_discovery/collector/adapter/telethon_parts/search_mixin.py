@@ -190,18 +190,28 @@ class TelethonSearchMixin:
 
     async def get_linked_discussion(self, source: SourceRef) -> SourceSnapshot | None:
         from telethon.tl.functions.channels import GetFullChannelRequest
-        from telethon.tl.types import InputChannel
+        from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mixin import (
+            _offline_input_channel,
+        )
+        from telegram_lead_discovery.collector.ports import current_request_controller
 
         peer_id = source.telegram_id
         if peer_id is None:
             raise GatewaySourceInaccessible("missing_telegram_id")
         client = self._require_client()
         try:
-            entity = await client.get_entity(peer_id)
-            input_channel = InputChannel(
-                channel_id=int(entity.id),
-                access_hash=int(getattr(entity, "access_hash", 0) or 0),
-            )
+            if current_request_controller.get() is None:
+                entity = await client.get_entity(peer_id)
+                from telethon.tl.types import InputChannel
+
+                input_channel = InputChannel(
+                    channel_id=int(entity.id),
+                    access_hash=int(getattr(entity, "access_hash", 0) or 0),
+                )
+            else:
+                input_channel = _offline_input_channel(client, source)
+                if input_channel is None:
+                    raise GatewaySourceInaccessible("seed_resolution_data_missing")
             result = await self._invoke(GetFullChannelRequest(channel=input_channel))
         except Exception as exc:  # noqa: BLE001
             raise _raise_mapped(exc) from exc

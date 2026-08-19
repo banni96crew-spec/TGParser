@@ -207,6 +207,14 @@ Live `TelegramUpdateDTO` / envelope MUST carry stable identity `(telegram_peer_i
 
 Gateway DTO schema v2 MUST map each non-delete message to `author_kind=user|bot|channel|anonymous|unknown`. `user` requires Telethon `PeerUser`, a resolved sender entity with `bot=false`, and absent `via_bot`; a bot user maps to `bot`; `PeerChannel`/sender-as-channel maps to `channel`; anonymous-admin/post-author without a user identity maps to `anonymous`; missing or unresolvable sender maps to `unknown`. Raw `author_peer_id` MAY exist only in the in-memory DTO and MUST NOT require an additional per-message network request. SRC scouting persistence is governed by SEC-018.
 
+### COL-028 — Isolated graph request control and raw calls (D-071)
+
+COL exposes neutral `TelegramRequestController` through a default-null context variable; ordinary calls are unchanged. `ControlledTelegramClient._call` MUST reject graph batches/nested calls before sender, take an exclusive lock only around the one raw graph call, temporarily set `request_retries=0` and `flood_sleep_threshold=0`, and restore both on success/error/cancel. Ordinary collector/live calls may run during graph rate sleep through a shared lock, but not during the graph call. Graph peer resolution first uses synchronous offline `session.get_input_entity`; otherwise public username uses exactly one raw `ResolveUsernameRequest`, while missing username/hash returns `seed_resolution_data_missing` with no network. Recommendations/linked/history use raw requests with `InputChannel`; history is one `GetHistoryRequest(limit=100)`. Flood variants including premium/test/slow-mode/peer flood and generic `FLOOD|Too many requests` map to `GatewayFloodWait` with minimum 1 second.
+
+### COL-029 — Complete graph history response DTO (D-072)
+
+`sample_public_graph` MUST execute exactly one raw `GetHistoryRequest(limit≤100)` and return `GraphSampleResultDTO` containing both extracted graph edges and every received valid message with id, UTC date, full text, permalink, ephemeral raw author peer id and closed `author_kind`. No per-message network lookup is allowed. The raw author peer id exists only in memory for SRC pseudonymization; ordinary `sample_public_graph_edges` remains a compatibility projection over the same response contract.
+
 ## 8. Data ownership
 
 Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` gateway DTO и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
@@ -252,7 +260,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-027. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-028. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -285,6 +293,8 @@ MVP включает COL-001—COL-027. Исключены multiple sessions, ac
 | `AT-COL-025` | COL-025 | Persist >50 envelopes | Write TX batches ≤50; no network inside long write TX |
 | `AT-COL-026` | COL-026 | Live update for monitoring and non-monitoring | Only monitoring mapped; identity `(telegram_peer_id, telegram_message_id)` stable |
 | `AT-COL-027` | COL-027 | PeerUser human/bot, PeerChannel, anonymous admin, via_bot and missing sender fixtures | Exact closed `author_kind`; no extra per-message request; raw author identity absent from scouting persistence |
+| `AT-COL-028` | COL-028 | Intercept raw graph sender; batch/nested/error/cancel/offline-cache fixtures; ordinary concurrent reader | One sender call; limit 100; no graph retry; settings restored; cache causes zero network; ordinary path unchanged |
+| `AT-COL-029` | COL-029 | Raw history fixture with human/bot/channel/anonymous authors and 100 posts | One sender call; edges and all message fields returned; no author lookup; raw author identity not persisted by COL |
 
 ## 14. Принятые записи decision log
 

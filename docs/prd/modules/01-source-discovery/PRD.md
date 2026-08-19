@@ -405,7 +405,23 @@ Durable ledger `PresentedKeywordSource` MUST store (D-069 / SRC-041):
 
 ### SRC-042 — Graph edge types and public-only targets
 
-Graph discovery MUST allow only closed public-only edge types: `recommendation`, `public_link`, `mention`, `forward_origin`, `linked_discussion` (SRC-003/023). Targets MUST be public `channel|megagroup|group` with resolvable public identity. Private/invite-only/unconfirmed username MUST NOT become candidates (`unsupported_source` / skip). Limits remain D-017 / SRC-004/005: `max_depth=2` (supersedes any plan prose `depth=1`), `candidate_cap=100`, `resolve/expansion_cap=25`, max outgoing edges examined per seed node = `25`, max unique graph candidates/run = `100`, one canonical node resolved at most once per run. FloodWait → provider phase `retry_wait` / run degraded with state preserved.
+Graph discovery MUST allow only closed public-only edge types: `recommendation`, `public_link`, `mention`, `forward_origin`, `linked_discussion` (SRC-003/023). Targets MUST be public `channel|megagroup|group` with resolvable public identity. Private/invite-only/unconfirmed username MUST NOT become candidates (`unsupported_source` / skip). Limits remain D-017 / SRC-004/005: `max_depth=2` (supersedes any plan prose `depth=1`), `candidate_cap=100`, `resolve/expansion_cap=25`, max outgoing edges examined per seed node = `25`, max unique graph candidates/run = `100`, one canonical node resolved at most once per run. Graph FloodWait follows SRC-051; keyword/history FloodWait remains resumable under SRC-048.
+
+### SRC-051 — Graph request limits and terminal stops (D-071)
+
+Graph run MUST set the graph request controller before any graph Gateway call and reset it in one outer `finally`. The first request is immediate; later reservations are separated by at least `6 s` monotonic time, limited to `10` in semi-open `[t-60s,t)` and `200` per run, with exactly one graph request in flight. A reservation is durably committed before network I/O; no DB transaction remains open during rate sleep. Restart with prior reservations waits `60 s` before a fresh rolling window and never resets `reserved_total`. First `GatewayFloodWait` terminalizes run `failed`, phase `done`, reason/error `flood_wait`, job `failed`, `available_at=null`, no retry. Request cap terminalizes run `partial/request_cap`, job `succeeded`; request-control violations terminalize `failed/request_control_violation`.
+
+### SRC-052 — Graph cursor v2 and durable stages (D-071)
+
+Graph cursor schema v2 MUST persist queue, `current_node`, per-canonical completed stages, saved stage results, resolved keys/snapshots, parent map and request-control snapshot. Stages are `resolve`, `recommendations`, `linked_discussion`, `message_sample_100`; a saved completed stage MUST NOT issue another Telegram request after restart. Current node is saved before queue removal and cleared only after its stages commit. Stage results are saved before the next network stage; candidates/events/children are committed idempotently, queue is canonical-deduped, and graph `SourceDiscoveryEvent.event_id` is deterministic SHA-256 over schema/run/parent/method/target/evidence/depth. SRC never reads the Telegram session; COL returns and persists nullable `access_hash` through DTOs.
+
+### SRC-053 — Mutual exclusion of Telegram discovery modes (D-071)
+
+At most one run across `graph|keyword_scouting` may be active in `queued|running|retry_wait_flood|cancelling`. Both start commands reject with `telegram_discovery_busy:<type>:<run_id>`; first committed insert wins. No queue or priority fallback exists. Terminal commit releases the slot.
+
+### SRC-054 — Durable graph response receipt (D-072)
+
+For `message_sample_100`, SRC MUST persist every returned post in `graph_discovery_posts` and persist the cursor v3 stage receipt in the same SQLite transaction before another Telegram call. The receipt includes source identity, `request_ordinal`, persisted-post count and saved edges; `SourceDiscoveryEvent` retains the immediate parent chain to the roots. A present saved stage is processed locally after restart and MUST NOT call Telegram again. Terminal cursor stores reason/error. Full post text is graph-only; raw author identity is transformed to source-scoped `author_key` and MUST NOT persist or enter logs.
 
 ### SRC-043 — Evidence eligibility gates
 
@@ -453,26 +469,25 @@ Deep verification MUST classify all fetched unique non-empty messages, not only 
 | `SourcePaused` | `event_id`, `source_id`, `occurred_at` |
 | `SourceDisabled` | `event_id`, `source_id`, `occurred_at` |
 
-Все события получают UUIDv7 `event_id` и записываются в transactional outbox, где применимо для lifecycle transitions.
+Lifecycle-события получают UUIDv7; graph `SourceDiscoveryEvent.event_id` получает deterministic SHA-256 по SRC-052. Transactional outbox применяется, где предусмотрено lifecycle transition.
 
 ## 7. Data ownership
 
-Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource` и logical `PresentedKeywordSource`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine. Physical suppress tables and retention immunity are STO (STO-017, STO-020).
+Модуль владеет сущностями `TelegramSource`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `GraphDiscoveryPost`, `SourceAlias`, `SourceApprovalEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource` и logical `PresentedKeywordSource`. Candidate является `TelegramSource` в состоянии `candidate`, отдельной candidate table нет. Collector владеет checkpoints и collection jobs, но не source state machine. Physical schema/retention для graph posts и suppress tables принадлежит STO (STO-017, STO-020, STO-023).
 
 Ключевые ограничения:
 
 - `TelegramSource.telegram_id` — unique, nullable только до первого resolve / provisional;
 - provisional identity MUST NOT enter `monitoring` (D-061 / SRC-034);
 - `SourceAlias.normalized_username` — unique;
-- не более одного active `graph` DiscoveryRun одновременно;
-- не более одного active `keyword_scouting` DiscoveryRun одновременно (D-058);
+- не более одного active run суммарно для `graph|keyword_scouting` (SRC-053 / D-071);
 - opportunity score не копируется в `quality_score` (D-054);
 - timestamps сохраняются в UTC с точностью до миллисекунд.
 
 ## 8. Ошибки, retry и recovery
 
-- `FloodWait` передаётся Gateway и выдерживается полностью; discovery job переходит в `retry_wait`, а run остаётся `running` (graph) или `retry_wait_flood` (keyword) и затем продолжается с сохранённого cursor/queue item.
-- Сетевые ошибки graph discovery получают до `5` попыток через `1`, `5`, `30`, `120`, `600` секунд.
+- Graph `FloodWait` немедленно и окончательно останавливает только graph run по SRC-051; keyword/history продолжает точное resumable-ожидание SRC-048.
+- Graph transient network errors вне Telegram rate restriction сохраняют существующее ограниченное восстановление; Telethon внутри одного graph-вызова автоматический повтор не выполняет.
 - Keyword query transient errors: максимум `3` attempts через `30`, `120`, `600` секунд; ошибка одной query обычно даёт run `partial`.
 - `USERNAME_NOT_OCCUPIED`, invalid username и unsupported entity не повторяются.
 - Unauthorized/frozen session переводит keyword run в `failed`.
@@ -522,7 +537,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-050 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-054 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -578,6 +593,10 @@ MVP включает SRC-001—SRC-050 полностью. Исключены se
 | `AT-SRC-048` | SRC-048 | FloodWait/process restart crosses time boundaries | Same T/cursor/source; byte-equivalent outcome; no pre-terminal metric/presentation/suppress |
 | `AT-SRC-049` | SRC-049 | Clean seed; operator 6→7; wrong version; exact query catalogs | v3/v7 exact and immutable; wrong operator version blocks; no generated variants; Stars=0 |
 | `AT-SRC-050` | SRC-050 | Presentation creates ledger row; purge snapshots | Presented suppress membership remains; registry/dismiss/presented reasons distinguishable |
+| `AT-SRC-051` | SRC-051 | Fake monotonic boundaries 0/6/54/60, 200/201, restart, first FloodWait and control violation | Exact interval/window/cap; durable reservation; first Flood terminal; no second call or retry |
+| `AT-SRC-052` | SRC-052 | Crash before/after stage commit and current-node dequeue; replay duplicate edge | Cursor v2 resumes current node; completed stages not called; one deterministic event/child |
+| `AT-SRC-053` | SRC-053 | Concurrent starts in both directions and terminal release | First commit wins; second exact busy error; terminal run frees slot |
+| `AT-SRC-054` | SRC-054 | History returns 100 posts; inspect DB before next Gateway call; restart from saved stage; terminal request cap | All post fields and provenance committed first; no repeat Gateway call; request/cursor/stop reason remain queryable without stdout |
 
 ## 14. Принятые записи decision log
 

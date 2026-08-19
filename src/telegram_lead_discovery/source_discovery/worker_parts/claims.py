@@ -9,6 +9,8 @@ from telegram_lead_discovery.source_discovery.worker_parts.graph_worker import (
     process_graph_discovery_job,
 )
 
+_TELEGRAM_DISCOVERY_EXECUTION_LOCK = asyncio.Lock()
+
 
 async def claim_and_process_keyword_job(
     session: AsyncSession,
@@ -17,15 +19,16 @@ async def claim_and_process_keyword_job(
     owner: str = "keyword-discovery-worker",
 ) -> dict[str, Any] | None:
     """Recover stale leases, claim one keyword job, process it."""
-    await recover_stale_jobs(session)
-    job = await claim_job(
-        session,
-        job_types=[JOB_TYPE_KEYWORD_DISCOVERY],
-        owner=owner,
-    )
-    if job is None:
-        return None
-    return await process_keyword_discovery_job(session, job, gateway)
+    async with _TELEGRAM_DISCOVERY_EXECUTION_LOCK:
+        await recover_stale_jobs(session)
+        job = await claim_job(
+            session,
+            job_types=[JOB_TYPE_KEYWORD_DISCOVERY],
+            owner=owner,
+        )
+        if job is None:
+            return None
+        return await process_keyword_discovery_job(session, job, gateway)
 
 
 # Idle poll between empty claims. FloodWait jobs wake via Job.available_at — no long sleep.
@@ -228,14 +231,15 @@ async def claim_and_process_graph_job(
         JOB_TYPE_GRAPH_DISCOVERY,
     )
 
-    await recover_stale_jobs(session)
-    job = await claim_job(
-        session,
-        job_types=[JOB_TYPE_GRAPH_DISCOVERY],
-        owner=owner,
-    )
-    if job is None:
-        return None
-    return await process_graph_discovery_job(
-        session, job, gateway, cancel_requested=cancel_requested
-    )
+    async with _TELEGRAM_DISCOVERY_EXECUTION_LOCK:
+        await recover_stale_jobs(session)
+        job = await claim_job(
+            session,
+            job_types=[JOB_TYPE_GRAPH_DISCOVERY],
+            owner=owner,
+        )
+        if job is None:
+            return None
+        return await process_graph_discovery_job(
+            session, job, gateway, cancel_requested=cancel_requested
+        )

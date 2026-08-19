@@ -92,7 +92,10 @@ async def test_start_run_creates_queries_and_job(db_env) -> None:
         # groups-only: 1 global + 1 directory + 1 public_posts
         assert started.query_count == 3
 
-        with pytest.raises(KeywordRunStartError, match="active_keyword_run"):
+        with pytest.raises(
+            KeywordRunStartError,
+            match=rf"telegram_discovery_busy:keyword_scouting:{started.run.id}",
+        ):
             await start_keyword_discovery_run(session, profile_id=profile.profile.id)
 
 

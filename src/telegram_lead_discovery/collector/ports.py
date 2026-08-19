@@ -17,11 +17,20 @@ from telegram_lead_discovery.collector.port_parts.graph import (
     GraphEdgeDTO,
     GraphEdgeType,
     GraphSampleRequest,
+    GraphSampleResultDTO,
 )
 from telegram_lead_discovery.collector.port_parts.messages import (
     HistoryRequest,
     TelegramMessageDTO,
     TelegramUpdateDTO,
+)
+from telegram_lead_discovery.collector.port_parts.request_control import (
+    NestedTelegramRequest,
+    RequestBudgetExhausted,
+    RequestControlError,
+    TelegramRequestController,
+    UnsupportedBatchRequest,
+    current_request_controller,
 )
 from telegram_lead_discovery.collector.port_parts.search import (
     DirectorySearchRequest,

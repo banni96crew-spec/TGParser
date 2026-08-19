@@ -1,23 +1,56 @@
+"""Persisted graph-discovery worker with graph-only request control."""
+
 from __future__ import annotations
 
-from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
+import json
+from datetime import timedelta
+from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from telegram_lead_discovery.collector.ports import (
+    GatewayFloodWait,
+    GatewayFrozen,
+    GatewaySourceInaccessible,
+    GatewayTransientError,
+    GatewayUnauthorized,
+    NestedTelegramRequest,
+    RequestBudgetExhausted,
+    TelegramGateway,
+    UnsupportedBatchRequest,
+    current_request_controller,
+)
+from telegram_lead_discovery.source_discovery.graph_cursor import node_from_dict
+from telegram_lead_discovery.source_discovery.graph_request_control import (
+    GraphRequestController,
+)
 from telegram_lead_discovery.source_discovery.worker_parts.core import (
     _dumps_counters,
     _loads_counters,
     _utcnow,
 )
-from telegram_lead_discovery.source_discovery.worker_parts.lifecycle import _fail_run
-from telegram_lead_discovery.source_discovery.worker_parts.registry import _load_dismissed_sources
+from telegram_lead_discovery.source_discovery.worker_parts.graph_stages import (
+    GRAPH_NODE_STAGES,
+    load_or_fetch_stage,
+    process_stage_edges,
+    resolve_node,
+)
 from telegram_lead_discovery.source_discovery.worker_parts.graph_state import (
     TERMINAL_GRAPH_LIKE,
-    _GraphWorkerContext,
     _finish_graph_cancelled,
+    _finish_graph_control_failure,
+    _finish_graph_request_cap,
     _finish_graph_success,
     _graph_maybe_heartbeat,
+    _GraphWorkerContext,
     _park_graph_flood,
     _save_graph_cursor,
 )
+from telegram_lead_discovery.source_discovery.worker_parts.lifecycle import _fail_run
+from telegram_lead_discovery.source_discovery.worker_parts.registry import (
+    _load_dismissed_sources,
+)
+from telegram_lead_discovery.storage.models import DiscoveryRun, Job
 
 
 async def process_graph_discovery_job(
@@ -27,8 +60,7 @@ async def process_graph_discovery_job(
     *,
     cancel_requested: bool = False,
 ) -> dict[str, Any]:
-    """Execute one claimed ``discovery`` (graph) job with public-only BFS."""
-    from telegram_lead_discovery.collector.ports import GraphEdgeDTO, PublicSourceRef
+    """Execute one claimed graph job; never changes ordinary search limits."""
     from telegram_lead_discovery.source_discovery.graph_discovery import (
         JOB_TYPE_GRAPH_DISCOVERY,
         MAX_GRAPH_DEPTH,
@@ -36,34 +68,22 @@ async def process_graph_discovery_job(
         MAX_RESOLVE_OPS,
         MAX_UNIQUE_GRAPH_CANDIDATES,
         GraphBudget,
-        GraphCandidateResult,
-        GraphQueueItem,
-        collect_edges_for_seed,
         load_graph_seeds,
         load_registry_index,
-        persist_graph_candidate,
-        plan_edge_outcome,
     )
 
     if job.job_type != JOB_TYPE_GRAPH_DISCOVERY:
         raise ValueError(f"unexpected_job_type:{job.job_type}")
-
     payload = json.loads(job.payload_json or "{}")
-    run_id = int(payload["run_id"])
-    run = await session.get(DiscoveryRun, run_id)
+    run = await session.get(DiscoveryRun, int(payload["run_id"]))
     if run is None or run.run_type != "graph":
         job.state = "failed"
         job.last_error_code = "run_not_found"
         job.updated_at = _utcnow()
         await session.flush()
         return {"outcome": "failed", "error": "run_not_found"}
-
     if run.state in TERMINAL_GRAPH_LIKE:
-        job.state = (
-            "cancelled"
-            if run.state == "cancelled"
-            else ("failed" if run.state == "failed" else "succeeded")
-        )
+        job.state = _job_state_for_terminal(run.state)
         job.updated_at = _utcnow()
         await session.flush()
         return {"outcome": "already_terminal", "run_state": run.state}
@@ -72,11 +92,13 @@ async def process_graph_discovery_job(
     if run.state == "queued":
         run.state = "running"
         run.started_at = run.started_at or now
-    run.phase = run.phase or "expand"
+    run.phase = "expand"
     await session.flush()
+    # Release SQLite's writer lock before graph Telegram requests reserve their
+    # budget through a separate short-lived session.
+    await session.commit()
 
-    registry = await load_registry_index(session)
-    dismissed = await _load_dismissed_sources(session)
+    cursor = _cursor_payload(run.cursor_json)
     counters = _loads_counters(run.counters_json)
     budget = GraphBudget(
         max_depth=int(run.max_depth or MAX_GRAPH_DEPTH),
@@ -93,208 +115,164 @@ async def process_graph_discovery_job(
         duplicate_in_run_total=int(counters.get("duplicate_in_run", 0)),
         dismissed_suppressed_total=int(counters.get("dismissed_suppressed", 0)),
     )
-    # Restore resolved keys / queue from prior FloodWait degraded progress.
-    raw_keys = json.loads(run.cursor_json or "{}")
-    if isinstance(raw_keys, dict):
-        for item in raw_keys.get("resolved_canonical_keys", []) or []:
-            budget.resolved_canonical_keys.add(str(item))
-        queue_payload = raw_keys.get("queue") or []
-    else:
-        queue_payload = []
+    budget.resolved_canonical_keys.update(
+        str(item) for item in cursor.get("resolved_canonical_keys", [])
+    )
 
     seeds = await load_graph_seeds(session, run)
-    parent_map = {s.seed_telegram_id: s.seed_source_id or 0 for s in seeds}
-    if queue_payload:
-        queue = [
-            GraphQueueItem(
-                seed_telegram_id=int(q["seed_telegram_id"]),
-                seed_source_id=q.get("seed_source_id"),
-                depth=int(q["depth"]),
-                username=q.get("username"),
-            )
-            for q in queue_payload
-        ]
-    else:
-        queue = list(seeds)
-        for seed in seeds:
-            budget.resolved_canonical_keys.add(f"peer:{seed.seed_telegram_id}")
-
+    queue = _restore_queue(cursor, seeds)
+    current = (
+        node_from_dict(cursor["current_node"])
+        if isinstance(cursor.get("current_node"), dict)
+        else None
+    )
+    if not cursor:
+        budget.resolved_canonical_keys.update(
+            f"peer:{seed.seed_telegram_id}" for seed in seeds
+        )
+    completed = {
+        str(key): {str(stage) for stage in value}
+        for key, value in (cursor.get("completed_stages") or {}).items()
+        if isinstance(value, list)
+    }
+    request_state = cursor.get("request_control") or {}
+    controller = GraphRequestController(
+        reserved_total=int(request_state.get("reserved_total") or 0),
+        persist_reservation=_reservation_writer(run.id, run),
+    )
     ctx = _GraphWorkerContext(
         session=session,
         gateway=gateway,
         job=job,
         run=run,
         budget=budget,
-        registry=registry,
-        dismissed=dismissed,
+        registry=await load_registry_index(session),
+        dismissed=await _load_dismissed_sources(session),
         cancel_requested=cancel_requested,
         last_heartbeat_at=now,
         queue=queue,
-        parent_by_telegram_id={k: v for k, v in parent_map.items() if v},
+        parent_by_telegram_id=_parent_map(cursor, seeds),
+        current_node=current,
+        completed_stages=completed,
+        stage_results=dict(cursor.get("stage_results") or {}),
+        resolved_sources=dict(cursor.get("resolved_sources") or {}),
+        request_controller=controller,
     )
+    token = current_request_controller.set(controller)
+    try:
+        return await _execute_graph(ctx)
+    finally:
+        current_request_controller.reset(token)
 
-    while ctx.queue:
-        if ctx.cancel_requested or run.state == "cancelled":
+
+async def _execute_graph(ctx: _GraphWorkerContext) -> dict[str, Any]:
+    while ctx.current_node is not None or ctx.queue:
+        if ctx.cancel_requested or ctx.run.state == "cancelled":
             return await _finish_graph_cancelled(ctx)
         await _graph_maybe_heartbeat(ctx)
-        node = ctx.queue.pop(0)
-        if node.depth >= budget.max_depth:
-            # Leaf: do not expand further (depth-2 findings are terminals).
-            continue
-        await session.commit()
-        try:
-            edges = await collect_edges_for_seed(
-                gateway,
-                seed=node,
-                outgoing_cap=budget.max_outgoing_edges,
-            )
-        except GatewayFloodWait as exc:
+        if ctx.current_node is None:
+            ctx.current_node = ctx.queue.pop(0)
             _save_graph_cursor(ctx)
-            return await _park_graph_flood(ctx, exc.until)
-        except GatewayUnauthorized:
-            return await _fail_run(session, job, run, "unauthorized")
-        except GatewayFrozen:
-            return await _fail_run(session, job, run, "frozen")
-        except GatewaySourceInaccessible:
+            await ctx.session.commit()
+        node = ctx.current_node
+        if node.depth >= ctx.budget.max_depth:
+            ctx.current_node = None
+            _save_graph_cursor(ctx)
+            await ctx.session.commit()
             continue
+        try:
+            node = await resolve_node(ctx, node)
+            remaining = ctx.budget.max_outgoing_edges
+            for stage in GRAPH_NODE_STAGES:
+                edges, completed = await load_or_fetch_stage(ctx, node, stage)
+                if completed:
+                    remaining = max(0, remaining - len(edges))
+                    continue
+                remaining = await process_stage_edges(
+                    ctx,
+                    node,
+                    stage,
+                    edges,
+                    remaining_edges=remaining,
+                )
+        except GatewayFloodWait as exc:
+            return await _park_graph_flood(ctx, exc.until)
+        except RequestBudgetExhausted:
+            return await _finish_graph_request_cap(ctx)
+        except (UnsupportedBatchRequest, NestedTelegramRequest) as exc:
+            return await _finish_graph_control_failure(ctx, str(exc))
+        except GatewayUnauthorized:
+            return await _fail_run(ctx.session, ctx.job, ctx.run, "unauthorized")
+        except GatewayFrozen:
+            return await _fail_run(ctx.session, ctx.job, ctx.run, "frozen")
+        except GatewaySourceInaccessible as exc:
+            ctx.run.last_error_code = str(exc) or "source_inaccessible"
         except GatewayTransientError:
             _save_graph_cursor(ctx)
-            job.state = "retry_wait"
-            job.available_at = _utcnow() + timedelta(seconds=30)
-            job.last_error_code = "transient_error"
-            job.updated_at = _utcnow()
-            run.counters_json = _dumps_counters(budget.to_counters())
-            await session.flush()
+            ctx.job.state = "retry_wait"
+            ctx.job.available_at = _utcnow() + timedelta(seconds=30)
+            ctx.job.last_error_code = "transient_error"
+            ctx.job.updated_at = _utcnow()
+            await ctx.session.flush()
             return {"outcome": "retry_wait", "error": "transient_error"}
 
-        child_depth = node.depth + 1
-        for edge in edges:
-            if ctx.cancel_requested:
-                return await _finish_graph_cancelled(ctx)
-            planned = plan_edge_outcome(
-                edge,
-                child_depth=child_depth,
-                budget=budget,
-                registry=ctx.registry,
-                dismissed=ctx.dismissed,
-            )
-            snap = planned.snapshot
-            if planned.outcome == "candidate" and snap is None:
-                if budget.remaining_resolves() <= 0:
-                    budget.budget_skipped_total += 1
-                    planned = GraphCandidateResult(
-                        outcome="budget_skipped",
-                        method=planned.method,
-                        depth=planned.depth,
-                        raw_reference=planned.raw_reference,
-                        normalized_reference=planned.normalized_reference,
-                        parent_source_id=planned.parent_source_id,
-                        seed_telegram_id=planned.seed_telegram_id,
-                        snapshot=planned.snapshot,
-                        source_id=planned.source_id,
-                        evidence_message_id=planned.evidence_message_id,
-                    )
-                else:
-                    await session.commit()
-                    try:
-                        snap = await gateway.resolve_public_source(
-                            PublicSourceRef(
-                                schema_version=1,
-                                username_or_url=planned.normalized_reference or edge.raw_reference,
-                            )
-                        )
-                        budget.resolves_used += 1
-                    except GatewayFloodWait as exc:
-                        ctx.queue.insert(0, node)
-                        _save_graph_cursor(ctx)
-                        return await _park_graph_flood(ctx, exc.until)
-                    except GatewaySourceInaccessible:
-                        budget.unsupported_total += 1
-                        await persist_graph_candidate(
-                            session,
-                            run=run,
-                            result=GraphCandidateResult(
-                                outcome="unsupported_source",
-                                method=planned.method,
-                                depth=planned.depth,
-                                raw_reference=planned.raw_reference,
-                                normalized_reference=planned.normalized_reference,
-                                parent_source_id=planned.parent_source_id,
-                                seed_telegram_id=planned.seed_telegram_id,
-                                evidence_message_id=planned.evidence_message_id,
-                            ),
-                            parent_source_id=node.seed_source_id,
-                            budget=budget,
-                        )
-                        continue
-                    resolved_edge = GraphEdgeDTO(
-                        schema_version=1,
-                        edge_type=edge.edge_type,
-                        seed_telegram_id=edge.seed_telegram_id,
-                        raw_reference=edge.raw_reference,
-                        normalized_username=snap.username.lower(),
-                        target=snap,
-                        evidence_message_id=edge.evidence_message_id,
-                    )
-                    budget.resolved_canonical_keys.discard(
-                        f"username:{planned.normalized_reference}"
-                    )
-                    planned = plan_edge_outcome(
-                        resolved_edge,
-                        child_depth=child_depth,
-                        budget=budget,
-                        registry=ctx.registry,
-                        dismissed=ctx.dismissed,
-                    )
-                    snap = planned.snapshot
-
-            if planned.outcome in {
-                "depth_skipped",
-                "budget_skipped",
-                "duplicate_in_run",
-                "dismissed_suppressed",
-                "unsupported_source",
-                "invalid_reference",
-                "registry_suppressed",
-            }:
-                await persist_graph_candidate(
-                    session,
-                    run=run,
-                    result=planned,
-                    parent_source_id=node.seed_source_id,
-                    budget=budget,
-                    snapshot=snap,
-                )
-                continue
-
-            source = await persist_graph_candidate(
-                session,
-                run=run,
-                result=planned,
-                parent_source_id=node.seed_source_id,
-                budget=budget,
-                snapshot=snap,
-            )
-            if (
-                source is not None
-                and snap is not None
-                and child_depth < budget.max_depth
-                and planned.outcome in {"candidate", "merged"}
-            ):
-                already_queued = any(q.seed_telegram_id == snap.telegram_id for q in ctx.queue)
-                if not already_queued:
-                    ctx.queue.append(
-                        GraphQueueItem(
-                            seed_telegram_id=snap.telegram_id,
-                            seed_source_id=source.id,
-                            depth=child_depth,
-                            username=snap.username.lower(),
-                        )
-                    )
-                    ctx.parent_by_telegram_id[snap.telegram_id] = source.id
-
+        ctx.current_node = None
+        ctx.run.counters_json = _dumps_counters(ctx.budget.to_counters())
         _save_graph_cursor(ctx)
-        run.counters_json = _dumps_counters(budget.to_counters())
-        await session.flush()
-
+        await ctx.session.commit()
     return await _finish_graph_success(ctx)
+
+
+def _cursor_payload(raw: str | None) -> dict[str, Any]:
+    try:
+        value = json.loads(raw or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _restore_queue(cursor: dict[str, Any], seeds: list[Any]) -> list[Any]:
+    values = cursor.get("queue")
+    if not isinstance(values, list):
+        return list(seeds)
+    return [node_from_dict(value) for value in values if isinstance(value, dict)]
+
+
+def _parent_map(cursor: dict[str, Any], seeds: list[Any]) -> dict[int, int]:
+    stored = cursor.get("parent_map")
+    if isinstance(stored, dict):
+        return {int(key): int(value) for key, value in stored.items()}
+    return {
+        seed.seed_telegram_id: seed.seed_source_id
+        for seed in seeds
+        if seed.seed_source_id is not None
+    }
+
+
+def _reservation_writer(run_id: int, local_run: DiscoveryRun):
+    async def persist(snapshot: dict[str, Any]) -> None:
+        from telegram_lead_discovery.storage.db import session_scope
+
+        async with session_scope() as control_session:
+            row = await control_session.get(DiscoveryRun, run_id)
+            if row is None:
+                raise RuntimeError(f"graph_run_missing_during_reservation:{run_id}")
+            payload = _cursor_payload(row.cursor_json)
+            payload["schema_version"] = 3
+            payload["request_control"] = snapshot
+            row.cursor_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+            await control_session.commit()
+        local = _cursor_payload(local_run.cursor_json)
+        local["schema_version"] = 3
+        local["request_control"] = snapshot
+        local_run.cursor_json = json.dumps(local, ensure_ascii=False, sort_keys=True)
+
+    return persist
+
+
+def _job_state_for_terminal(state: str) -> str:
+    if state == "cancelled":
+        return "cancelled"
+    if state == "failed":
+        return "failed"
+    return "succeeded"

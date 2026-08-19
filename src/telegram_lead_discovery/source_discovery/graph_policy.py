@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from typing import Literal
 
-import regex
-
 from telegram_lead_discovery.collector.ports import GraphEdgeDTO, GraphEdgeType, SourceSnapshot
+from telegram_lead_discovery.source_discovery.graph_edges import (
+    ALLOWED_GRAPH_EDGE_TYPES,
+    extract_public_usernames_from_text,
+    filter_allowed_public_edges,
+    is_private_invite_ref,
+    truncate_outgoing_edges,
+)
 from telegram_lead_discovery.source_discovery.identity import (
     DismissedKeywordSourceIndex,
     SourceRegistryIndex,
@@ -23,17 +27,7 @@ MAX_GRAPH_DEPTH = 2
 MAX_OUTGOING_EDGES_PER_SEED = 25
 MAX_UNIQUE_GRAPH_CANDIDATES = 100
 MAX_RESOLVE_OPS = 25
-GRAPH_MESSAGE_SAMPLE_LIMIT = 50
-
-ALLOWED_GRAPH_EDGE_TYPES: frozenset[GraphEdgeType] = frozenset(
-    {
-        "recommendation",
-        "public_link",
-        "mention",
-        "forward_origin",
-        "linked_discussion",
-    }
-)
+GRAPH_MESSAGE_SAMPLE_LIMIT = 100
 
 GraphOutcome = Literal[
     "candidate",
@@ -47,16 +41,6 @@ GraphOutcome = Literal[
     "invalid_reference",
 ]
 
-_MENTION_RE = regex.compile(r"(?<![a-zA-Z0-9_])@([a-zA-Z0-9_]{5,32})\b")
-_TME_RE = regex.compile(
-    r"(?:https?://)?t\.me/([a-zA-Z0-9_]{5,32})(?:/[0-9]+)?(?:\?[^\s]*)?",
-    flags=regex.IGNORECASE,
-)
-_PRIVATE_TME_PREFIXES = frozenset(
-    {"joinchat", "addstickers", "share", "proxy", "socks", "c", "s"}
-)
-_REGEX_TIMEOUT = 0.05
-
 
 @dataclass(frozen=True, slots=True)
 class GraphQueueItem:
@@ -66,6 +50,7 @@ class GraphQueueItem:
     seed_source_id: int | None
     depth: int
     username: str | None = None
+    access_hash: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,70 +104,6 @@ class GraphBudget:
             "registry_suppressed": self.registry_suppressed_total,
             "dismissed_suppressed": self.dismissed_suppressed_total,
         }
-
-
-def is_private_invite_ref(raw: str) -> bool:
-    text = raw.strip().casefold()
-    if "t.me/+" in text or "t.me/joinchat/" in text:
-        return True
-    if text.startswith("+") or text.startswith("joinchat/"):
-        return True
-    return False
-
-
-def extract_public_usernames_from_text(text: str) -> tuple[tuple[str, GraphEdgeType], ...]:
-    """Pure extractor for mention / public_link tokens (no private invites)."""
-    if not text:
-        return ()
-    ordered: list[tuple[str, GraphEdgeType]] = []
-    seen: set[str] = set()
-    try:
-        for match in _TME_RE.finditer(text, timeout=_REGEX_TIMEOUT):
-            token = match.group(1).lower()
-            if token in _PRIVATE_TME_PREFIXES or token.startswith("+"):
-                continue
-            if token not in seen:
-                seen.add(token)
-                ordered.append((token, "public_link"))
-        for match in _MENTION_RE.finditer(text, timeout=_REGEX_TIMEOUT):
-            token = match.group(1).lower()
-            if token not in seen:
-                seen.add(token)
-                ordered.append((token, "mention"))
-    except TimeoutError:
-        return tuple(ordered)
-    return tuple(ordered)
-
-
-def truncate_outgoing_edges(
-    edges: Sequence[GraphEdgeDTO], *, limit: int = MAX_OUTGOING_EDGES_PER_SEED
-) -> tuple[GraphEdgeDTO, ...]:
-    """Cap examined outgoing edges per seed (SRC-042)."""
-    if limit < 0:
-        return ()
-    return tuple(edges[:limit])
-
-
-def filter_allowed_public_edges(
-    edges: Iterable[GraphEdgeDTO],
-) -> tuple[GraphEdgeDTO, ...]:
-    """Drop disallowed edge types and private/inaccessible pre-resolved targets."""
-    kept: list[GraphEdgeDTO] = []
-    for edge in edges:
-        if edge.edge_type not in ALLOWED_GRAPH_EDGE_TYPES:
-            continue
-        if is_private_invite_ref(edge.raw_reference):
-            continue
-        target = edge.target
-        if target is not None:
-            if (
-                not target.accessible
-                or not target.username
-                or target.source_type not in {"channel", "megagroup", "group"}
-            ):
-                continue
-        kept.append(edge)
-    return tuple(kept)
 
 
 def canonical_key_for_snapshot(snap: SourceSnapshot) -> str:
@@ -369,26 +290,3 @@ def plan_edge_outcome(
         snapshot=snap,
         evidence_message_id=edge.evidence_message_id,
     )
-
-
-
-__all__ = [
-    "ALLOWED_GRAPH_EDGE_TYPES",
-    "GRAPH_MESSAGE_SAMPLE_LIMIT",
-    "GraphBudget",
-    "GraphCandidateResult",
-    "GraphOutcome",
-    "GraphQueueItem",
-    "MAX_GRAPH_DEPTH",
-    "MAX_OUTGOING_EDGES_PER_SEED",
-    "MAX_RESOLVE_OPS",
-    "MAX_UNIQUE_GRAPH_CANDIDATES",
-    "canonical_key_for_snapshot",
-    "canonical_key_for_username",
-    "extract_public_usernames_from_text",
-    "filter_allowed_public_edges",
-    "is_private_invite_ref",
-    "plan_edge_outcome",
-    "truncate_outgoing_edges",
-]
-

@@ -2,50 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
-from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
 from typing import Any
-
-import regex
-
-from telegram_lead_discovery.collector.ports import (
-    AccountSnapshot,
-    DirectorySearchRequest,
-    GatewayFloodWait,
-    GatewayFrozen,
-    GatewayInvalidSearchQuery,
-    GatewayPermanentError,
-    GatewayPremiumRequired,
-    GatewaySearchQuotaExhausted,
-    GatewaySearchUnavailable,
-    GatewaySourceInaccessible,
-    GatewayTransientError,
-    GatewayUnauthorized,
-    GlobalSearchRequest,
-    GraphEdgeDTO,
-    GraphSampleRequest,
-    HistoryRequest,
-    PublicPostSearchQuotaDTO,
-    PublicPostSearchRequest,
-    PublicSourceRef,
-    SearchCursor,
-    SearchMessageHitDTO,
-    SearchPageDTO,
-    SourceMessageSearchRequest,
-    SourceRef,
-    SourceSnapshot,
-    TelegramMessageDTO,
-    TelegramPeerRef,
-    TelegramUpdateDTO,
-)
-from telegram_lead_discovery.security.secrets import load_secret_presence
-from telegram_lead_discovery.security.session_paths import session_path
-
-_EXCERPT_MAX_CODEPOINTS = 240
-# Source-level compatibility invariant verified by AT-COL-026: allow_paid_stars=None.
-
 
 from telegram_lead_discovery.collector.adapter.telethon_parts.cursor_mapping import (
     _decode_cursor,
@@ -54,25 +11,44 @@ from telegram_lead_discovery.collector.adapter.telethon_parts.cursor_mapping imp
     _peer_id_from_telethon_peer,
     _permalink,
 )
-from telegram_lead_discovery.collector.adapter.telethon_parts.error_mapping import (
-    _map_telethon_error,
-    _raise_mapped,
-)
 from telegram_lead_discovery.collector.adapter.telethon_parts.entity_mapping import (
     _chat_for_peer,
     _entity_to_snapshot,
     _excerpt,
     _try_public_chat_snapshot,
 )
+from telegram_lead_discovery.collector.adapter.telethon_parts.error_mapping import (
+    _map_telethon_error,
+    _raise_mapped,
+)
 from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mapping import (
     _forward_origin_edge,
     _usernames_from_message_text,
 )
-from telegram_lead_discovery.collector.adapter.telethon_parts.message_mapping import _messages_result_to_page
-from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mixin import TelethonGraphMixin
-from telegram_lead_discovery.collector.adapter.telethon_parts.message_mixin import TelethonMessageMixin
-from telegram_lead_discovery.collector.adapter.telethon_parts.search_mixin import TelethonSearchMixin
+from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mixin import (
+    TelethonGraphMixin,
+)
+from telegram_lead_discovery.collector.adapter.telethon_parts.message_mapping import (
+    _messages_result_to_page,
+)
+from telegram_lead_discovery.collector.adapter.telethon_parts.message_mixin import (
+    TelethonMessageMixin,
+)
+from telegram_lead_discovery.collector.adapter.telethon_parts.search_mixin import (
+    TelethonSearchMixin,
+)
+from telegram_lead_discovery.collector.ports import (
+    AccountSnapshot,
+    GatewayPermanentError,
+    GatewayTransientError,
+    PublicSourceRef,
+    SourceSnapshot,
+)
+from telegram_lead_discovery.security.secrets import load_secret_presence
+from telegram_lead_discovery.security.session_paths import session_path
 
+_EXCERPT_MAX_CODEPOINTS = 240
+# Source-level compatibility invariant verified by AT-COL-026: allow_paid_stars=None.
 class TelethonTelegramGateway(
     TelethonGraphMixin, TelethonMessageMixin, TelethonSearchMixin
 ):
@@ -94,15 +70,20 @@ class TelethonTelegramGateway(
                 connected=False,
             )
         try:
-            from telethon import TelegramClient  # local import — Telethon boundary
-
+            from telegram_lead_discovery.collector.adapter.controlled_client import (
+                ControlledTelegramClient,
+            )
             from telegram_lead_discovery.security.secrets import require_env
 
             api_id = int(require_env("TG_API_ID"))
             api_hash = require_env("TG_API_HASH")
             path = session_path()
             path.parent.mkdir(parents=True, exist_ok=True)
-            self._client = TelegramClient(str(path.with_suffix("")), api_id, api_hash)
+            self._client = ControlledTelegramClient(
+                str(path.with_suffix("")),
+                api_id,
+                api_hash,
+            )
             await self._client.connect()
             self._connected = True
             me = await self._client.get_me()
@@ -163,3 +144,20 @@ class TelethonTelegramGateway(
             return await client.get_input_entity(peer_id)
         except Exception:  # noqa: BLE001
             return InputPeerEmpty()
+
+
+__all__ = [
+    "TelethonTelegramGateway",
+    "_chat_for_peer",
+    "_decode_cursor",
+    "_encode_cursor",
+    "_entity_to_snapshot",
+    "_event_to_update_dto",
+    "_excerpt",
+    "_forward_origin_edge",
+    "_messages_result_to_page",
+    "_peer_id_from_telethon_peer",
+    "_permalink",
+    "_try_public_chat_snapshot",
+    "_usernames_from_message_text",
+]

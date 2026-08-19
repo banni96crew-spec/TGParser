@@ -14,7 +14,7 @@
 
 | Entity | Owner |
 |---|---|
-| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, `DiscoveryTerminalOutcome`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource`, logical `PresentedKeywordSource` | `SRC` |
+| `TelegramSource`, `SourceAlias`, `SourceApprovalEvent`, `DiscoveryRun`, `DiscoveryRunQuery`, `SourceDiscoveryEvent`, `GraphDiscoveryPost`, `KeywordDiscoveryProfile`, `KeywordDiscoveryProfileVersion`, `SourceDiscoveryEvidence`, `SourceOpportunitySnapshot`, `DiscoveryTerminalOutcome`, logical `CanonicalSourceIdentity`, `DismissedSource` / `DismissedKeywordSource`, logical `PresentedKeywordSource` | `SRC` |
 | `TelegramAccount`, `CollectorCheckpoint`, `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` (gateway DTO) | `COL` |
 | `TelegramMessage`, `TelegramMessageRevision`, `DuplicateGroup`, `MessageDuplicate`, `ProcessingJob`, `ProcessingRun`, `ProcessingResult`, `ProcessingLog` | `PROC` |
 | `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `MatchedRule`, `DetectionResult` | `DET` |
@@ -72,6 +72,7 @@ Reset to default записывает `reason=reset_to_default`.
 
 - `id`;
 - `telegram_id: int | null`;
+- `access_hash: int | null` — network identity cache populated only through COL;
 - `username_normalized: str | null`;
 - `title: str`;
 - `source_type: enum(channel, megagroup, group)`;
@@ -186,7 +187,7 @@ Clean DB seed: immutable profile `ecommerce-development-ru`, version `3`; operat
 - `search_mode: enum(free_only)` — для keyword; paid modes отсутствуют (D-050);
 - `rule_set_version_id: int | null`, `rule_set_checksum: str | null` — для keyword (D-055);
 - `max_depth=2`, `expansion_cap=25`, `candidate_cap=100` — для `graph`;
-- `state` для `graph`: `enum(queued, running, succeeded, failed, cancelled)`;
+- `state` для `graph`: `enum(queued, running, succeeded, partial, failed, cancelled)`;
 - `state` для `keyword_scouting`: `enum(queued, running, retry_wait_flood, cancelling, cancelled, succeeded, partial, failed)`;
 - `phase: str | null` — для keyword (A–I);
 - `reference_at: timestamp | null` — для ActiveClientChat v1 равно immutable `started_at=T`, сохраняется до первого provider call;
@@ -200,12 +201,23 @@ Clean DB seed: immutable profile `ecommerce-development-ru`, version `3`; operat
   - `novel_presented_total`, `replacement_fetches_total`;
 - `pool_exhausted: bool`;
 - `pool_exhausted_reason: enum(provider_empty, no_unseen_after_suppress) | null`; only proven exhaustion sets it;
-- `run_termination_reason: enum(quality_reached, provider_empty, no_unseen_after_suppress, deep_candidate_cap, history_run_cap, acquisition_budget_cap, quota_skipped_remaining, cancelled, failed) | null`; caps/quota/cancel/failure without quality are inconclusive, not pool exhaustion;
+- `run_termination_reason: enum(quality_reached, provider_empty, no_unseen_after_suppress, deep_candidate_cap, history_run_cap, acquisition_budget_cap, quota_skipped_remaining, request_cap, flood_wait, request_control_violation, completed, cancelled, failed) | null`; caps/quota/cancel/failure without quality are inconclusive, not pool exhaustion;
 - `novelty_ratio: float` = `novel_presented_total / max(1, presented_total)` for completed keyword runs.
 
 `partial` означает, что часть queries пропущена из-за бесплатной квоты или permanent errors отдельных шагов.
 
-Concurrency (D-058): не более одного active `keyword_scouting` run в состояниях `queued|running|retry_wait_flood|cancelling`. Graph discovery сохраняет отдельный лимит «не более одного active `graph` run».
+Concurrency (D-071 supersedes the separate D-058 limits): partial unique expression index permits at most one run total across `graph|keyword_scouting` in `queued|running|retry_wait_flood|cancelling`.
+
+Graph cursor schema v3 stores `queue`, `current_node`, completed stages, saved stage results, resolved identities, parent map, termination snapshot and request-control snapshot (`reserved_total`, last UTC reservation, at most 10 rolling UTC reservations). Cursor v2 remains readable. The graph request cap is `200`; request reservations are durable before network I/O.
+
+`GraphDiscoveryPost` (D-072)
+
+- `id`, `run_id`, nullable `source_id`, nullable immediate `parent_source_id`;
+- `source_telegram_id`, `source_username`, `source_url`, `request_ordinal`;
+- `telegram_message_id`, `published_at`, full `message_text`, `permalink`;
+- `author_key: source-scoped SHA-256 | null`, `author_kind: user|bot|channel|anonymous|unknown`; raw author identity forbidden;
+- unique `(run_id, source_telegram_id, telegram_message_id)`; graph provenance continues through `SourceDiscoveryEvent`;
+- text retention `30` days, row retention `90` days; no Lead/envelope/checkpoint side effects.
 
 `DiscoveryRunQuery`
 
@@ -282,7 +294,7 @@ Terminal snapshot and terminal outcome are committed in one transaction. OBS `_t
 
 `SourceDiscoveryEvent`
 
-- `id`, `event_id: UUIDv7 unique`, `run_id`, `source_id: int | null`;
+- `id`, `event_id: str unique`, `run_id`, `source_id: int | null`; graph events use deterministic SHA-256 under D-071, other lifecycle events retain UUIDv7;
 - `method: enum(manual, seed_import, recommendation, public_link, mention, forward_origin, keyword_search, linked_discussion)`;
 - `parent_source_id: int | null`;
 - `evidence_message_id: int | null`;

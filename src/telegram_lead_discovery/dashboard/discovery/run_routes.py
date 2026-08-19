@@ -69,7 +69,11 @@ def create_run_router(templates: Jinja2Templates) -> APIRouter:
                 run_id = result.run.id
         except KeywordRunStartError as exc:
             code = str(exc)
-            status = 409 if code.startswith("active_keyword_run") else 422
+            status = (
+                409
+                if code.startswith(("active_keyword_run", "telegram_discovery_busy"))
+                else 422
+            )
             if code == "telegram_credentials_missing":
                 status = 422
             return _safe_error(

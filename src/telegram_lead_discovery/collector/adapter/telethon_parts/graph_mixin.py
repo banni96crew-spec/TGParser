@@ -1,154 +1,248 @@
-"""Telethon-only TelegramGateway adapter (COL)."""
+"""Raw, one-call Telethon operations used by graph discovery."""
 
 from __future__ import annotations
 
-import asyncio
-import json
-from collections.abc import AsyncIterator
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
-import regex
-
+from telegram_lead_discovery.collector.adapter.telethon_parts.author_mapping import (
+    classify_message_author,
+)
+from telegram_lead_discovery.collector.adapter.telethon_parts.entity_mapping import (
+    _permalink,
+    _try_public_chat_snapshot,
+)
+from telegram_lead_discovery.collector.adapter.telethon_parts.error_mapping import _raise_mapped
+from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mapping import (
+    _usernames_from_message_text,
+)
 from telegram_lead_discovery.collector.ports import (
-    AccountSnapshot,
-    DirectorySearchRequest,
-    GatewayFloodWait,
-    GatewayFrozen,
-    GatewayInvalidSearchQuery,
-    GatewayPermanentError,
-    GatewayPremiumRequired,
-    GatewaySearchQuotaExhausted,
-    GatewaySearchUnavailable,
     GatewaySourceInaccessible,
-    GatewayTransientError,
-    GatewayUnauthorized,
-    GlobalSearchRequest,
     GraphEdgeDTO,
     GraphSampleRequest,
-    HistoryRequest,
-    PublicPostSearchQuotaDTO,
-    PublicPostSearchRequest,
-    PublicSourceRef,
-    SearchCursor,
-    SearchMessageHitDTO,
-    SearchPageDTO,
-    SourceMessageSearchRequest,
+    GraphSampleResultDTO,
     SourceRef,
     SourceSnapshot,
     TelegramMessageDTO,
-    TelegramPeerRef,
-    TelegramUpdateDTO,
 )
-from telegram_lead_discovery.security.secrets import load_secret_presence
-from telegram_lead_discovery.security.session_paths import session_path
-
-_EXCERPT_MAX_CODEPOINTS = 240
 
 
-from telegram_lead_discovery.collector.adapter.telethon_parts.error_mapping import _raise_mapped
-from telegram_lead_discovery.collector.adapter.telethon_parts.entity_mapping import (
-    _entity_to_snapshot,
-    _try_public_chat_snapshot,
-)
-from telegram_lead_discovery.collector.adapter.telethon_parts.graph_mapping import (
-    _forward_origin_edge,
-    _usernames_from_message_text,
-)
-from telegram_lead_discovery.collector.adapter.telethon_parts.message_mapping import (
-    _messages_result_to_page,
-)
-from telegram_lead_discovery.collector.adapter.telethon_parts.cursor_mapping import (
-    _decode_cursor,
-    _event_to_update_dto,
-    _permalink,
-)
+def _offline_input_channel(client: Any, source: SourceRef) -> Any | None:
+    """Read Telethon's local entity cache without a Telegram request."""
+    from telethon.tl.types import InputChannel, InputPeerChannel
+
+    if source.telegram_id is not None and source.access_hash is not None:
+        return InputChannel(
+            channel_id=int(source.telegram_id),
+            access_hash=int(source.access_hash),
+        )
+    session = getattr(client, "session", None)
+    getter = getattr(session, "get_input_entity", None)
+    if getter is None:
+        return None
+    for key in (source.telegram_id, source.username):
+        if key is None:
+            continue
+        try:
+            peer = getter(key)
+        except (KeyError, ValueError, TypeError):
+            continue
+        if isinstance(peer, InputPeerChannel):
+            return InputChannel(
+                channel_id=int(peer.channel_id),
+                access_hash=int(peer.access_hash),
+            )
+    return None
+
+
+def _source_from_input_channel(source: SourceRef, channel: Any) -> SourceSnapshot:
+    username = (source.username or "").lower()
+    return SourceSnapshot(
+        schema_version=1,
+        telegram_id=int(channel.channel_id),
+        username=username,
+        title=username,
+        source_type="channel",
+        public_url=f"https://t.me/{username}" if username else None,
+        accessible=True,
+        access_hash=int(channel.access_hash),
+    )
 
 
 class TelethonGraphMixin:
-    async def get_recommendations(self, source: SourceRef, limit: int) -> list[SourceSnapshot]:
-        """Public channel recommendations via GetChannelRecommendations (SRC-003).
-
-        Returns only public channel|megagroup|group with username. Never joins.
-        """
-        from telethon.tl.functions.channels import GetChannelRecommendationsRequest
-        from telethon.tl.types import InputChannel
-
-        peer_id = source.telegram_id
-        if peer_id is None:
-            raise GatewaySourceInaccessible("missing_telegram_id")
+    async def resolve_graph_source(self, ref: SourceRef) -> SourceSnapshot:
+        """Resolve from local session, otherwise with one raw username request."""
         client = self._require_client()
+        cached = _offline_input_channel(client, ref)
+        if cached is not None:
+            return _source_from_input_channel(ref, cached)
+        if not ref.username:
+            raise GatewaySourceInaccessible("seed_resolution_data_missing")
+
+        from telethon.tl.functions.contacts import ResolveUsernameRequest
+
         try:
-            entity = await client.get_entity(peer_id)
-            input_channel = InputChannel(
-                channel_id=int(entity.id),
-                access_hash=int(getattr(entity, "access_hash", 0) or 0),
+            result = await self._invoke(
+                ResolveUsernameRequest(username=ref.username.lstrip("@"), referer=None)
             )
-            result = await self._invoke(GetChannelRecommendationsRequest(channel=input_channel))
         except Exception as exc:  # noqa: BLE001
             raise _raise_mapped(exc) from exc
+        for chat in getattr(result, "chats", None) or ():
+            snap = _try_public_chat_snapshot(chat)
+            if snap is not None:
+                return snap
+        raise GatewaySourceInaccessible(f"unresolvable:{ref.username}")
 
+    async def get_recommendations(
+        self, source: SourceRef, limit: int
+    ) -> list[SourceSnapshot]:
+        from telethon.tl.functions.channels import GetChannelRecommendationsRequest
+
+        channel = _offline_input_channel(self._require_client(), source)
+        if channel is None:
+            raise GatewaySourceInaccessible("seed_resolution_data_missing")
+        try:
+            result = await self._invoke(
+                GetChannelRecommendationsRequest(channel=channel)
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise _raise_mapped(exc) from exc
         snapshots: list[SourceSnapshot] = []
         for chat in getattr(result, "chats", None) or ():
             snap = _try_public_chat_snapshot(chat)
-            if snap is None:
-                continue
-            snapshots.append(snap)
-            if len(snapshots) >= limit:
+            if snap is not None:
+                snapshots.append(snap)
+            if len(snapshots) >= max(0, int(limit)):
                 break
         return snapshots
 
-    async def sample_public_graph_edges(self, request: GraphSampleRequest) -> list[GraphEdgeDTO]:
-        """Sample recent messages for public mention / t.me link / forward origin.
+    async def sample_public_graph_edges(
+        self, request: GraphSampleRequest
+    ) -> list[GraphEdgeDTO]:
+        return list((await self.sample_public_graph(request)).edges)
 
-        Private invite links and peers without public username are skipped.
-        Never auto-joins.
-        """
-        peer_id = request.source.telegram_id
-        if peer_id is None:
-            raise GatewaySourceInaccessible("missing_telegram_id")
-        client = self._require_client()
-        limit = max(0, min(int(request.message_limit), 50))
+    async def sample_public_graph(
+        self, request: GraphSampleRequest
+    ) -> GraphSampleResultDTO:
+        from telethon.tl.functions.messages import GetHistoryRequest
+
+        source = request.source
+        channel = _offline_input_channel(self._require_client(), source)
+        if channel is None:
+            raise GatewaySourceInaccessible("seed_resolution_data_missing")
+        limit = max(0, min(int(request.message_limit), 100))
         if limit == 0:
-            return []
+            return GraphSampleResultDTO(schema_version=1, edges=(), messages=())
         try:
-            messages = await client.get_messages(peer_id, limit=limit)
+            result = await self._invoke(
+                GetHistoryRequest(
+                    peer=channel,
+                    offset_id=0,
+                    offset_date=None,
+                    add_offset=0,
+                    limit=limit,
+                    max_id=0,
+                    min_id=0,
+                    hash=0,
+                )
+            )
         except Exception as exc:  # noqa: BLE001
             raise _raise_mapped(exc) from exc
+        peer_id = int(channel.channel_id)
+        return GraphSampleResultDTO(
+            schema_version=1,
+            edges=tuple(_graph_edges_from_history(result, seed_telegram_id=peer_id)),
+            messages=tuple(_graph_messages_from_history(result, request.source, peer_id)),
+        )
 
-        edges: list[GraphEdgeDTO] = []
-        seen: set[tuple[str, str]] = set()
-        for message in messages or ():
-            msg_id = int(getattr(message, "id", 0) or 0)
-            text = getattr(message, "message", None) or ""
-            text_cf = text.casefold()
-            for username in _usernames_from_message_text(text):
-                key = ("ref", username)
-                if key in seen:
-                    continue
+
+def _graph_edges_from_history(result: Any, *, seed_telegram_id: int) -> list[GraphEdgeDTO]:
+    chats = {
+        int(getattr(chat, "id", 0) or 0): chat
+        for chat in (getattr(result, "chats", None) or ())
+    }
+    edges: list[GraphEdgeDTO] = []
+    seen: set[tuple[str, str]] = set()
+    for message in getattr(result, "messages", None) or ():
+        message_id = int(getattr(message, "id", 0) or 0) or None
+        text = getattr(message, "message", None) or ""
+        folded = text.casefold()
+        for username in _usernames_from_message_text(text):
+            key = ("reference", username)
+            if key in seen:
+                continue
+            seen.add(key)
+            method = "public_link" if f"t.me/{username}" in folded else "mention"
+            edges.append(
+                GraphEdgeDTO(
+                    schema_version=1,
+                    edge_type=method,  # type: ignore[arg-type]
+                    seed_telegram_id=seed_telegram_id,
+                    raw_reference=(
+                        f"https://t.me/{username}" if method == "public_link" else f"@{username}"
+                    ),
+                    normalized_username=username,
+                    evidence_message_id=message_id,
+                )
+            )
+        fwd = getattr(message, "fwd_from", None)
+        from_id = getattr(fwd, "from_id", None) if fwd is not None else None
+        channel_id = getattr(from_id, "channel_id", None)
+        chat = chats.get(int(channel_id)) if channel_id is not None else None
+        snap = _try_public_chat_snapshot(chat)
+        if snap is not None:
+            key = ("forward_origin", f"peer:{snap.telegram_id}")
+            if key not in seen:
                 seen.add(key)
-                edge_type = "public_link" if f"t.me/{username}" in text_cf else "mention"
                 edges.append(
                     GraphEdgeDTO(
                         schema_version=1,
-                        edge_type=edge_type,  # type: ignore[arg-type]
-                        seed_telegram_id=peer_id,
-                        raw_reference=(
-                            f"https://t.me/{username}"
-                            if edge_type == "public_link"
-                            else f"@{username}"
-                        ),
-                        normalized_username=username,
-                        evidence_message_id=msg_id or None,
+                        edge_type="forward_origin",
+                        seed_telegram_id=seed_telegram_id,
+                        raw_reference=f"@{snap.username}",
+                        normalized_username=snap.username,
+                        target=snap,
+                        evidence_message_id=message_id,
                     )
                 )
-            fwd_edge = _forward_origin_edge(message, seed_telegram_id=peer_id)
-            if fwd_edge is not None:
-                key = (
-                    "forward_origin",
-                    fwd_edge.normalized_username or fwd_edge.raw_reference,
-                )
-                if key not in seen:
-                    seen.add(key)
-                    edges.append(fwd_edge)
-        return edges
+    return edges
+
+
+def _graph_messages_from_history(
+    result: Any,
+    source: SourceRef,
+    peer_id: int,
+) -> list[TelegramMessageDTO]:
+    users = {
+        int(getattr(user, "id", 0) or 0): user
+        for user in (getattr(result, "users", None) or ())
+    }
+    messages: list[TelegramMessageDTO] = []
+    username = source.username or ""
+    for message in getattr(result, "messages", None) or ():
+        message_id = int(getattr(message, "id", 0) or 0)
+        if message_id <= 0:
+            continue
+        published = getattr(message, "date", None) or datetime.now(UTC)
+        if published.tzinfo is None:
+            published = published.replace(tzinfo=UTC)
+        author_kind, author_peer_id = classify_message_author(message)
+        if author_kind == "unknown" and author_peer_id in users:
+            author_kind = "bot" if bool(getattr(users[author_peer_id], "bot", False)) else "user"
+        messages.append(
+            TelegramMessageDTO(
+                schema_version=2,
+                source_id=source.source_id,
+                telegram_message_id=message_id,
+                published_at=published,
+                text=getattr(message, "message", None) or "",
+                telegram_peer_id=peer_id,
+                author_peer_id=author_peer_id,
+                author_kind=author_kind,
+                permalink=_permalink(username, message_id),
+            )
+        )
+    return messages
+
+
+__all__ = ["TelethonGraphMixin", "_offline_input_channel"]

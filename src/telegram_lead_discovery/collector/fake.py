@@ -18,6 +18,7 @@ from telegram_lead_discovery.collector.ports import (
     GlobalSearchRequest,
     GraphEdgeDTO,
     GraphSampleRequest,
+    GraphSampleResultDTO,
     HistoryRequest,
     PublicPostSearchQuotaDTO,
     PublicPostSearchRequest,
@@ -85,6 +86,7 @@ class FakeTelegramGateway:
         self._private_linked_parents: set[int] = set()
         self._recommendations: dict[int, list[SourceSnapshot]] = {}
         self._graph_sample_edges: dict[int, list[GraphEdgeDTO]] = {}
+        self._graph_sample_messages: dict[int, list[TelegramMessageDTO]] = {}
         self._inaccessible_telegram_ids: set[int] = set()
         self._inaccessible_usernames: set[str] = set()
         self._quota = PublicPostSearchQuotaDTO(
@@ -150,6 +152,11 @@ class FakeTelegramGateway:
         self, seed_telegram_id: int, edges: list[GraphEdgeDTO]
     ) -> None:
         self._graph_sample_edges[seed_telegram_id] = list(edges)
+
+    def set_graph_sample_messages(
+        self, seed_telegram_id: int, messages: list[TelegramMessageDTO]
+    ) -> None:
+        self._graph_sample_messages[seed_telegram_id] = list(messages)
 
     def set_quota(
         self,
@@ -292,6 +299,11 @@ class FakeTelegramGateway:
     async def sample_public_graph_edges(
         self, request: GraphSampleRequest
     ) -> list[GraphEdgeDTO]:
+        return list((await self.sample_public_graph(request)).edges)
+
+    async def sample_public_graph(
+        self, request: GraphSampleRequest
+    ) -> GraphSampleResultDTO:
         self.sample_public_graph_edges_calls.append(request)
         self._maybe_flood("sample_public_graph_edges")
         telegram_id = request.source.telegram_id
@@ -312,7 +324,14 @@ class FakeTelegramGateway:
                 ):
                     continue
             bounded.append(edge)
-        return bounded
+        messages = tuple(
+            self._graph_sample_messages.get(telegram_id, [])[: max(0, request.message_limit)]
+        )
+        return GraphSampleResultDTO(
+            schema_version=1,
+            edges=tuple(bounded),
+            messages=messages,
+        )
 
     async def iter_history(
         self, request: HistoryRequest

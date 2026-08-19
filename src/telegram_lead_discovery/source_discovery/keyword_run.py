@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.detection.seed import seed_active_ruleset
@@ -26,6 +27,10 @@ from telegram_lead_discovery.storage.models import (
     DiscoveryRun,
     DiscoveryRunQuery,
     Job,
+)
+from telegram_lead_discovery.source_discovery.telegram_discovery_lock import (
+    discovery_busy_code,
+    find_active_telegram_discovery,
 )
 
 JOB_TYPE_KEYWORD_DISCOVERY = "keyword_discovery"
@@ -151,9 +156,9 @@ async def start_keyword_discovery_run(
     if not credentials_present:
         raise KeywordRunStartError("telegram_credentials_missing")
 
-    active = await find_active_keyword_run(session)
+    active = await find_active_telegram_discovery(session)
     if active is not None:
-        raise KeywordRunStartError(f"active_keyword_run:{active.id}")
+        raise KeywordRunStartError(discovery_busy_code(active))
 
     try:
         profile = await get_profile(session, profile_id)
@@ -193,30 +198,38 @@ async def start_keyword_discovery_run(
         version=1,
         created_at=now,
     )
-    session.add(run)
-    await session.flush()
-
-    query_rows = _expand_run_queries(
-        run_id=run.id,
-        post_queries=queries.post_queries,
-        directory_queries=queries.directory_queries,
-        source_scope=queries.source_scope,
-    )
-    for row in query_rows:
-        session.add(row)
-    await session.flush()
-
-    job = await enqueue_job(
-        session,
-        job_type=JOB_TYPE_KEYWORD_DISCOVERY,
-        dedupe_key=f"keyword_discovery:run:{run.id}",
-        payload={
-            "run_id": run.id,
-            "profile_id": profile.id,
-            "profile_version_id": version_row.id,
-            "correlation_id": str(uuid.uuid4()),
-        },
-    )
+    try:
+        async with session.begin_nested():
+            session.add(run)
+            await session.flush()
+            query_rows = _expand_run_queries(
+                run_id=run.id,
+                post_queries=queries.post_queries,
+                directory_queries=queries.directory_queries,
+                source_scope=queries.source_scope,
+            )
+            for row in query_rows:
+                session.add(row)
+            await session.flush()
+            job = await enqueue_job(
+                session,
+                job_type=JOB_TYPE_KEYWORD_DISCOVERY,
+                dedupe_key=f"keyword_discovery:run:{run.id}",
+                payload={
+                    "run_id": run.id,
+                    "profile_id": profile.id,
+                    "profile_version_id": version_row.id,
+                    "correlation_id": str(uuid.uuid4()),
+                },
+            )
+    except IntegrityError as exc:
+        active = await find_active_telegram_discovery(session)
+        code = (
+            discovery_busy_code(active)
+            if active is not None
+            else "telegram_discovery_busy:unknown:0"
+        )
+        raise KeywordRunStartError(code) from exc
     return StartKeywordDiscoveryResult(
         run=run,
         job=job,

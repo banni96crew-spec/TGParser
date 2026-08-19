@@ -2,14 +2,27 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 from sqlalchemy import func, select
+from telethon import errors as telethon_errors
+from telethon.client.users import UserMethods
 
+from telegram_lead_discovery.collector.adapter.controlled_client import (
+    ControlledTelegramClient,
+    _AsyncReadWriteLock,
+)
+from telegram_lead_discovery.collector.adapter.telethon_gateway import (
+    TelethonTelegramGateway,
+)
 from telegram_lead_discovery.collector.fake import FakeTelegramGateway, make_source
-from telegram_lead_discovery.collector.ports import GraphEdgeDTO
+from telegram_lead_discovery.collector.ports import (
+    GraphEdgeDTO,
+    current_request_controller,
+)
 from telegram_lead_discovery.infrastructure.paths import database_path, ensure_directories
 from telegram_lead_discovery.source_discovery.graph_discovery import (
     start_graph_discovery_run,
@@ -98,6 +111,7 @@ async def test_fake_graph_expands_pool_with_provenance(db_env) -> None:
 
     assert result is not None
     assert result["outcome"] == "succeeded"
+    assert current_request_controller.get() is None
 
     async with session_scope() as session:
         events = list(
@@ -231,7 +245,8 @@ async def test_dismiss_suppress_and_canonical_dedupe(db_env) -> None:
         outcomes = [e.outcome for e in events]
         assert "dismissed_suppressed" in outcomes
         assert outcomes.count("candidate") + outcomes.count("merged") >= 1
-        assert outcomes.count("duplicate_in_run") >= 1
+        # The repeated edge has the same deterministic event id and is not reinserted.
+        assert len(events) == 2
         candidates = list(
             (
                 await session.execute(
@@ -247,7 +262,7 @@ async def test_dismiss_suppress_and_canonical_dedupe(db_env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_floodwait_degrades_with_cursor(db_env) -> None:
+async def test_first_floodwait_stops_graph_with_cursor(db_env) -> None:
     gw = FakeTelegramGateway()
     until = datetime.now(UTC) + timedelta(minutes=3)
     gw.set_flood_wait(until, "get_recommendations")
@@ -263,17 +278,76 @@ async def test_floodwait_degrades_with_cursor(db_env) -> None:
         result = await claim_and_process_graph_job(session, gw)
         await session.commit()
 
-    assert result["outcome"] == "retry_wait"
+    assert result["outcome"] == "failed"
+    assert current_request_controller.get() is None
+    assert len(gw.get_recommendations_calls) == 1
+    assert gw.get_linked_discussion_calls == []
+    assert gw.sample_public_graph_edges_calls == []
     async with session_scope() as session:
         run = await session.get(DiscoveryRun, run_id)
         job = await session.get(Job, job_id)
         assert run is not None
-        assert run.state == "running"
-        assert run.phase == "retry_wait"
-        assert run.cursor_json
+        assert run.state == "failed"
+        assert run.phase == "done"
+        assert run.run_termination_reason == "flood_wait"
+        cursor = json.loads(run.cursor_json)
+        assert cursor["termination"] == {
+            "reason": "flood_wait",
+            "error_code": "flood_wait",
+        }
         assert job is not None
-        assert job.state == "retry_wait"
-        assert job.available_at is not None
+        assert job.state == "failed"
+        assert job.available_at is None
+
+
+@pytest.mark.asyncio
+async def test_cursor_v2_recovers_current_node_and_skips_completed_stage(db_env) -> None:
+    gw = FakeTelegramGateway()
+    async with session_scope() as session:
+        seed = await _seed_source(session, telegram_id=100, username="seed_resume")
+        started = await start_graph_discovery_run(session, seed_source_ids=[seed.id])
+        started.run.cursor_json = json.dumps(
+            {
+                "schema_version": 2,
+                "queue": [],
+                "current_node": {
+                    "seed_telegram_id": 100,
+                    "seed_source_id": seed.id,
+                    "depth": 0,
+                    "username": "seed_resume",
+                    "access_hash": 777,
+                },
+                "completed_stages": {
+                    "peer:100": ["resolve", "recommendations"]
+                },
+                "stage_results": {"peer:100": {"recommendations": []}},
+                "resolved_canonical_keys": ["peer:100"],
+                "resolved_sources": {},
+                "parent_map": {"100": seed.id},
+                "request_control": {"reserved_total": 0},
+            }
+        )
+        await session.commit()
+
+    async with session_scope() as session:
+        result = await claim_and_process_graph_job(session, gw)
+        await session.commit()
+
+    assert result["outcome"] == "succeeded"
+    assert gw.get_recommendations_calls == []
+    assert len(gw.get_linked_discussion_calls) == 1
+    assert len(gw.sample_public_graph_edges_calls) == 1
+    async with session_scope() as session:
+        run = await session.get(DiscoveryRun, started.run.id)
+        cursor = json.loads(run.cursor_json)
+        assert cursor["schema_version"] == 3
+        assert cursor["current_node"] is None
+        assert set(cursor["completed_stages"]["peer:100"]) == {
+            "resolve",
+            "recommendations",
+            "linked_discussion",
+            "message_sample_100",
+        }
 
 
 @pytest.mark.asyncio
@@ -348,3 +422,141 @@ async def test_max_depth_two_not_three(db_env) -> None:
             await session.execute(select(func.count()).select_from(TelegramSource))
         ).scalar_one()
         assert source_count >= 3
+
+
+@pytest.mark.asyncio
+async def test_multiple_username_resolves_happen_before_candidate_writes(db_env) -> None:
+    class PendingWriteGuardGateway(FakeTelegramGateway):
+        session = None
+        checks: list[bool]
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.checks = []
+
+        async def resolve_public_source(self, ref):
+            assert self.session is not None
+            clean = not self.session.new and not self.session.dirty
+            self.checks.append(clean)
+            return await super().resolve_public_source(ref)
+
+    gateway = PendingWriteGuardGateway()
+    gateway.register_source(
+        "unresolved_one", make_source(telegram_id=801, username="unresolved_one")
+    )
+    gateway.register_source(
+        "unresolved_two", make_source(telegram_id=802, username="unresolved_two")
+    )
+    gateway.set_graph_sample_edges(
+        100,
+        [
+            GraphEdgeDTO(
+                schema_version=1,
+                edge_type="mention",
+                seed_telegram_id=100,
+                raw_reference="@unresolved_one",
+                normalized_username="unresolved_one",
+            ),
+            GraphEdgeDTO(
+                schema_version=1,
+                edge_type="mention",
+                seed_telegram_id=100,
+                raw_reference="@unresolved_two",
+                normalized_username="unresolved_two",
+            ),
+        ],
+    )
+    async with session_scope() as session:
+        seed = await _seed_source(session, telegram_id=100, username="seed_two_resolves")
+        await start_graph_discovery_run(session, seed_source_ids=[seed.id])
+        await session.commit()
+    async with session_scope() as session:
+        gateway.session = session
+        result = await claim_and_process_graph_job(session, gateway)
+        await session.commit()
+    assert result["outcome"] == "succeeded"
+    assert gateway.checks == [True, True]
+
+
+@pytest.mark.asyncio
+async def test_full_worker_stops_at_persisted_request_cap_and_clears_context(
+    db_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sender_called = False
+
+    async def forbidden_sender(*args, **kwargs):
+        nonlocal sender_called
+        sender_called = True
+
+    monkeypatch.setattr(UserMethods, "_call", forbidden_sender)
+    client = object.__new__(ControlledTelegramClient)
+    client._request_access = _AsyncReadWriteLock()
+    client._request_retries = 5
+    client._flood_sleep_threshold = 60
+    client._sender = object()
+    gateway = TelethonTelegramGateway(client=client)
+
+    async with session_scope() as session:
+        seed = await _seed_source(session, telegram_id=900, username="seed_request_cap")
+        seed.access_hash = 901
+        started = await start_graph_discovery_run(session, seed_source_ids=[seed.id])
+        cursor = json.loads(started.run.cursor_json or "{}")
+        cursor["schema_version"] = 2
+        cursor["request_control"] = {"reserved_total": 200}
+        started.run.cursor_json = json.dumps(cursor)
+        run_id = started.run.id
+        await session.commit()
+    async with session_scope() as session:
+        result = await claim_and_process_graph_job(session, gateway)
+        await session.commit()
+    assert result == {"outcome": "partial", "reason": "request_cap", "run_id": run_id}
+    assert sender_called is False
+    assert current_request_controller.get() is None
+    async with session_scope() as session:
+        run = await session.get(DiscoveryRun, run_id)
+        assert run.state == "partial"
+        assert run.run_termination_reason == "request_cap"
+        cursor = json.loads(run.cursor_json)
+        assert cursor["termination"] == {
+            "reason": "request_cap",
+            "error_code": None,
+        }
+
+
+@pytest.mark.asyncio
+async def test_full_worker_stops_on_first_controlled_telethon_flood(
+    db_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sender_calls = 0
+
+    async def flood_sender(*args, **kwargs):
+        nonlocal sender_calls
+        sender_calls += 1
+        raise telethon_errors.FloodWaitError(None, 7)
+
+    monkeypatch.setattr(UserMethods, "_call", flood_sender)
+    client = object.__new__(ControlledTelegramClient)
+    client._request_access = _AsyncReadWriteLock()
+    client._request_retries = 5
+    client._flood_sleep_threshold = 60
+    client._sender = object()
+    gateway = TelethonTelegramGateway(client=client)
+
+    async with session_scope() as session:
+        seed = await _seed_source(session, telegram_id=910, username="seed_real_flood")
+        seed.access_hash = 911
+        started = await start_graph_discovery_run(session, seed_source_ids=[seed.id])
+        run_id = started.run.id
+        await session.commit()
+    async with session_scope() as session:
+        result = await claim_and_process_graph_job(session, gateway)
+        await session.commit()
+    assert result == {"outcome": "failed", "error": "flood_wait", "run_id": run_id}
+    assert sender_calls == 1
+    assert current_request_controller.get() is None
+    assert client._request_retries == 5
+    assert client.flood_sleep_threshold == 60
+    async with session_scope() as session:
+        run = await session.get(DiscoveryRun, run_id)
+        assert run.state == "failed"
+        assert run.run_termination_reason == "flood_wait"

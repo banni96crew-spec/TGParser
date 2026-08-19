@@ -29,6 +29,7 @@ class TelegramSource(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     telegram_id: Mapped[int | None] = mapped_column(Integer)
+    access_hash: Mapped[int | None] = mapped_column(Integer)
     username_normalized: Mapped[str | None] = mapped_column(String(64))
     title: Mapped[str] = mapped_column(String(256), nullable=False, default="")
     source_type: Mapped[str] = mapped_column(String(32), nullable=False, default="channel")

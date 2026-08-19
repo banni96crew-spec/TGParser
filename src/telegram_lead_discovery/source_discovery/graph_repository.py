@@ -52,6 +52,7 @@ async def load_graph_seeds(
                 seed_source_id=row.id,
                 depth=0,
                 username=row.username_normalized,
+                access_hash=row.access_hash,
             )
         )
     # SRC-006: depth ASC, discovered_at ASC, normalized reference ASC.

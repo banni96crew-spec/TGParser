@@ -54,6 +54,11 @@ def _entity_to_snapshot(entity: object) -> SourceSnapshot:
         source_type=source_type,  # type: ignore[arg-type]
         public_url=f"https://t.me/{username}" if username else None,
         accessible=True,
+        access_hash=(
+            int(entity.access_hash)
+            if getattr(entity, "access_hash", None) is not None
+            else None
+        ),
     )
 
 

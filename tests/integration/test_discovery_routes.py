@@ -364,7 +364,7 @@ async def test_discovery_duplicate_start_conflict_and_filters(discovery_ui_env) 
             follow_redirects=False,
         )
         assert conflict.status_code == 409
-        assert "active_keyword_run" in conflict.text
+        assert "telegram_discovery_busy:keyword_scouting" in conflict.text
 
         async def _seed_opps(session):
             strong = SourceOpportunitySnapshot(

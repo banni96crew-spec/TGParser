@@ -475,7 +475,13 @@ async def test_get_recommendations_public_only() -> None:
     )
     gw = TelethonTelegramGateway(client=client)
     recs = await gw.get_recommendations(
-        SourceRef(schema_version=1, source_id=1, telegram_id=100), limit=10
+        SourceRef(
+            schema_version=1,
+            source_id=1,
+            telegram_id=100,
+            access_hash=parent.access_hash,
+        ),
+        limit=10,
     )
     assert len(recs) == 1
     assert recs[0].username == "rec_public"
@@ -484,28 +490,37 @@ async def test_get_recommendations_public_only() -> None:
 
 @pytest.mark.asyncio
 async def test_sample_public_graph_edges_mentions_and_links() -> None:
+    from telethon.tl.functions.messages import GetHistoryRequest
+
     client = _RecordingClient()
     parent = _channel(telegram_id=100, username="parent_ch")
     client.register_entity(100, parent)
 
-    class _MsgClient(_RecordingClient):
-        async def get_messages(self, peer_id: int, limit: int = 50):
-            return [
+    msg_client = _RecordingClient()
+    msg_client.on(
+        GetHistoryRequest,
+        SimpleNamespace(
+            messages=[
                 SimpleNamespace(
                     id=1,
                     message="see @public_alpha and https://t.me/shop_beta plus t.me/+InviteOnly",
                     fwd_from=None,
                     forward=None,
                 )
-            ]
-
-    msg_client = _MsgClient()
-    msg_client.register_entity(100, parent)
+            ],
+            chats=[],
+        ),
+    )
     gw = TelethonTelegramGateway(client=msg_client)
     edges = await gw.sample_public_graph_edges(
         GraphSampleRequest(
             schema_version=1,
-            source=SourceRef(schema_version=1, source_id=1, telegram_id=100),
+            source=SourceRef(
+                schema_version=1,
+                source_id=1,
+                telegram_id=100,
+                access_hash=parent.access_hash,
+            ),
             message_limit=20,
         )
     )

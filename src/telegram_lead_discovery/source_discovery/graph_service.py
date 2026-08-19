@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
-import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.collector.ports import (
@@ -29,7 +31,10 @@ from telegram_lead_discovery.source_discovery.graph_policy import (
 )
 from telegram_lead_discovery.source_discovery.graph_repository import (
     _find_existing_source,
-    find_active_graph_run,
+)
+from telegram_lead_discovery.source_discovery.telegram_discovery_lock import (
+    discovery_busy_code,
+    find_active_telegram_discovery,
 )
 from telegram_lead_discovery.storage.jobs import enqueue_job
 from telegram_lead_discovery.storage.models import (
@@ -40,7 +45,7 @@ from telegram_lead_discovery.storage.models import (
 )
 
 JOB_TYPE_GRAPH_DISCOVERY = "discovery"
-TERMINAL_GRAPH_RUN_STATES = frozenset({"succeeded", "failed", "cancelled"})
+TERMINAL_GRAPH_RUN_STATES = frozenset({"succeeded", "partial", "failed", "cancelled"})
 
 
 class GraphRunStartError(ValueError):
@@ -67,8 +72,9 @@ async def start_graph_discovery_run(
     seeds = [int(s) for s in seed_source_ids]
     if not seeds:
         raise GraphRunStartError("seeds_required")
-    if await find_active_graph_run(session) is not None:
-        raise GraphRunStartError("active_graph_run_exists")
+    active = await find_active_telegram_discovery(session)
+    if active is not None:
+        raise GraphRunStartError(discovery_busy_code(active))
 
     for source_id in seeds:
         row = await session.get(TelegramSource, source_id)
@@ -89,15 +95,24 @@ async def start_graph_discovery_run(
         counters_json="{}",
         created_at=now,
     )
-    session.add(run)
-    await session.flush()
-
-    job = await enqueue_job(
-        session,
-        job_type=JOB_TYPE_GRAPH_DISCOVERY,
-        payload={"run_id": run.id, "schema_version": 1},
-        dedupe_key=f"graph-discovery:{run.id}",
-    )
+    try:
+        async with session.begin_nested():
+            session.add(run)
+            await session.flush()
+            job = await enqueue_job(
+                session,
+                job_type=JOB_TYPE_GRAPH_DISCOVERY,
+                payload={"run_id": run.id, "schema_version": 2},
+                dedupe_key=f"graph-discovery:{run.id}",
+            )
+    except IntegrityError as exc:
+        active = await find_active_telegram_discovery(session)
+        code = (
+            discovery_busy_code(active)
+            if active is not None
+            else "telegram_discovery_busy:unknown:0"
+        )
+        raise GraphRunStartError(code) from exc
     return StartGraphDiscoveryResult(run=run, job=job, seed_count=len(seeds))
 
 
@@ -114,6 +129,7 @@ async def collect_edges_for_seed(
         source_id=seed.seed_source_id or 0,
         telegram_id=seed.seed_telegram_id,
         username=seed.username,
+        access_hash=seed.access_hash,
     )
     edges: list[GraphEdgeDTO] = []
 
@@ -182,6 +198,7 @@ async def persist_graph_candidate(
         elif outcome == "candidate":
             source = TelegramSource(
                 telegram_id=snap.telegram_id,
+                access_hash=snap.access_hash,
                 username_normalized=snap.username.lower(),
                 title=snap.title,
                 source_type=snap.source_type,
@@ -195,9 +212,12 @@ async def persist_graph_candidate(
         elif result.source_id is not None:
             source = await session.get(TelegramSource, result.source_id)
 
-    session.add(
-        SourceDiscoveryEvent(
-            event_id=str(uuid.uuid4()),
+    event = SourceDiscoveryEvent(
+            event_id=_graph_event_id(
+                run_id=run.id,
+                result=result,
+                snapshot=snap,
+            ),
             run_id=run.id,
             source_id=source.id if source is not None else None,
             method=result.method,
@@ -209,6 +229,37 @@ async def persist_graph_candidate(
             depth=result.depth,
             discovered_at=_utcnow(),
         )
+    existing_event = await session.execute(
+        select(SourceDiscoveryEvent.id).where(
+            SourceDiscoveryEvent.event_id == event.event_id
+        )
     )
+    if existing_event.scalar_one_or_none() is None:
+        session.add(event)
     await session.flush()
     return source
+
+
+def _graph_event_id(
+    *,
+    run_id: int,
+    result: GraphCandidateResult,
+    snapshot: SourceSnapshot | None,
+) -> str:
+    target = (
+        f"peer:{snapshot.telegram_id}"
+        if snapshot is not None
+        else (result.normalized_reference or result.raw_reference).casefold()
+    )
+    payload = "|".join(
+        (
+            "2",
+            str(run_id),
+            f"peer:{result.seed_telegram_id}",
+            result.method,
+            target,
+            str(result.evidence_message_id or 0),
+            str(result.depth),
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()

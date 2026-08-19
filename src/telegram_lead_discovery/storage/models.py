@@ -29,6 +29,10 @@ from telegram_lead_discovery.storage.model_parts.discovery import (
     DiscoveryTerminalOutcome,
 )
 
+from telegram_lead_discovery.storage.model_parts.graph_discovery import (
+    GraphDiscoveryPost,
+)
+
 from telegram_lead_discovery.storage.model_parts.suppression import (
     DismissedKeywordSource,
     PresentedKeywordSource,

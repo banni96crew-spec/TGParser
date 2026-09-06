@@ -77,7 +77,7 @@ async def _make_profile(session, *, name: str, directory_queries: list[str] | No
 
 @pytest.mark.asyncio
 async def test_presented_peer_suppressed_next_run_and_survives_retention(db_env) -> None:
-    """AT-SRC-041/050: shown peer absent next run; ledger survives snapshot purge."""
+    """AT-SRC-041/050: non-quality ledger survives purge and does not hide next run."""
     gw = FakeTelegramGateway()
     shown = make_source(
         telegram_id=8801,
@@ -144,7 +144,7 @@ async def test_presented_peer_suppressed_next_run_and_survives_retention(db_env)
         )
         assert any(row.source_telegram_id == 8801 for row in ledger_after)
 
-    # Second run: provider still returns shown peer; must not present again.
+    # Non-quality ledger must not hide the peer on the next run (D-076).
     gw2 = FakeTelegramGateway()
     gw2.register_source("shown_once", shown)
     gw2.register_source("brand_new", fresh)
@@ -185,9 +185,7 @@ async def test_presented_peer_suppressed_next_run_and_survives_retention(db_env)
         counters = json.loads(run.counters_json or "{}")
         presented_suppressed = int(counters.get("presented_suppressed") or 0)
         cooldown_alias = int(counters.get("cooldown_suppressed") or 0)
-        assert presented_suppressed >= 1
         assert cooldown_alias == presented_suppressed
-        # Distinct reasons: registry/dismiss stay separate.
         assert "registry_suppressed" in counters
         assert "dismissed_suppressed" in counters
 
@@ -202,22 +200,82 @@ async def test_presented_peer_suppressed_next_run_and_survives_retention(db_env)
             .scalars()
             .all()
         )
-        assert 8801 not in evidence_ids
+        assert 8801 in evidence_ids
         assert 8802 in evidence_ids
 
-        opp2 = set(
+
+@pytest.mark.asyncio
+async def test_quality_presented_hides_next_run(db_env) -> None:
+    async with session_scope() as session:
+        await upsert_presented_suppress(
+            session,
+            identity=SuppressIdentity(
+                canonical_key=peer_canonical_key(8801),
+                telegram_id=8801,
+                username_normalized="shown_once",
+            ),
+            origin_run_id=1,
+            suppress_class="quality",
+        )
+        await session.commit()
+
+    shown = make_source(
+        telegram_id=8801,
+        username="shown_once",
+        source_type="megagroup",
+        title="Shown Once",
+    )
+    fresh = make_source(
+        telegram_id=8802,
+        username="brand_new",
+        source_type="megagroup",
+        title="Brand New",
+    )
+    gw = FakeTelegramGateway()
+    gw.register_source("shown_once", shown)
+    gw.register_source("brand_new", fresh)
+    gw.set_global_hits(
+        [
+            make_hit(
+                source=shown,
+                message_id=1,
+                excerpt="нужен сайт shown",
+                published_at=_fresh(),
+            ),
+            make_hit(
+                source=fresh,
+                message_id=2,
+                excerpt="нужен сайт new",
+                published_at=_fresh(1),
+            ),
+        ]
+    )
+    gw.set_directory_results([shown, fresh])
+    gw.set_quota(free_slot_available=True)
+    gw.set_public_post_hits("нужен сайт", [])
+
+    async with session_scope() as session:
+        profile = await _make_profile(session, name="quality-hide")
+        started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
+        run_id = started.run.id
+
+    async with session_scope() as session:
+        await claim_and_process_keyword_job(session, gw)
+
+    async with session_scope() as session:
+        evidence_ids = set(
             (
                 await session.execute(
-                    select(SourceOpportunitySnapshot.source_telegram_id).where(
-                        SourceOpportunitySnapshot.run_id == run2
+                    select(SourceDiscoveryEvidence.source_telegram_id).where(
+                        SourceDiscoveryEvidence.run_id == run_id
                     )
                 )
             )
             .scalars()
             .all()
         )
-        assert 8801 not in opp2
-        assert 8802 in opp2
+        assert 8801 not in evidence_ids
+        assert 8802 in evidence_ids
 
 
 @pytest.mark.asyncio
@@ -250,6 +308,7 @@ async def test_presented_alias_and_canonical_merge_do_not_bypass(db_env) -> None
             ),
             extra_aliases=("new_name",),
             origin_run_id=1,
+            suppress_class="quality",
         )
         await session.commit()
 
@@ -343,6 +402,7 @@ async def test_registry_dismiss_presented_reasons_distinguishable(db_env) -> Non
                 username_normalized="presented_peer",
             ),
             origin_run_id=1,
+            suppress_class="quality",
         )
         await session.commit()
 
@@ -418,7 +478,7 @@ async def test_registry_dismiss_presented_reasons_distinguishable(db_env) -> Non
 
 @pytest.mark.asyncio
 async def test_run15_style_mass_suppress_triggers_directory_replacement(db_env) -> None:
-    """AT-SRC-040: mostly-seen first page → replacement expands to unseen peers."""
+    """AT-SRC-040: quality-hidden first page → replacement expands to unseen peers."""
     assert len(SEED_DIRECTORY_REPLACEMENT_QUERIES) >= 1
     replacement_phrase = SEED_DIRECTORY_REPLACEMENT_QUERIES[0]
 
@@ -458,6 +518,7 @@ async def test_run15_style_mass_suppress_triggers_directory_replacement(db_env) 
                     username_normalized=s.username,
                 ),
                 origin_run_id=1,
+                suppress_class="quality",
             )
         profile = await _make_profile(
             session,

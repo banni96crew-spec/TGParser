@@ -34,6 +34,8 @@ async def _expand_directory_replacement(
     Uses only replacement queries frozen in the run's immutable profile version,
     plus profile directory texts not yet executed. Stars/paid paths are never used.
     """
+    if ctx.profile_version.version == 8:
+        return 0, []
     if already_qualified >= target_quota:
         return 0, []
 

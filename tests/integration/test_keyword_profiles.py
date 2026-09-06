@@ -19,6 +19,7 @@ from telegram_lead_discovery.source_discovery.keyword_profiles import (
     build_seed_normalized_profile,
 )
 from telegram_lead_discovery.source_discovery.profile_service import (
+    ProfileSeedMismatchError,
     ProfileVersionConflict,
     create_keyword_discovery_profile,
     create_keyword_discovery_profile_version,
@@ -189,3 +190,50 @@ async def test_at_src_018_new_version_leaves_prior_immutable(db_env) -> None:
         assert v2.replacement_directory_queries == ("seller business",)
         assert v2.additional_exclusions == ("резюме",)
         assert v2.source_scope == "channels"
+
+
+@pytest.mark.asyncio
+async def test_ensure_seed_accepts_v7_and_v8_etalons(db_env) -> None:
+    from telegram_lead_discovery.source_discovery.keyword_profiles import (
+        build_v8_normalized_profile,
+    )
+
+    async with session_scope() as session:
+        seed = await ensure_seed_keyword_profile(session)
+        assert seed.profile.current_version == 3
+        profile_id = seed.profile.id
+        v7 = _build_version_row_for_test(profile_id, 7, build_seed_normalized_profile())
+        session.add(v7)
+        seed.profile.current_version = 7
+        await session.flush()
+        accepted_v7 = await ensure_seed_keyword_profile(session)
+        assert accepted_v7.profile.current_version == 7
+        assert accepted_v7.version.version == 7
+
+        v8 = _build_version_row_for_test(profile_id, 8, build_v8_normalized_profile())
+        session.add(v8)
+        seed.profile.current_version = 8
+        await session.flush()
+        accepted_v8 = await ensure_seed_keyword_profile(session)
+        assert accepted_v8.profile.current_version == 8
+        assert version_as_normalized(accepted_v8.version).directory_queries == ()
+        assert version_as_normalized(accepted_v8.version).source_scope == "groups"
+
+        seed.profile.current_version = 8
+        accepted_v8.version.directory_queries_json = '["чат предпринимателей"]'
+        await session.flush()
+        with pytest.raises(ProfileSeedMismatchError, match="seed_profile_mismatch"):
+            await ensure_seed_keyword_profile(session)
+
+
+def _build_version_row_for_test(profile_id: int, version: int, queries):
+    from datetime import UTC, datetime
+
+    from telegram_lead_discovery.source_discovery.profile_service import _build_version_row
+
+    return _build_version_row(
+        profile_id=profile_id,
+        version=version,
+        queries=queries,
+        created_at=datetime.now(UTC),
+    )

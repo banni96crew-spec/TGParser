@@ -10,6 +10,9 @@ from sqlalchemy import select
 from telegram_lead_discovery.dashboard.discovery.constants import (
     VERSION_CONFLICT_MESSAGE,
 )
+from telegram_lead_discovery.dashboard.discovery.graph_run_page import (
+    render_graph_run_page,
+)
 from telegram_lead_discovery.dashboard.discovery.http_helpers import (
     _credentials_present,
     _csrf_or_403,
@@ -22,6 +25,12 @@ from telegram_lead_discovery.dashboard.discovery.queries import (
     _lifecycle_map,
     _order_opportunities,
 )
+from telegram_lead_discovery.dashboard.discovery.run_cancel import (
+    execute_discovery_run_cancel,
+)
+from telegram_lead_discovery.dashboard.discovery.run_start import (
+    execute_start_keyword_run,
+)
 from telegram_lead_discovery.dashboard.discovery.view_models import (
     _normalize_band_filter,
     _opportunity_view,
@@ -32,8 +41,6 @@ from telegram_lead_discovery.source_discovery.keyword_run import (
     KeywordRunNotFoundError,
     KeywordRunStartError,
     KeywordRunVersionConflict,
-    cancel_keyword_discovery_run,
-    start_keyword_discovery_run,
 )
 from telegram_lead_discovery.storage.db import session_scope
 from telegram_lead_discovery.storage.models import (
@@ -55,46 +62,33 @@ def create_run_router(templates: Jinja2Templates) -> APIRouter:
         request: Request,
         csrf_token: str = Form(...),
         profile_id: int = Form(...),
+        seed_refs: str = Form(""),
+        expected_version: int | None = Form(default=None),
     ) -> HTMLResponse:
         rejected = _csrf_or_403(request, csrf_token)
         if rejected is not None:
             return rejected
-        try:
-            async with session_scope() as session:
-                result = await start_keyword_discovery_run(
-                    session,
-                    profile_id=profile_id,
-                    credentials_present=_credentials_present(request),
-                )
-                run_id = result.run.id
-        except KeywordRunStartError as exc:
-            code = str(exc)
-            status = (
-                409
-                if code.startswith(("active_keyword_run", "telegram_discovery_busy"))
-                else 422
-            )
-            if code == "telegram_credentials_missing":
-                status = 422
-            return _safe_error(
-                status_code=status,
-                error_code=code.split(":", 1)[0],
-                message=f"Запуск отклонён: {code}",
-            )
-        except Exception:  # noqa: BLE001
-            return _safe_error(
-                status_code=500,
-                error_code="run_start_failed",
-                message="Не удалось запустить разведку",
-            )
-        return RedirectResponse(url=f"/discovery/runs/{run_id}", status_code=303)
+        return await execute_start_keyword_run(
+            profile_id=profile_id,
+            seed_refs_text=seed_refs,
+            expected_version=expected_version,
+            credentials_present=_credentials_present(request),
+        )
 
     @router.get("/discovery/runs/{run_id}", response_class=HTMLResponse)
     async def discovery_run_detail(request: Request, run_id: int) -> HTMLResponse:
         token = _issue_csrf(request)
         async with session_scope() as session:
             run = await session.get(DiscoveryRun, run_id)
-            if run is None or run.run_type != "keyword_scouting":
+            if run is None:
+                return _safe_error(
+                    status_code=404,
+                    error_code="keyword_run_not_found",
+                    message="Запуск разведки не найден",
+                )
+            if run.run_type == "graph":
+                return render_graph_run_page(templates, request, run, token)
+            if run.run_type != "keyword_scouting":
                 return _safe_error(
                     status_code=404,
                     error_code="keyword_run_not_found",
@@ -260,7 +254,7 @@ def create_run_router(templates: Jinja2Templates) -> APIRouter:
             return rejected
         try:
             async with session_scope() as session:
-                await cancel_keyword_discovery_run(
+                await execute_discovery_run_cancel(
                     session,
                     run_id=run_id,
                     expected_version=expected_version,

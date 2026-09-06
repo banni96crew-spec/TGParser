@@ -27,6 +27,14 @@
   <form method="post" action="/discovery/runs" class="discovery-run-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
     <input type="hidden" name="profile_id" value="{{ active_profile.id }}" />
+    <input type="hidden" name="expected_version" value="{{ active_profile.current_version }}" />
+    <p>
+      <label for="seed_refs">Известные публичные чаты (необязательно, до 25 строк)</label>
+    </p>
+    <p>
+      <textarea id="seed_refs" name="seed_refs" rows="4" cols="48"
+                placeholder="@chat или https://t.me/chat — по одной ссылке на строку"></textarea>
+    </p>
     <button type="submit"{% if not credentials_present %} disabled{% endif %}>Запустить разведку</button>
   </form>
 </section>

@@ -25,6 +25,10 @@ class GatewayTransientError(Exception):
     pass
 
 
+class GatewayTimeout(Exception):
+    """Graph exclusive wait or RPC exceeded the single 30 s budget (COL-030)."""
+
+
 class GatewayPermanentError(Exception):
     pass
 

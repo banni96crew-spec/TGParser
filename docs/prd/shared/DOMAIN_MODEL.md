@@ -121,7 +121,7 @@ Constraints:
 - retention MUST NOT delete suppress rows;
 - snapshot `review_state=dismissed` alone is not durable suppress.
 
-`PresentedKeywordSource` (logical already-shown suppress ledger, owner `SRC`; physical table `STO`; D-069 / SRC-041/050)
+`PresentedKeywordSource` (logical already-shown suppress ledger, owner `SRC`; physical table `STO`; D-076 / SRC-041/050 / STO-024)
 
 - `id`;
 - `canonical_key: str` unique;
@@ -129,7 +129,8 @@ Constraints:
 - `usernames_json` / aliases;
 - `first_presented_at`;
 - `origin_run_id: int | null`, `origin_opportunity_id: int | null`;
-- `version` / upsert stamp — idempotent on re-presentation;
+- `suppress_class: enum(quality, non_quality, legacy_unspecified)` — future-run match only `quality`;
+- `version` / upsert stamp — idempotent on re-presentation; `quality` written only on terminal quality;
 - retention MUST NOT delete presented-suppress rows (STO-020);
 - snapshot presence alone after retention is not durable suppress.
 
@@ -176,7 +177,7 @@ Constraints:
 - дубликаты запрещены;
 - после использования в `DiscoveryRun` версия immutable (D-055).
 
-Clean DB seed: immutable profile `ecommerce-development-ru`, version `3`; operator migration under D-070 is exact `6→7` or blocks.
+Clean DB seed: immutable profile `ecommerce-development-ru`, version `3` (directory + `source_scope=all`). `ensure_seed_keyword_profile` accepts `{3,7,8}` with different SRC-049 etalons: v3 directory+`all`; v7 historical directory+`all`; v8 empty directory + `groups`. Operator migration is linear Alembic `008→009→010`: `009` adds `PresentedKeywordSource.suppress_class`; `010` upgrades observed `current_version==7` → `8` or blocks. Historical `6→7` is not the active operator path.
 
 `DiscoveryRun`
 
@@ -187,28 +188,29 @@ Clean DB seed: immutable profile `ecommerce-development-ru`, version `3`; operat
 - `search_mode: enum(free_only)` — для keyword; paid modes отсутствуют (D-050);
 - `rule_set_version_id: int | null`, `rule_set_checksum: str | null` — для keyword (D-055);
 - `max_depth=2`, `expansion_cap=25`, `candidate_cap=100` — для `graph`;
-- `state` для `graph`: `enum(queued, running, succeeded, partial, failed, cancelled)`;
+- `state` для `graph`: `enum(queued, running, cancelling, succeeded, partial, failed, cancelled)`;
 - `state` для `keyword_scouting`: `enum(queued, running, retry_wait_flood, cancelling, cancelled, succeeded, partial, failed)`;
 - `phase: str | null` — для keyword (A–I);
 - `reference_at: timestamp | null` — для ActiveClientChat v1 равно immutable `started_at=T`, сохраняется до первого provider call;
 - `quota_snapshot_json`, `cursor_json`, `last_error_code`;
 - `version: int` — optimistic concurrency;
 - counters и timestamps;
-- remediation funnel counters (all `int ≥ 0`, keyword runs; D-063 / SRC-037 / D-069):
+- remediation funnel counters (all `int ≥ 0`, keyword runs; D-063 / SRC-037 / D-076):
   - `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`,
-  - `duplicate_in_run`, `presented_suppressed` (unique already-shown peers; `cooldown_suppressed` is alias),
+  - `duplicate_in_run`, `presented_suppressed` (unique peers hidden by D-076; `cooldown_suppressed` is alias),
+  - `operator_seed_skipped`,
   - `qualified_total`, `presented_total`,
   - `novel_presented_total`, `replacement_fetches_total`;
 - `pool_exhausted: bool`;
 - `pool_exhausted_reason: enum(provider_empty, no_unseen_after_suppress) | null`; only proven exhaustion sets it;
 - `run_termination_reason: enum(quality_reached, provider_empty, no_unseen_after_suppress, deep_candidate_cap, history_run_cap, acquisition_budget_cap, quota_skipped_remaining, request_cap, flood_wait, request_control_violation, completed, cancelled, failed) | null`; caps/quota/cancel/failure without quality are inconclusive, not pool exhaustion;
-- `novelty_ratio: float` = `novel_presented_total / max(1, presented_total)` for completed keyword runs.
+- `novelty_ratio: float | null` — только по canonical set с `truth_status=quality`; `null` если quality presented нет (NFR-QLT-006).
 
 `partial` означает, что часть queries пропущена из-за бесплатной квоты или permanent errors отдельных шагов.
 
 Concurrency (D-071 supersedes the separate D-058 limits): partial unique expression index permits at most one run total across `graph|keyword_scouting` in `queued|running|retry_wait_flood|cancelling`.
 
-Graph cursor schema v3 stores `queue`, `current_node`, completed stages, saved stage results, resolved identities, parent map, termination snapshot and request-control snapshot (`reserved_total`, last UTC reservation, at most 10 rolling UTC reservations). Cursor v2 remains readable. The graph request cap is `200`; request reservations are durable before network I/O.
+Graph cursor schema v3 stores `queue`, `current_node`, completed stages, saved stage results, resolved identities, parent map, per-canonical `transient_count`, termination snapshot and request-control snapshot (`reserved_total`, last UTC reservation, at most 10 rolling UTC reservations). Cursor v2 remains readable. The graph request cap is `200`; request reservations are durable before network I/O. `GatewayTimeout` skips remaining unfetched stages on the current node without collector retry.
 
 `GraphDiscoveryPost` (D-072)
 
@@ -222,7 +224,7 @@ Graph cursor schema v3 stores `queue`, `current_node`, completed stages, saved s
 `DiscoveryRunQuery`
 
 - `id`, `run_id`, `ordinal`;
-- `query_kind: enum(global_message, directory, public_posts, source_verification, linked_discussion)`;
+- `query_kind: enum(global_message, directory, public_posts, source_verification, linked_discussion, operator_seed)`;
 - `query_text`;
 - `source_telegram_id: int | null`;
 - `scope: str | null`;
@@ -241,7 +243,7 @@ Graph cursor schema v3 stores `queue`, `current_node`, completed stages, saved s
 - `telegram_message_id`, `published_at`, `permalink`;
 - `excerpt: str` — максимум `240` Unicode code points (D-056);
 - `normalized_hash`;
-- `matched_query_ordinals_json`, `discovery_channels_json`;
+- `matched_query_ordinals_json`, `discovery_channels_json` (`global_message|directory|public_posts|source_verification|linked_discussion|operator_seed`);
 - `detection_category`, `is_qualified`, `hard_exclusion`, `hard_exclusion_rule_id`;
 - `service_profiles_json`, `rule_set_checksum`;
 - `matched_rule_ids_json: list[str]` — stable DET rule IDs for UI explainability (D-068); default `[]`;

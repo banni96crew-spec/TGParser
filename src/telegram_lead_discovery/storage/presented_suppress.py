@@ -59,6 +59,7 @@ async def upsert_presented_suppress(
     origin_opportunity_id: int | None = None,
     extra_aliases: tuple[str, ...] | list[str] | None = None,
     first_presented_at: datetime | None = None,
+    suppress_class: str | None = None,
 ) -> PresentedKeywordSource:
     """Insert or merge claim fields for one already-shown suppress membership (idempotent)."""
     now = datetime.now(UTC)
@@ -87,6 +88,7 @@ async def upsert_presented_suppress(
     if row is None:
         if normalized:
             alias_set.discard(normalized)
+        assigned_class = suppress_class or "legacy_unspecified"
         row = PresentedKeywordSource(
             canonical_key=key,
             source_telegram_id=tid,
@@ -95,6 +97,7 @@ async def upsert_presented_suppress(
             origin_run_id=origin_run_id,
             origin_opportunity_id=origin_opportunity_id,
             first_presented_at=first_presented_at or now,
+            suppress_class=assigned_class,
             version=1,
             created_at=now,
             updated_at=now,
@@ -121,6 +124,10 @@ async def upsert_presented_suppress(
     row.origin_run_id = row.origin_run_id or origin_run_id
     row.origin_opportunity_id = row.origin_opportunity_id or origin_opportunity_id
     row.aliases_json = _dump_aliases(aliases)
+    if suppress_class == "quality":
+        row.suppress_class = "quality"
+    elif suppress_class is not None and row.suppress_class != "quality":
+        row.suppress_class = suppress_class
     row.updated_at = now
     row.version = int(row.version or 1) + 1
     await session.flush()

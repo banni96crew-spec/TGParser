@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from telegram_lead_discovery.collector.ports import (
+    GraphCallCancelled,
     NestedTelegramRequest,
     RequestBudgetExhausted,
     UnsupportedBatchRequest,
@@ -33,6 +34,9 @@ class GraphRequestController:
         window_seconds: float = 60.0,
         window_limit: int = 10,
         request_cap: int = 200,
+        cancel_event: asyncio.Event | None = None,
+        heartbeat: Callable[[], Awaitable[None]] | None = None,
+        heartbeat_seconds: float = 60.0,
     ) -> None:
         self.reserved_total = max(0, int(reserved_total))
         self._persist = persist_reservation
@@ -43,6 +47,9 @@ class GraphRequestController:
         self._window = window_seconds
         self._window_limit = window_limit
         self._request_cap = request_cap
+        self.cancel_event = cancel_event or asyncio.Event()
+        self._heartbeat = heartbeat
+        self._heartbeat_seconds = max(0.05, float(heartbeat_seconds))
         self._reservations: deque[float] = deque()
         self._reservation_times_utc: deque[str] = deque(maxlen=window_limit)
         self._last_monotonic: float | None = None
@@ -72,7 +79,7 @@ class GraphRequestController:
                     f"graph_request_cap_reached:{self._request_cap}"
                 )
             if self._restart_cooldown:
-                await self._sleep(self._window)
+                await self._sleep_interruptible(self._window)
                 self._restart_cooldown = False
                 self._reservations.clear()
                 self._last_monotonic = None
@@ -118,7 +125,40 @@ class GraphRequestController:
             delay = target - now
             if delay <= 0:
                 return
-            await self._sleep(delay)
+            await self._sleep_interruptible(delay)
+
+    async def pulse(self) -> None:
+        if self._heartbeat is not None:
+            await self._heartbeat()
+
+    async def _sleep_interruptible(self, delay: float) -> None:
+        end = self._monotonic() + delay
+        while True:
+            if self.cancel_event.is_set():
+                raise GraphCallCancelled
+            left = end - self._monotonic()
+            if left <= 0:
+                return
+            await self.pulse()
+            chunk = min(left, self._heartbeat_seconds)
+            sleep_task = asyncio.create_task(self._sleep(chunk))
+            cancel_task = asyncio.create_task(self.cancel_event.wait())
+            _done, pending = await asyncio.wait(
+                {sleep_task, cancel_task},
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in pending:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    current = asyncio.current_task()
+                    if current is not None and current.cancelling():
+                        raise
+            if self.cancel_event.is_set():
+                raise GraphCallCancelled
+            if sleep_task.done() and not sleep_task.cancelled():
+                continue
 
 
 __all__ = ["GraphRequestController"]

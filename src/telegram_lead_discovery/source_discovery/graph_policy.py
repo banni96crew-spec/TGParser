@@ -83,6 +83,7 @@ class GraphBudget:
     duplicate_in_run_total: int = 0
     registry_suppressed_total: int = 0
     dismissed_suppressed_total: int = 0
+    node_timeout_total: int = 0
     resolved_canonical_keys: set[str] = field(default_factory=set)
 
     def remaining_candidates(self) -> int:
@@ -103,6 +104,7 @@ class GraphBudget:
             "duplicate_in_run": self.duplicate_in_run_total,
             "registry_suppressed": self.registry_suppressed_total,
             "dismissed_suppressed": self.dismissed_suppressed_total,
+            "node_timeout_total": self.node_timeout_total,
         }
 
 

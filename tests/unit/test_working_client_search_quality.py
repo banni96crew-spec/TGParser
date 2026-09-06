@@ -371,9 +371,9 @@ def test_run14_precision_regression_and_separate_metrics() -> None:
     )
     assert precision >= 0.80
     assert recall >= 0.80
-    from telegram_lead_discovery.detection.seed import SEED_RULES_RU_MVP_4
+    from telegram_lead_discovery.detection.seed import SEED_RULES_RU_MVP_4, SEED_RULES_RU_MVP_5
 
     assert any(r.stable_rule_id == "NEG-ADV-016" for r in SEED_RULES_RU_MVP_4)
     assert tuple(r.stable_rule_id for r in ACTIVE_SEED_RULES) == tuple(
-        r.stable_rule_id for r in SEED_RULES_RU_MVP_4
+        r.stable_rule_id for r in SEED_RULES_RU_MVP_5
     )

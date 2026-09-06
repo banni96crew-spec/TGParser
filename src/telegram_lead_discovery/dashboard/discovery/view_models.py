@@ -30,7 +30,7 @@ _TERMINAL_QUERY_STATES = frozenset(
 _ACTIVE_RUN_STATES = frozenset(
     {"queued", "running", "retry_wait_flood", "cancelling"}
 )
-_SEED_QUERY_KINDS = frozenset({"global_message", "directory", "public_posts"})
+_SEED_QUERY_KINDS = frozenset({"global_message", "directory", "public_posts", "operator_seed"})
 # Default queue: review + promising (plan moderate/strong aliases). weak is opt-in.
 _DEFAULT_BANDS = frozenset({"review", "promising"})
 _BAND_FILTER_DEFAULT = "all"  # UI-025 / D-068: show all truth buckets by default
@@ -103,7 +103,14 @@ def _run_view(
     pool_reason = None
     if isinstance(reason_code, int):
         pool_reason = _POOL_REASON_BY_CODE.get(reason_code, f"code_{reason_code}")
-    novelty_bp = int(counters.get("novelty_ratio_bp") or 0)
+    novelty_bp = counters.get("novelty_ratio_bp")
+    novelty_ratio = None
+    novelty_ratio_bp = None
+    novelty_ratio_pct = None
+    if novelty_bp is not None and novelty_bp != "":
+        novelty_ratio_bp = int(novelty_bp)
+        novelty_ratio = novelty_ratio_bp / 10000.0
+        novelty_ratio_pct = f"{novelty_ratio_bp / 100:.2f}%"
     funnel = {key: int(counters.get(key) or 0) for key in _FUNNEL_KEYS}
     # D-069: cooldown_suppressed is alias of presented_suppressed (unique peers).
     presented_unique = max(
@@ -130,9 +137,9 @@ def _run_view(
         "funnel": funnel,
         "pool_exhausted": pool_exhausted,
         "pool_exhausted_reason": pool_reason,
-        "novelty_ratio": novelty_bp / 10000.0,
-        "novelty_ratio_bp": novelty_bp,
-        "novelty_ratio_pct": f"{novelty_bp / 100:.2f}%",
+        "novelty_ratio": novelty_ratio,
+        "novelty_ratio_bp": novelty_ratio_bp,
+        "novelty_ratio_pct": novelty_ratio_pct,
         "started_at": run.started_at,
         "finished_at": run.finished_at,
         "created_at": run.created_at,

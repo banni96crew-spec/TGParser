@@ -3,216 +3,38 @@
 from __future__ import annotations
 
 from collections.abc import Collection, Mapping, Sequence
-from dataclasses import dataclass, replace
-from datetime import datetime
 
 from telegram_lead_discovery.collector.ports import SourceSnapshot
-from telegram_lead_discovery.source_discovery.evidence import DiscoveryChannel, EvidenceRecord
+from telegram_lead_discovery.source_discovery.evidence import EvidenceRecord
 from telegram_lead_discovery.source_discovery.identity import (
     DismissedKeywordSourceIndex,
     PresentedKeywordSourceIndex,
     SourceRegistryIndex,
-    _ensure_utc,
     dismissed_telegram_ids,
     presented_telegram_ids,
     registry_telegram_ids,
 )
-
-MAX_DEEP_VERIFICATION_SOURCES = 25
-STRONG_BUYER_CATEGORIES = frozenset(
-    {"direct_order", "contractor_search", "recommendation_request"}
+from telegram_lead_discovery.source_discovery.ranking_select import (
+    select_preliminary_candidates,
+    select_sources_for_deep_verification,
 )
-SEARCH_DISCOVERY_CHANNELS = frozenset({"global_message", "public_posts"})
-DIVERSITY_RESERVATIONS: Mapping[str, int] = {
-    "LINKED_DISCUSSION": 3,
-    "DIRECTORY": 3,
-    "EXPLORATION": 1,
-}
-
-
-@dataclass(frozen=True, slots=True)
-class PreliminarySourceCandidate:
-    """Eligible immutable candidate with persisted-seed metrics and provenance."""
-
-    telegram_id: int
-    source_type: str
-    title: str
-    username: str | None
-    raw_evidence_count: int | None = None
-    qualified_evidence_count: int = 0
-    qualified_distinct_query_count: int | None = None
-    strong_buyer_intent_count: int = 0
-    potential_need_count: int = 0
-    hard_excluded_count: int = 0
-    freshest_seed_evidence_at: datetime | None = None
-    directory_title_match: bool = False
-    is_search_candidate: bool | None = None
-    is_directory_candidate: bool | None = None
-    is_linked_discussion: bool = False
-    linked_parent_telegram_id: int | None = None
-    discovery_channels: tuple[DiscoveryChannel, ...] = ()
-    selection_phase: str | None = None
-    selected_lane: str | None = None
-    selection_reason: str | None = None
-    preliminary_position: int | None = None
-
-    # Compatibility inputs/properties for callers of the pre-Cycle-1 contract.
-    distinct_query_count: int = 0
-    seed_evidence_count: int = 0
-    freshest_evidence_at: datetime | None = None
-
-    def __post_init__(self) -> None:
-        if self.raw_evidence_count is None:
-            object.__setattr__(self, "raw_evidence_count", self.seed_evidence_count)
-        if self.qualified_distinct_query_count is None:
-            object.__setattr__(
-                self, "qualified_distinct_query_count", self.distinct_query_count
-            )
-        if self.freshest_seed_evidence_at is None and self.freshest_evidence_at is not None:
-            object.__setattr__(
-                self, "freshest_seed_evidence_at", self.freshest_evidence_at
-            )
-        if self.is_search_candidate is None:
-            object.__setattr__(
-                self,
-                "is_search_candidate",
-                bool(SEARCH_DISCOVERY_CHANNELS.intersection(self.discovery_channels)),
-            )
-        if self.is_directory_candidate is None:
-            object.__setattr__(
-                self, "is_directory_candidate", "directory" in self.discovery_channels
-            )
-
-
-def selected_lane(candidate: PreliminarySourceCandidate) -> str:
-    if candidate.is_linked_discussion:
-        return "LINKED_DISCUSSION"
-    if candidate.is_directory_candidate:
-        return "DIRECTORY"
-    if candidate.is_search_candidate:
-        return "SEARCH"
-    return "EXPLORATION"
-
-
-def _freshness_key(value: datetime | None) -> float:
-    return -_ensure_utc(value).timestamp() if value is not None else float("inf")
-
-
-def preliminary_rank_key(candidate: PreliminarySourceCandidate) -> tuple:
-    """Global buyer-first lexicographic order."""
-    return (
-        -candidate.strong_buyer_intent_count,
-        -int(candidate.qualified_distinct_query_count or 0),
-        -candidate.qualified_evidence_count,
-        -candidate.potential_need_count,
-        -int(candidate.is_linked_discussion),
-        -int(bool(candidate.is_directory_candidate)),
-        _freshness_key(candidate.freshest_seed_evidence_at),
-        -int(candidate.raw_evidence_count or 0),
-        candidate.telegram_id,
-    )
-
-
-def _lane_rank_key(candidate: PreliminarySourceCandidate, lane: str) -> tuple:
-    common = (
-        -candidate.strong_buyer_intent_count,
-        -int(candidate.qualified_distinct_query_count or 0),
-        -candidate.qualified_evidence_count,
-        -candidate.potential_need_count,
-    )
-    if lane == "LINKED_DISCUSSION":
-        return (*common, _freshness_key(candidate.freshest_seed_evidence_at), candidate.telegram_id)
-    if lane == "DIRECTORY":
-        return (
-            *common,
-            -int(candidate.directory_title_match),
-            _freshness_key(candidate.freshest_seed_evidence_at),
-            candidate.telegram_id,
-        )
-    if lane == "EXPLORATION":
-        return (
-            -candidate.strong_buyer_intent_count,
-            -candidate.qualified_evidence_count,
-            -candidate.potential_need_count,
-            _freshness_key(candidate.freshest_seed_evidence_at),
-            -int(candidate.raw_evidence_count or 0),
-            candidate.telegram_id,
-        )
-    return preliminary_rank_key(candidate)
-
-
-def select_preliminary_candidates(
-    candidates: Sequence[PreliminarySourceCandidate],
-    *,
-    capacity: int = MAX_DEEP_VERIFICATION_SOURCES,
-    diversity_reservations: Mapping[str, int] = DIVERSITY_RESERVATIONS,
-) -> list[PreliminarySourceCandidate]:
-    """Pure diversity admission followed by final global buyer-first ordering."""
-    ids = [candidate.telegram_id for candidate in candidates]
-    if len(ids) != len(set(ids)):
-        raise ValueError("preliminary_candidates_must_have_unique_telegram_ids")
-    target = min(max(0, capacity), len(candidates))
-    if target == 0:
-        return []
-
-    lanes = {candidate.telegram_id: selected_lane(candidate) for candidate in candidates}
-    selected_phases: dict[int, str] = {}
-    for lane in ("LINKED_DISCUSSION", "DIRECTORY", "EXPLORATION"):
-        available = [
-            candidate
-            for candidate in candidates
-            if lanes[candidate.telegram_id] == lane
-            and candidate.telegram_id not in selected_phases
-        ]
-        ordered_lane = sorted(
-            available, key=lambda item, _lane=lane: _lane_rank_key(item, _lane)
-        )
-        reserved_count = min(
-            max(0, int(diversity_reservations.get(lane, 0))),
-            target - len(selected_phases),
-        )
-        for candidate in ordered_lane[:reserved_count]:
-            selected_phases[candidate.telegram_id] = "diversity_reserved"
-        if len(selected_phases) == target:
-            break
-
-    remaining = [
-        candidate for candidate in candidates if candidate.telegram_id not in selected_phases
-    ]
-    for candidate in sorted(remaining, key=preliminary_rank_key):
-        if len(selected_phases) == target:
-            break
-        selected_phases[candidate.telegram_id] = "global_fill"
-
-    selected = [candidate for candidate in candidates if candidate.telegram_id in selected_phases]
-    ordered = sorted(selected, key=preliminary_rank_key)
-    return [
-        replace(
-            candidate,
-            selected_lane=lanes[candidate.telegram_id],
-            selection_phase=selected_phases[candidate.telegram_id],
-            selection_reason=(
-                f"{selected_phases[candidate.telegram_id]}:{lanes[candidate.telegram_id]}"
-            ),
-            preliminary_position=position,
-        )
-        for position, candidate in enumerate(ordered, start=1)
-    ]
-
-
-def select_sources_for_deep_verification(
-    candidates: Sequence[PreliminarySourceCandidate],
-    *,
-    limit: int = MAX_DEEP_VERIFICATION_SOURCES,
-) -> list[PreliminarySourceCandidate]:
-    """Compatibility alias for the Cycle-1 selector."""
-    return select_preliminary_candidates(candidates, capacity=limit)
+from telegram_lead_discovery.source_discovery.ranking_types import (
+    DIVERSITY_RESERVATIONS,
+    MAX_DEEP_VERIFICATION_SOURCES,
+    SEARCH_DISCOVERY_CHANNELS,
+    STRONG_BUYER_CATEGORIES,
+    PreliminarySourceCandidate,
+    diversity_reservations_for_profile,
+    preliminary_rank_key,
+    selected_lane,
+)
 
 
 def build_preliminary_candidates(
     evidence: Sequence[EvidenceRecord],
     *,
     directory_sources: Sequence[SourceSnapshot] = (),
+    operator_seed_sources: Sequence[SourceSnapshot] = (),
     directory_query_texts: Sequence[str] = (),
     directory_candidate_ids: Collection[int] | None = None,
     linked_parent_ids: Mapping[int, int] | None = None,
@@ -233,7 +55,9 @@ def build_preliminary_candidates(
         if directory_candidate_ids is not None
         else {snap.telegram_id for snap in directory_sources}
     )
+    operator_seed_ids = {snap.telegram_id for snap in operator_seed_sources}
     snapshots = {snap.telegram_id: snap for snap in directory_sources}
+    snapshots.update({snap.telegram_id: snap for snap in operator_seed_sources})
     by_source: dict[int, dict[int, EvidenceRecord]] = {}
     for row in evidence:
         if row.source_telegram_id in suppressed:
@@ -299,6 +123,7 @@ def build_preliminary_candidates(
                 ),
                 is_search_candidate=bool(SEARCH_DISCOVERY_CHANNELS.intersection(channels)),
                 is_directory_candidate=telegram_id in directory_ids,
+                is_operator_seed_candidate=telegram_id in operator_seed_ids,
                 is_linked_discussion=telegram_id in parents,
                 linked_parent_telegram_id=parents.get(telegram_id),
                 discovery_channels=tuple(sorted(channels)),  # type: ignore[arg-type]
@@ -320,6 +145,7 @@ __all__ = [
     "MAX_DEEP_VERIFICATION_SOURCES",
     "PreliminarySourceCandidate",
     "build_preliminary_candidates",
+    "diversity_reservations_for_profile",
     "preliminary_rank_key",
     "select_preliminary_candidates",
     "select_sources_for_deep_verification",

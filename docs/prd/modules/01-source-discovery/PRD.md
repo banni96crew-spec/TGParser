@@ -163,7 +163,7 @@ UI MUST реализовать все ручные переходы lifecycle. �
 
 ### SRC-017 — Keyword discovery profile
 
-Система MUST поддерживать `KeywordDiscoveryProfile` с уникальным `name` (`1..80`), состояниями `active|archived` и указателем `current_version`. Clean DB seed MUST создать immutable профиль `ecommerce-development-ru` version `3` с exact catalogs SRC-049. Operator migration допускает только version `6→7`. Редактирование профиля MUST создавать новую version, не изменяя уже сохранённые версии.
+Система MUST поддерживать `KeywordDiscoveryProfile` с уникальным `name` (`1..80`), состояниями `active|archived` и указателем `current_version`. Clean DB seed MUST создать immutable профиль `ecommerce-development-ru` version `3` с exact catalogs SRC-049. Operator migration `010` допускает только observed `current_version==7` → immutable version `8`; иное значение блокирует activation. `ensure_seed_keyword_profile` MUST принимать `{3,7,8}` с **разными** эталонами SRC-049 (v3 directory+`all`; v7 historical directory+`all`; v8 empty directory + `groups`). Редактирование профиля MUST создавать новую version, не изменяя уже сохранённые версии. Откат active pointer `8→7` разрешён только если нет keyword run в `queued|running|retry_wait_flood|cancelling`.
 
 ### SRC-018 — Версионирование профиля
 
@@ -171,11 +171,11 @@ UI MUST реализовать все ручные переходы lifecycle. �
 
 ### SRC-019 — Ручной запуск keyword scouting
 
-`StartKeywordDiscoveryRun` MUST приниматься только от UI-команды оператора (D-057). Система MUST отклонить старт, если уже существует active keyword run в `queued|running|retry_wait_flood|cancelling` (D-058), если profile version не active, или если Telegram credentials отсутствуют (`telegram_credentials_missing`). Успешный старт MUST одной транзакцией создать `DiscoveryRun(run_type=keyword_scouting, search_mode=free_only)`, развернуть `DiscoveryRunQuery` rows и `Job(job_type=keyword_discovery)`.
+`StartKeywordDiscoveryRun` MUST приниматься только от UI-команды оператора (D-057) и MUST принимать `profile_id` плюс `seed_refs` (0..25 строк, нормализация SRC-001, UI-028). Система MUST отклонить старт, если уже существует active keyword run в `queued|running|retry_wait_flood|cancelling` (D-058), если profile version не active, или если Telegram credentials отсутствуют (`telegram_credentials_missing`). Успешный старт MUST одной транзакцией создать `DiscoveryRun(run_type=keyword_scouting, search_mode=free_only)`, развернуть `DiscoveryRunQuery` rows (включая `query_kind=operator_seed`, одна строка на валидный ref, ordinal до verification) и `Job(job_type=keyword_discovery)`. Пустой `seed_refs` допустим. Graph / `start_graph_discovery_run` MUST NOT вызываться из этой команды.
 
 ### SRC-020 — Бесплатные методы поиска
 
-Keyword run MUST использовать только Gateway methods: `search_global`, `search_public_sources`, `search_source_messages`, и `search_public_posts` только после `check_public_post_search_quota` с подтверждённой бесплатной квотой (D-051). Paid search и любая передача `allow_paid_stars` запрещены (D-050). При Premium required или необходимости Stars query MUST получить `quota_skipped` без платежа; baseline free search продолжается. Принимаются только публичные `channel|megagroup|group` (D-048).
+Keyword run MUST использовать только Gateway methods: `search_global`, `search_public_sources`, `search_source_messages`, `resolve_public_source` для `operator_seed`, и `search_public_posts` только после `check_public_post_search_quota` с подтверждённой бесплатной квотой (D-051). Paid search и любая передача `allow_paid_stars` запрещены (D-050). Обязательный поиск заказов: `search_global` по `post_queries` только `scope=groups`; `global_message`/`scope=channels` MUST NOT создаваться (D-073). `global_message` создаётся первым и MUST выполняться. Posts — бонус: после первого `premium_required` или отсутствия бесплатного слота остальные posts queries MUST получить `quota_skipped` **без** Telegram-вызова; этот bulk-skip MUST остаться. Premium на posts MUST NOT переводить run в `failed` и MUST NOT обнулять global evidence. При необходимости Stars query MUST получить `quota_skipped` без платежа; baseline free search продолжается. Принимаются только публичные `channel|megagroup|group` (D-048). Успех SEARCH = SEARCH-lane занимает deep verification, не сам факт вызова API.
 
 ### SRC-021 — Граница scouting-evidence
 
@@ -191,11 +191,11 @@ Opportunity для `ActiveClientChat v1` MUST создаваться тольк�
 
 ### SRC-024 — Глубокая проверка `ActiveClientChat v1` (D-070)
 
-После seed search система MUST выбрать не более `25` eligible публичных `megagroup` с username для deep verification через границу pure builder → pure selector. Builder применяет identity/suppression/eligibility/dedupe и строит immutable metrics только из persisted scouting evidence; evidence, полученное через `source_verification`, в preliminary metrics не участвует. Metrics: `raw_evidence_count`, `qualified_evidence_count`, `qualified_distinct_query_count`, `strong_buyer_intent_count` для qualified `{direct_order, contractor_search, recommendation_request}`, `potential_need_count`, diagnostic-only `hard_excluded_count`, `freshest_seed_evidence_at`, `directory_title_match`. Provenance задаётся явно: Search только для seed channels `global_message|public_posts`, Directory только для фактического directory acquisition, Linked только для linked-discussion path; хранение linked source в общем in-memory списке не создаёт Directory provenance.
+После seed search система MUST выбрать не более `25` eligible публичных `megagroup` с username для deep verification через границу pure builder → pure selector. Builder применяет identity/suppression/eligibility/dedupe и строит immutable metrics только из persisted scouting evidence; evidence, полученное через `source_verification`, в preliminary metrics не участвует. Metrics: `raw_evidence_count`, `qualified_evidence_count`, `qualified_distinct_query_count`, `strong_buyer_intent_count` для qualified `{direct_order, contractor_search, recommendation_request}`, `potential_need_count`, diagnostic-only `hard_excluded_count`, `freshest_seed_evidence_at`, `directory_title_match`. Provenance задаётся явно: Search только для seed channels `global_message|public_posts`; Operator seed только для `operator_seed` resolve path; Directory только для фактического directory acquisition (на v8 Directory пуст); Linked только для linked-discussion path; хранение linked source в общем in-memory списке не создаёт Directory provenance.
 
-Selector MUST быть детерминированным и не читать DB/evidence/cursor/Gateway/context. Ровно один lane назначается по precedence `LINKED_DISCUSSION > DIRECTORY > SEARCH > EXPLORATION`. Admission reservations: Linked `3`, Directory `3`, Exploration `1`; Search reservation не имеет, неиспользованные места переходят global fill. Global buyer-first key: `strong_buyer_intent_count DESC`, `qualified_distinct_query_count DESC`, `qualified_evidence_count DESC`, `potential_need_count DESC`, `is_linked_discussion DESC`, `is_directory_candidate DESC`, `freshest_seed_evidence_at DESC`, `raw_evidence_count DESC`, `telegram_id ASC`. Reservation определяет только membership; весь admitted set после fill MUST повторно сортироваться этим global key, сохраняться в таком порядке как `acquisition_pool`, а `preliminary_position` MUST быть его 1-based позицией. Selection diagnostics и provenance MUST сохраняться в cursor без DB migration и переживать повторный serializer pass/restart; новые cursor fields optional для legacy runs.
+Selector MUST быть детерминированным и не читать DB/evidence/cursor/Gateway/context. Ровно один lane назначается по precedence `OPERATOR_SEED > LINKED_DISCUSSION > SEARCH > EXPLORATION` (DIRECTORY мёртв на v8; reservation Directory = `0`). Admission reservations: Operator seed = число валидных public megagroup seed (не больше `25`), Linked `3`, Directory `0` на v8 / `3` на v3 и v7, Exploration `1`; Search reservation не имеет, неиспользованные места переходят global fill. Global buyer-first key: `strong_buyer_intent_count DESC`, `qualified_distinct_query_count DESC`, `qualified_evidence_count DESC`, `potential_need_count DESC`, `is_linked_discussion DESC`, `freshest_seed_evidence_at DESC`, `raw_evidence_count DESC`, `telegram_id ASC`. `is_directory_candidate DESC` MUST NOT входить в global key. Reservation определяет только membership; весь admitted set после fill MUST повторно сортироваться этим global key, сохраняться в таком порядке как `acquisition_pool`, а `preliminary_position` MUST быть его 1-based позицией. Selection diagnostics и provenance MUST сохраняться в cursor без DB migration и переживать повторный serializer pass/restart; новые cursor fields optional для legacy runs. Builder держит `operator_seed_sources` отдельно от `directory_sources`.
 
-Directory replacement допускается только до первого history verification и MUST повторно провести полный universe через тот же builder → selector без прямого append и без фиктивных buyer metrics. Единственный freeze predicate: существование `DiscoveryRunQuery` текущего run с `query_kind=source_verification`. До него существующий pool MAY быть пересобран; после него существующий pool, его порядок и metadata immutable. Diversity гарантирует representation только при admission и не меняет fair history scheduler или early-stop.
+Directory replacement на v8 MUST NOT запускаться. На v3/v7 directory replacement допускается только до первого history verification и MUST повторно провести полный universe через тот же builder → selector без прямого append и без фиктивных buyer metrics. Единственный freeze predicate: существование `DiscoveryRunQuery` текущего run с `query_kind=source_verification`. До него существующий pool MAY быть пересобран; после него существующий pool, его порядок и metadata immutable. Diversity гарантирует representation только при admission и не меняет fair history scheduler или early-stop. Resolve `operator_seed` выполняется после `global_message`/`public_posts` и до отбора 25.
 
 До первого provider call run MUST сохранить единый reference instant `T=DiscoveryRun.started_at` в UTC. Deep verification MUST читать публичную историю `megagroup` через Gateway `iter_history` newest→older, классифицируя каждое доступное сообщение pinned DET version. Все resume/restart используют тот же `T`. Exact-phrase `search_source_messages` verification MUST NOT быть единственным механизмом доказательства.
 
@@ -234,7 +234,7 @@ Band: `quality` с score ≥`60` → `promising`; `near` с score ≥`35` → `r
 
 ### SRC-026 — Продвижение в кандидаты
 
-`PromoteOpportunityToCandidate` MUST по optimistic version и `review_state` создать `TelegramSource(candidate)` при отсутствии identity match либо связать существующий source без дубля. Method provenance: `keyword_search` или `linked_discussion`. Promotion MUST NOT вызывать `validate_source`, approval, checkpoint, backfill или monitoring (D-049). `DismissOpportunity` MUST помечать snapshot `dismissed` без создания source и MUST записывать durable suppress для будущих keyword scouting runs по identity order SRC-022.
+`PromoteOpportunityToCandidate` MUST по optimistic version и `review_state` создать `TelegramSource(candidate)` при отсутствии identity match либо связать существующий source без дубля. Method provenance: `keyword_search`, `linked_discussion` или `operator_seed`. `operator_seed` MUST NOT считаться SEARCH provenance для NFR-QLT-008; SEARCH требует `global_message` в `discovery_channels`. Promotion MUST NOT вызывать `validate_source`, approval, checkpoint, backfill или monitoring (D-049). `DismissOpportunity` MUST помечать snapshot `dismissed` без создания source и MUST записывать durable suppress для будущих keyword scouting runs по identity order SRC-022.
 
 ### SRC-027 — Идемпотентность keyword команд
 
@@ -284,13 +284,15 @@ Counters MUST включать `quality_sources`, `near_sources`, `inconclusive_
 
 На любом history/provider call FloodWait MUST сохранить cursor v2, перевести run в `retry_wait_flood` до exact `until`, затем продолжить тот же run/source с прежним `T`. FloodWait и process crash не создают terminal truth, terminal metrics, presented result или suppress membership. Atomic page commit и resume MUST исключать duplicate counters/evidence. Crash recovery продолжает тот же cursor; новый run не создаётся.
 
-### SRC-049 — Immutable acquisition profile v3/v7 (D-070)
+### SRC-049 — Immutable acquisition profile v3/v7/v8 (D-070 / D-074)
 
-Clean DB seed `ecommerce-development-ru` MUST быть immutable version `3`. Для operator upgrade migration разрешена только observed current version `6` → immutable version `7`; другое значение блокирует activation. Post queries version 3/7 ровно: `нужен сайт`, `ищу разработчика сайта`, `кто сделает сайт`, `нужен лендинг`, `нужен telegram бот`, `разработать telegram бота`, `нужен бот для заказов`, `нужна интеграция api`, `интеграция сайта crm`, `интеграция с 1с`, `нужен парсер`, `автоматизировать заказы`, `нужна автоматизация`, `нужен интернет-магазин`, `доработать интернет-магазин`, `интеграция ozon`, `интеграция wildberries`, `нужен магазин на сайте`.
+Clean DB seed `ecommerce-development-ru` MUST быть immutable version `3`. Historical operator version `7` остаётся immutable с тем же каталогом, что SRC-049 фиксировал для v7. Active operator upgrade migration `010` разрешена только observed current version `7` → immutable version `8`; другое значение блокирует activation.
 
-Primary directory queries ровно: `чат предпринимателей`, `сообщество предпринимателей`, `владельцы бизнеса`, `основатели стартапов`, `владельцы интернет-магазинов`, `чат селлеров`, `рестораторы чат`, `владельцы салонов чат`, `онлайн-школы чат`, `малый бизнес чат`.
+Post queries version 3/7/8 ровно: `нужен сайт`, `ищу разработчика сайта`, `кто сделает сайт`, `нужен лендинг`, `нужен telegram бот`, `разработать telegram бота`, `нужен бот для заказов`, `нужна интеграция api`, `интеграция сайта crm`, `интеграция с 1с`, `нужен парсер`, `автоматизировать заказы`, `нужна автоматизация`, `нужен интернет-магазин`, `доработать интернет-магазин`, `интеграция ozon`, `интеграция wildberries`, `нужен магазин на сайте`.
 
-Replacement queries ровно: `предприниматели москва`, `предприниматели спб`, `предприниматели казань`, `предприниматели екатеринбург`, `предприниматели краснодар`, `малый бизнес сообщество`, `владельцы кафе чат`, `владельцы ресторанов чат`, `владельцы салонов красоты чат`, `онлайн школы сообщество`, `частные клиники чат`, `турбизнес чат`, `риелторы предприниматели чат`, `производители чат`, `локальный бизнес чат`. Runtime-generated variants/grammar запрещены. Directory candidates с provider/developer/service-offer tokens отбрасываются до deep quota с explainable reason. Public posts Premium/Stars outcomes различаются; `allow_paid_stars=None` неизменен.
+Primary directory queries version 3 и 7 ровно: `чат предпринимателей`, `сообщество предпринимателей`, `владельцы бизнеса`, `основатели стартапов`, `владельцы интернет-магазинов`, `чат селлеров`, `рестораторы чат`, `владельцы салонов чат`, `онлайн-школы чат`, `малый бизнес чат`. Version 8: `directory_queries=[]`.
+
+Replacement queries version 3 и 7 ровно: `предприниматели москва`, `предприниматели спб`, `предприниматели казань`, `предприниматели екатеринбург`, `предприниматели краснодар`, `малый бизнес сообщество`, `владельцы кафе чат`, `владельцы ресторанов чат`, `владельцы салонов красоты чат`, `онлайн школы сообщество`, `частные клиники чат`, `турбизнес чат`, `риелторы предприниматели чат`, `производители чат`, `локальный бизнес чат`. Version 8: `replacement_directory_queries=[]`. Runtime-generated variants/grammar запрещены. `source_scope`: v3 и v7 = `all`; v8 = `groups`. Directory candidates с provider/developer/service-offer tokens отбрасываются до deep quota с explainable reason (v3/v7). Public posts Premium/Stars outcomes различаются; `allow_paid_stars=None` неизменен.
 
 ### SRC-030 — Retention keyword artifacts
 
@@ -367,40 +369,46 @@ Durable suppress ledger `DismissedSource` / `DismissedKeywordSource` MUST store 
 
 ### SRC-037 — Discovery run funnel counters and novelty
 
-Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063 / D-069): `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` (unique already-shown peers; `cooldown_suppressed` is a historical alias of the same unique count), `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`; `novelty_ratio = novel_presented_total / max(1, presented_total)`. Deterministic fixture with sufficient replacement pool: `novelty_ratio ≥ 0.80` after first run; dismissed recurrence across future runs = `0`. Live pilot: `5` sequential runs; median pairwise Jaccard of presented canonical sets ≤ `0.60` OR each violating run has proven `pool_exhausted=true` with reason.
+Completed keyword `DiscoveryRun` MUST persist funnel counters (D-063 / D-069 / D-076): `acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` (unique peers hidden by the D-076 rule; `cooldown_suppressed` is a historical alias of the same unique count), `operator_seed_skipped`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`. `novelty_ratio` и Jaccard считаются **только** по canonical set с `truth_status=quality` (NFR-QLT-006). Если quality presented нет, `novelty_ratio` MUST быть `null` и MUST NOT требовать ≥`0.80`. Если quality presented есть: поле `novel_presented_total` считает только quality novel peers (`novel_quality_presented_total` — то же поле, не второй счётчик); `novelty_ratio = novel_presented_total / max(1, quality_presented_total)`; deterministic fixture ≥2 quality identities: after first run showing A, second run MUST NOT show A and MUST show B when B is available; `novelty_ratio ≥ 0.80` after first run when a quality replacement pool exists; dismissed recurrence across future runs = `0`. Rejected re-show MUST NOT входить в novelty. Живой Jaccard по всем presented MUST NOT применяться.
 
 ### SRC-038 — pool_exhausted terminal reason codes
 
-Only proven exhaustion of all allowed free replacement paths sets `pool_exhausted=true`, with closed reason `provider_empty|no_unseen_after_suppress`. Reaching deep cap `25`, history run cap `7500`, another bounded acquisition budget or `quota_skipped_remaining` while provider paths may remain sets `pool_exhausted=false`, `gate_status=inconclusive` and `run_termination_reason=deep_candidate_cap|history_run_cap|acquisition_budget_cap|quota_skipped_remaining`. `FloodWait` is resumable and sets neither exhaustion nor terminal reason. Explicit cancel uses `run_termination_reason=cancelled` plus SRC-046 inconclusive outcomes and MUST NOT set pool exhaustion.
+Only proven exhaustion of all allowed free replacement paths sets `pool_exhausted=true`, with closed reason `provider_empty|no_unseen_after_suppress`. Unfinished `operator_seed` resolve MUST NOT set pool exhaustion. Reaching deep cap `25`, history run cap `7500`, another bounded acquisition budget or `quota_skipped_remaining` while provider paths may remain sets `pool_exhausted=false`, `gate_status=inconclusive` and `run_termination_reason=deep_candidate_cap|history_run_cap|acquisition_budget_cap|quota_skipped_remaining`. `FloodWait` is resumable and sets neither exhaustion nor terminal reason. Explicit cancel uses `run_termination_reason=cancelled` plus SRC-046 inconclusive outcomes and MUST NOT set pool exhaustion.
 
 ### SRC-039 — Acquisition / qualification / presentation stages
 
-Keyword worker MUST separate stages (D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provenance MUST record provider method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`. Profile fields `required_service_profiles` and `additional_exclusions` apply under this stage model with SRC-024 caps.
+Keyword worker MUST separate stages (D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provenance MUST record provider method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`/`operator_seed`. Profile fields `required_service_profiles` and `additional_exclusions` apply under this stage model with SRC-024 caps.
 
 ### SRC-040 — Replacement acquisition after suppress
 
-After registry/dismiss/presented suppress, worker MUST continue free provider cursor/replacement fetches (directory expansion queries, remaining pages, linked discussion/recommendations where already contracted) until deep-verification quota OR truthful `pool_exhausted` (D-063 / D-069). Permanent dismiss (SRC-032) and durable presented suppress (SRC-041) are not temporary cooldowns. Stars/paid paths MUST NOT be used. `pool_exhausted=no_unseen_after_suppress` ONLY after all allowed free replacement paths for the run are exhausted.
+After registry/dismiss/quality presented suppress, worker MUST continue remaining free SEARCH pages (и posts, если бесплатный слот был) until deep-verification quota OR truthful `pool_exhausted` (D-063 / D-074). На v8 replacement directory MUST NOT вызываться; `replacement.py` / вызов из `verification_phase.py` на v8 запрещены. Permanent dismiss (SRC-032) и quality presented suppress (SRC-041) не являются временными cooldown. Stars/paid paths MUST NOT be used. `pool_exhausted=no_unseen_after_suppress` ONLY after global (и posts, если слот был) исчерпаны **и** все `operator_seed` resolve завершены. Незавершённые `operator_seed` (queued/running resolve) MUST удерживать acquisition stop, как queued/running seed queries.
 
-### SRC-041 — Durable presented-source suppress (D-069; supersedes 24h cooldown)
+### SRC-041 — Durable presented-source suppress (D-076; supersedes D-069 hide-all)
 
-Already-presented canonical identity from any prior keyword opportunity snapshot (any `truth_status`, including quality/near/inconclusive/rejected) MUST be durably suppressed from future keyword scouting runs:
+Cross-run keyword suppress матчит только:
 
-- suppressed peer MUST NOT receive new `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot` / deep-verification selection / linked-discussion opportunity in later keyword runs;
+- terminal `truth_status=quality` через ledger `PresentedKeywordSource.suppress_class=quality`;
+- SRC-032 dismiss;
+- SRC-031 registry.
+
+Rejected / near / inconclusive / `suppress_class=non_quality|legacy_unspecified` MUST NOT блокировать повторный показ. Quality canonical seed MUST NOT сканироваться повторно; `non_quality`/`legacy_unspecified` не блокируют `operator_seed`.
+
+- quality-suppressed peer MUST NOT receive new `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot` / deep-verification selection / linked-discussion opportunity in later keyword runs;
 - suppress MUST use SRC-022 identity order (peer id after resolve; username aliases MUST NOT bypass);
 - suppress MUST persist across restart and MUST survive `SourceOpportunitySnapshot` retention (STO-020);
-- distinct from registry suppress (SRC-031) and permanent dismiss (SRC-032);
-- upsert on first presentation is idempotent; historical snapshots MUST be backfilled into the ledger;
-- run counter `presented_suppressed` MUST equal the number of **unique** canonical peers suppressed as already-shown in the run; funnel field `cooldown_suppressed` is a historical alias of that same unique count (no double-count).
+- upsert пишет `quality` только на terminal quality; historical backfill без доказанного quality → `legacy_unspecified`;
+- run counter `presented_suppressed` MUST equal the number of **unique** canonical peers hidden by this rule in the run; funnel field `cooldown_suppressed` is a historical alias of that same unique count (no double-count).
 
-The prior «24 hours then show again» rule is **void** (D-069).
+The prior «24 hours then show again» rule remains **void**. The D-069 «hide every previously presented peer» rule is **void** (D-076).
 
 ### SRC-050 — Presented suppress ledger entity
 
-Durable ledger `PresentedKeywordSource` MUST store (D-069 / SRC-041):
+Durable ledger `PresentedKeywordSource` MUST store (D-076 / SRC-041 / STO-024):
 
 - `canonical_key`, nullable `telegram_id`, usernames/aliases JSON, `first_presented_at`, nullable `origin_run_id` / `origin_opportunity_id`, version/upsert stamp;
+- `suppress_class: enum(quality, non_quality, legacy_unspecified)` — матч только `quality`;
 - uniqueness on `canonical_key` and on `source_telegram_id` when set;
-- physical table + retention immunity owned by STO (STO-020);
+- physical table + retention immunity owned by STO (STO-020 / STO-024);
 - snapshot presence alone after retention is NOT sufficient — ledger membership is authoritative.
 
 ### SRC-042 — Graph edge types and public-only targets
@@ -423,6 +431,18 @@ At most one run across `graph|keyword_scouting` may be active in `queued|running
 
 For `message_sample_100`, SRC MUST persist every returned post in `graph_discovery_posts` and persist the cursor v3 stage receipt in the same SQLite transaction before another Telegram call. The receipt includes source identity, `request_ordinal`, persisted-post count and saved edges; `SourceDiscoveryEvent` retains the immediate parent chain to the roots. A present saved stage is processed locally after restart and MUST NOT call Telegram again. Terminal cursor stores reason/error. Full post text is graph-only; raw author identity is transformed to source-scoped `author_key` and MUST NOT persist or enter logs.
 
+### SRC-055 — Operator seed refs (D-074)
+
+`seed_refs` на старте keyword run — bounded public refs (0..25), нормализация SRC-001. Persist до resolve: `DiscoveryRunQuery.query_kind=operator_seed` (одна строка на ref) на том же run, ordinal до verification. `DiscoveryChannel` включает `"operator_seed"`. Lane и reservation — SRC-024. Channel / private / invalid username / invite hash, не прошедший SRC-001 → skip + counter `operator_seed_skipped`; MUST NOT вызывать `get_linked_discussion`. MUST NOT создавать `TelegramSource` до promote (SRC-021). SRC-031 registry не прячет operator-seed peers до resolve match; после resolve registry/dismiss/quality suppress применяются как обычно. Presented-suppress: quality canonical seed не сканировать; `non_quality`/`legacy_unspecified` не блокируют seed. Graph / `start_graph_discovery_run` MUST NOT вызываться. Quality только с provenance `operator_seed` удовлетворяет AT-SRC-055, **не** NFR-QLT-008.
+
+### SRC-056 — Graph node timeout skip (D-077)
+
+`GatewayTimeout` MUST NOT fail the graph run and MUST NOT park it as unbounded `retry_wait`. Before clearing `current_node`, for each stage `resolve|recommendations|linked_discussion|message_sample_100` not yet in `completed_stages`: if `stage_results` already stores a fetch, MUST NOT overwrite edges and MUST NOT call `process_stage_edges` or `resolve_planned_candidate`; unresolved planned candidates become local skip/unsupported. If `stage_results` has no fetch, mark the stage completed with empty edges. Remaining unfetched stages on that node are empty completed. Increment `node_timeout_total` via `GraphBudget.to_counters()`. Per-canonical `transient_count` lives in the cursor (not run-level). BFS continues only for `GatewayTimeout`, not for cancel. A timeout after `before_request` consumes 1 of the 200 SRC-051 reservations. Live shared lock >30 s producing a series of skips is accepted. `GatewayTransientError`: at most **1** `retry_wait` of 30 s per canonical node; persist `transient_count` in the cursor **before** returning `retry_wait`. A second transient on the same node uses the same skip rules as timeout. FloodWait / unauthorized / frozen / request-control remain run-terminal. Handler order: `GraphCallCancelled` → `_finish_graph_cancelled`; then `GatewayTimeout` **before** `GatewayTransientError` and **before** `(UnsupportedBatchRequest, NestedTelegramRequest)`. Emit `node_timeout` event. MUST NOT copy inaccessible fallthrough (`last_error_code` on a succeeded run).
+
+### SRC-057 — Cancel graph discovery (D-077)
+
+`CancelGraphDiscoveryRun` MUST exist. Graph `DiscoveryRun.state` includes `cancelling` (DOMAIN). After commit the command sets `run.state=cancelling` (not `cancelled` while a job may still execute — otherwise SRC-053 frees the slot beside a live RPC), `job.cancel_requested_at`, and if the job is `retry_wait` then `available_at=now`; then `event.set()` if the process-wide `run_id→asyncio.Event` key exists. HTTP MUST NOT call `Condition.notify_all`. The worker MUST register the Event **before** refresh; if `cancelling` or `cancel_requested_at` is set, `_finish_graph_cancelled` without Telegram; `finally` unregisters. Missing Event key: DB flags are sufficient. `except GraphCallCancelled` MUST run before timeout/transient/control_failure and MUST NOT apply SRC-056 skip/BFS. The same Event interrupts cooldown / `_wait_for_slot` and COL-030 lock/RPC. Terminal `cancelled` MUST occur **no later than 30 s** after the cancel commit. Terminal cancel is an idempotent no-op. If the job is not `running` (`queued`/`retry_wait` without a live worker) the command MAY set `cancelled` immediately.
+
 ### SRC-043 — Evidence eligibility gates
 
 Directory-only opportunities (no message/member/activity evidence) MUST NOT receive band `review` or `promising`; score forced into `weak` `0–34` with reason `directory_only_no_evidence`. Linked discussion / source lacking verification evidence → reason `needs_verification`; MUST NOT get `review`/`promising` (plan `moderate`/`strong` aliases) without deep verification.
@@ -444,8 +464,9 @@ Deep verification MUST classify all fetched unique non-empty messages, not only 
 | `StartDiscoveryRun` | `method`, `source_refs[]` или `parent_source_id` | `discovery_run_id` |
 | `CreateKeywordDiscoveryProfile` | `name`, queries, scope | `profile_id` |
 | `CreateKeywordDiscoveryProfileVersion` | `profile_id`, queries, scope, `version` | новая version |
-| `StartKeywordDiscoveryRun` | `profile_id` | `discovery_run_id` |
+| `StartKeywordDiscoveryRun` | `profile_id`, `seed_refs` (0..25, SRC-001), CSRF | `discovery_run_id` |
 | `CancelKeywordDiscoveryRun` | `run_id`, `version` | `cancelling`/`cancelled` |
+| `CancelGraphDiscoveryRun` | `run_id`, `version` | `cancelling`/`cancelled` |
 | `PromoteOpportunityToCandidate` | `opportunity_id`, `version` | candidate source id |
 | `DismissOpportunity` | `opportunity_id`, `reason`, `version` | `dismissed` + future keyword suppress |
 | `ReconsiderDismissSuppress` | `canonical_key` \| `suppress_id`, `note`, `version` | suppress membership removed |
@@ -462,7 +483,7 @@ Deep verification MUST classify all fetched unique non-empty messages, not only 
 |---|---|
 | `SourceCandidateDiscovered` | `event_id`, `source_id`, `run_id`, `method`, `occurred_at` |
 | `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
-| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters, `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters including `operator_seed_skipped`, `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio` (`float | null`), `occurred_at` |
 | `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method`, `occurred_at` |
 | `DismissSuppressReconsidered` | `event_id`, `canonical_key` \| `suppress_id`, `note`, `occurred_at` |
 | `SourceMonitoringRequested` | `event_id`, `source_id`, `telegram_id`, `occurred_at` |
@@ -487,7 +508,8 @@ Lifecycle-события получают UUIDv7; graph `SourceDiscoveryEvent.ev
 ## 8. Ошибки, retry и recovery
 
 - Graph `FloodWait` немедленно и окончательно останавливает только graph run по SRC-051; keyword/history продолжает точное resumable-ожидание SRC-048.
-- Graph transient network errors вне Telegram rate restriction сохраняют существующее ограниченное восстановление; Telethon внутри одного graph-вызова автоматический повтор не выполняет.
+- Graph transient network errors вне Telegram rate restriction: не более одного `retry_wait` 30 с на canonical node, затем skip узла по SRC-056; Telethon внутри одного graph-вызова автоматический повтор не выполняет.
+- `GatewayTimeout` на graph-узле: skip узла по SRC-056 и продолжение BFS; collector/live retry не применяется.
 - Keyword query transient errors: максимум `3` attempts через `30`, `120`, `600` секунд; ошибка одной query обычно даёт run `partial`.
 - `USERNAME_NOT_OCCUPIED`, invalid username и unsupported entity не повторяются.
 - Unauthorized/frozen session переводит keyword run в `failed`.
@@ -537,7 +559,7 @@ Structured log MUST включать `run_id`, `source_id`, `method`, `depth`, `
 
 ## 12. MVP и исключённые функции
 
-MVP включает SRC-001—SRC-054 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
+MVP включает SRC-001—SRC-055 полностью. Исключены semantic topic search, fuzzy source matching, автоматическое approval, batch approval, глубина выше `2`, платный search/Stars, создание Lead из evidence и расписание автоматических discovery runs.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -562,11 +584,11 @@ MVP включает SRC-001—SRC-054 полностью. Исключены se
 | `AT-SRC-017` | SRC-017 | Создать clean DB seed `ecommerce-development-ru` | Profile active; immutable version `3` с exact SRC-049 catalogs |
 | `AT-SRC-018` | SRC-018 | Изменить любую primary/replacement query после run | Создана следующая version; referenced version неизменна; cross-list duplicate отклонён |
 | `AT-SRC-019` | SRC-019 | Запустить keyword run вручную при отсутствии active run | Созданы run+queries+Job; UI redirect на run |
-| `AT-SRC-020` | SRC-020 | Free quota есть / Stars required / Premium required | Free search выполнен; paid/Premium → `quota_skipped`; `allow_paid_stars is None` |
+| `AT-SRC-020` | SRC-020 | Free quota есть / Stars required / Premium required; posts bulk-skip after first Premium | Free `search_global` groups выполнен; paid/Premium posts → `quota_skipped` без вызова; remaining posts not called; `allow_paid_stars is None`; run не `failed` |
 | `AT-SRC-021` | SRC-021 | Завершить keyword run с hits | Нет `TelegramMessage`/Lead/outbox/checkpoint изменений |
 | `AT-SRC-022` | SRC-022 | Один Telegram ID найден двумя queries | Один snapshot; ≥2 evidence rows |
 | `AT-SRC-023` | SRC-023 | Direct megagroup; unseen/suppressed channel parents; linked group wrong type/suppressed/valid | Verification получает только unsuppressed public megagroup; parent не получает snapshot; join не вызван |
-| `AT-SRC-024` | SRC-024 | >25 persisted-seed candidates: buyer-rich/raw-noise Search, Directory, Linked, overlaps, Exploration, suppressed и replacement; persist/restart до/после первого `source_verification`; затем fixed-clock history crosses 7/14/30d и все 100/10/20/3/3 boundaries/caps | Buyer metrics lexicographically dominate raw; ownership/reservations = Linked 3, Directory 3, Exploration 1, Search 0; admitted pool globally buyer-first, deterministic, ≤25; replacement проходит builder→selector; provenance survives restart; pool rebuild до verification и immutable после; scheduler выбирает первый buyer-ranked peer при равном progress; ActiveClientChat counters используют immutable T, все thresholds обязательны, incomplete caps→inconclusive |
+| `AT-SRC-024` | SRC-024 | >25 persisted-seed candidates: buyer-rich/raw-noise Search, Operator seed, Linked, overlaps, Exploration, quality-suppressed; persist/restart до/после первого `source_verification`; затем fixed-clock history crosses 7/14/30d и все 100/10/20/3/3 boundaries/caps | Buyer metrics lexicographically dominate raw; v8 ownership/reservations = Operator seed (valid megagroup count ≤25), Linked 3, Directory 0, Exploration 1, Search 0; global key без `is_directory_candidate`; admitted pool globally buyer-first, deterministic, ≤25; v8 replacement directory не вызывается; provenance survives restart; pool rebuild до verification и immutable после; scheduler выбирает первый buyer-ranked peer при равном progress; ActiveClientChat counters используют immutable T, все thresholds обязательны, incomplete caps→inconclusive |
 | `AT-SRC-025` | SRC-025 | Boundary fixtures for every component, recency range and noise | Exact integer score/band/sort match; ecommerce has no bonus; `quality_score` source unchanged |
 | `AT-SRC-026` | SRC-026 | Promote нового и существующего snapshot | Candidate создан один раз / linked; monitoring не стартовал |
 | `AT-SRC-027` | SRC-027 | Повтор start при active run и повтор promote | Conflict / идемпотентный promote без дубля |
@@ -579,11 +601,11 @@ MVP включает SRC-001—SRC-054 полностью. Исключены se
 | `AT-SRC-034` | SRC-034 | Unresolved username opportunity → provisional key; after resolve merge into peer | Dismiss provenance retained; monitoring blocked while provisional |
 | `AT-SRC-035` | SRC-035 | Dismiss creates suppress row; purge snapshots | Suppress membership remains; recurrence = 0 |
 | `AT-SRC-036` | SRC-036 | `ReconsiderDismissSuppress` then new run finds same peer | Opportunity may appear again; exactly one authoritative `DismissSuppressReconsidered`; distinct from `ReconsiderSource` |
-| `AT-SRC-037` | SRC-037 | Fixture with sufficient replacement pool after first run | `novelty_ratio ≥ 0.80`; dismissed recurrence = 0 |
+| `AT-SRC-037` | SRC-037 | ≥2 quality fixtures; run1 показывает A; run2 не показывает A, показывает B; rejected re-show; run without quality presented | `novelty_ratio ≥ 0.80` только по quality; rejected не входит в novelty; без quality `novelty_ratio is null` и критерий 0.80 не применяется; dismissed recurrence = 0 |
 | `AT-SRC-038` | SRC-038 | Exhaust provider after suppress without quota fill | `pool_exhausted=true` with closed reason code |
 | `AT-SRC-039` | SRC-039 | Trace single hit through stages | Stages `acquired→…→presented` recorded with provenance method |
-| `AT-SRC-040` | SRC-040 | Suppress removes presented slot; initial provider results mostly seen | Replacement/expansion fetches raise `replacement_fetches_total`; later unseen sources verified; `pool_exhausted` only after free paths exhausted |
-| `AT-SRC-041` | SRC-041 | Present quality/near/rejected peer; next run finds same peer | No evidence/snapshot/deep for peer; `presented_suppressed` ≥ 1; survives restart + snapshot retention; alias/canonical merge does not bypass |
+| `AT-SRC-040` | SRC-040 | Quality suppress removes presented slot; v8 directory empty; unfinished operator_seed | v8 `replacement.py` не вызывается; `pool_exhausted=no_unseen_after_suppress` только после исчерпания global (и posts, если слот был) плюс завершённых operator_seed; unfinished operator_seed удерживает stop |
+| `AT-SRC-041` | SRC-041 | Present quality/near/rejected peer; next run finds same peers; ≥138 `legacy_unspecified` | Quality не повторяется; rejected MAY повториться; `presented_suppressed` считает только новое правило; legacy ledger не обнуляет unique_sources; survives restart + snapshot retention |
 | `AT-SRC-042` | SRC-042 | Private invite and depth-3 public link | Private skipped; depth>2 not resolved; depth stays `2`, caps `100`/`25` |
 | `AT-SRC-043` | SRC-043 | Directory-only peer without message evidence | Band `weak`, reason `directory_only_no_evidence` |
 | `AT-SRC-044` | SRC-044 | Deep sample includes query/non-query/hard-excluded duplicates | All unique messages classified; ≤20 samples; exact 30d hard-excluded count persisted |
@@ -591,12 +613,15 @@ MVP включает SRC-001—SRC-054 полностью. Исключены se
 | `AT-SRC-046` | SRC-046 | Complete/incomplete scans over full threshold matrix | Exact quality/near/inconclusive/rejected and ordered closed reasons |
 | `AT-SRC-047` | SRC-047 | Zero/one quality plus provider exhaustion, deep cap 25, acquisition/history caps, quota, cancel, failed and source-inconclusive paths | Complete ordered table gives exact pass/fail/inconclusive; any stop before proven pool exhaustion is inconclusive |
 | `AT-SRC-048` | SRC-048 | FloodWait/process restart crosses time boundaries | Same T/cursor/source; byte-equivalent outcome; no pre-terminal metric/presentation/suppress |
-| `AT-SRC-049` | SRC-049 | Clean seed; operator 6→7; wrong version; exact query catalogs | v3/v7 exact and immutable; wrong operator version blocks; no generated variants; Stars=0 |
+| `AT-SRC-049` | SRC-049 | Clean seed; operator 7→8; wrong version; exact query catalogs | v3/v7 directory остаются; v8 empty directory + `groups`; wrong operator version blocks; no generated variants; Stars=0 |
 | `AT-SRC-050` | SRC-050 | Presentation creates ledger row; purge snapshots | Presented suppress membership remains; registry/dismiss/presented reasons distinguishable |
 | `AT-SRC-051` | SRC-051 | Fake monotonic boundaries 0/6/54/60, 200/201, restart, first FloodWait and control violation | Exact interval/window/cap; durable reservation; first Flood terminal; no second call or retry |
 | `AT-SRC-052` | SRC-052 | Crash before/after stage commit and current-node dequeue; replay duplicate edge | Cursor v2 resumes current node; completed stages not called; one deterministic event/child |
 | `AT-SRC-053` | SRC-053 | Concurrent starts in both directions and terminal release | First commit wins; second exact busy error; terminal run frees slot |
 | `AT-SRC-054` | SRC-054 | History returns 100 posts; inspect DB before next Gateway call; restart from saved stage; terminal request cap | All post fields and provenance committed first; no repeat Gateway call; request/cursor/stop reason remain queryable without stdout |
+| `AT-SRC-055` | SRC-055 | Start with 0..25 seed_refs including channel, invite, invalid, public megagroup; quality-only seed vs SEARCH | operator_seed queries persisted; channel/invite/invalid skipped without `get_linked_discussion` and counted; valid megagroup enters OPERATOR_SEED lane; TelegramSource не создан до promote; quality только с operator_seed не закрывает NFR-QLT-008 |
+| `AT-SRC-056` | SRC-056 | Never-returning `get_recommendations` with two seeds; saved recommendations then hung next RPC; two-claim transient | First node remaining stages empty completed; second seed proceeds; rerun does not call Telegram on first; saved edges kept with zero `resolve_planned_candidate`; first claim `retry_wait` `transient_count=1`, second claim skip not infinite park |
+| `AT-SRC-057` | SRC-057 | Eternal RPC + commit cancel; cancel during restart sleep; cancel `retry_wait`; Event during exclusive wait | `cancelling` then worker `cancelled` ≤1 s over test deadline without SRC-056 skip; sleep interrupted ≤30 s; next process `cancelled` without Telegram; `GraphCallCancelled` not `GatewayTimeout` |
 
 ## 14. Принятые записи decision log
 
@@ -612,5 +637,8 @@ MVP включает SRC-001—SRC-054 полностью. Исключены se
 - `D-062`: suppress ledger + `ReconsiderDismissSuppress` (SRC-035/036).
 - `D-063`: acquisition≠qualification, novelty, pool_exhausted (SRC-037..041).
 - `D-070`: ActiveClientChat v1 supersedes D-068 qualification/score/truth/run gate; frozen time, human authors, deterministic resume and live owner evidence (SRC-023..025, SRC-044, SRC-046..049).
-- `D-069`: durable presented-source suppress supersedes 24h cooldown; free replacement acquisition after mass suppress (SRC-041/050, SRC-040).
+- `D-069`: durable presented-source suppress supersedes 24h cooldown; clauses on directory phrases and hide-all presented peers superseded by D-074/D-076.
+- `D-073`: groups-only `search_global`; posts bulk-skip remains; SEARCH success = deep-verification occupancy (SRC-020).
+- `D-074`: profile v8 empty directory + groups; operator_seed lane (SRC-017/024/040/049/055).
+- `D-076`: presented suppress matches quality only (SRC-037/041/050).
 - `D-067`: opportunity bands stay `promising|review|weak`; plan `strong|moderate` aliases only.

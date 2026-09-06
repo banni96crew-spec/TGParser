@@ -12,6 +12,20 @@ from telegram_lead_discovery.storage.models import Job
 
 LEASE_SECONDS = 300
 HEARTBEAT_SECONDS = 60
+_IN_FLIGHT_DISCOVERY_JOB_IDS: set[int] = set()
+
+
+def mark_inflight_discovery_job(job_id: int) -> None:
+    """STO-025: record that this process owns a running discovery job."""
+    _IN_FLIGHT_DISCOVERY_JOB_IDS.add(int(job_id))
+
+
+def drop_inflight_discovery_job(job_id: int) -> None:
+    _IN_FLIGHT_DISCOVERY_JOB_IDS.discard(int(job_id))
+
+
+def inflight_discovery_job_ids() -> frozenset[int]:
+    return frozenset(_IN_FLIGHT_DISCOVERY_JOB_IDS)
 
 
 async def claim_job(session: AsyncSession, *, job_types: list[str], owner: str) -> Job | None:
@@ -65,6 +79,19 @@ async def recover_stale_jobs(session: AsyncSession) -> int:
     )
     count = 0
     for job in result.scalars():
+        if job.job_type == "discovery" and job.id in _IN_FLIGHT_DISCOVERY_JOB_IDS:
+            continue
+        # #region agent log
+        import json as _json, time as _time
+        from pathlib import Path as _Path
+        try:
+            with _Path(r"c:\Users\Николай\Desktop\Telegram Parser\debug-1c5371.log").open(
+                "a", encoding="utf-8"
+            ) as _f:
+                _f.write(_json.dumps({"sessionId":"1c5371","hypothesisId":"H5","location":"jobs.py:recover_stale_jobs","message":"requeue_stale","data":{"job_id":job.id,"job_type":job.job_type,"inflight":job.id in _IN_FLIGHT_DISCOVERY_JOB_IDS},"timestamp":int(_time.time()*1000)})+"\n")
+        except Exception:
+            pass
+        # #endregion
         job.state = "queued"
         job.lease_until = None
         job.updated_at = now

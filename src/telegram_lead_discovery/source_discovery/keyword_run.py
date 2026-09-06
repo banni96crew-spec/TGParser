@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -16,21 +17,24 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.detection.seed import seed_active_ruleset
+from telegram_lead_discovery.source_discovery.keyword_run_queries import (
+    expand_run_queries,
+    normalize_seed_refs,
+)
 from telegram_lead_discovery.source_discovery.profile_service import (
     ProfileNotFoundError,
     get_current_profile_version,
     get_profile,
     version_as_normalized,
 )
-from telegram_lead_discovery.storage.jobs import enqueue_job
-from telegram_lead_discovery.storage.models import (
-    DiscoveryRun,
-    DiscoveryRunQuery,
-    Job,
-)
 from telegram_lead_discovery.source_discovery.telegram_discovery_lock import (
     discovery_busy_code,
     find_active_telegram_discovery,
+)
+from telegram_lead_discovery.storage.jobs import enqueue_job
+from telegram_lead_discovery.storage.models import (
+    DiscoveryRun,
+    Job,
 )
 
 JOB_TYPE_KEYWORD_DISCOVERY = "keyword_discovery"
@@ -85,69 +89,13 @@ async def find_active_keyword_run(session: AsyncSession) -> DiscoveryRun | None:
     return result.scalar_one_or_none()
 
 
-def _expand_run_queries(
-    *,
-    run_id: int,
-    post_queries: tuple[str, ...],
-    directory_queries: tuple[str, ...],
-    source_scope: str,
-) -> list[DiscoveryRunQuery]:
-    """Expand profile queries into DiscoveryRunQuery rows (phases B/C/D)."""
-    scopes: list[str] = []
-    if source_scope in ("groups", "all"):
-        scopes.append("groups")
-    if source_scope in ("channels", "all"):
-        scopes.append("channels")
-    if not scopes:
-        scopes = ["groups", "channels"]
-
-    rows: list[DiscoveryRunQuery] = []
-    ordinal = 0
-    for query_text in post_queries:
-        for scope in scopes:
-            ordinal += 1
-            rows.append(
-                DiscoveryRunQuery(
-                    run_id=run_id,
-                    ordinal=ordinal,
-                    query_kind="global_message",
-                    query_text=query_text,
-                    scope=scope,
-                    state="queued",
-                )
-            )
-    for query_text in directory_queries:
-        ordinal += 1
-        rows.append(
-            DiscoveryRunQuery(
-                run_id=run_id,
-                ordinal=ordinal,
-                query_kind="directory",
-                query_text=query_text,
-                scope=None,
-                state="queued",
-            )
-        )
-    for query_text in post_queries:
-        ordinal += 1
-        rows.append(
-            DiscoveryRunQuery(
-                run_id=run_id,
-                ordinal=ordinal,
-                query_kind="public_posts",
-                query_text=query_text,
-                scope=None,
-                state="queued",
-            )
-        )
-    return rows
-
-
 async def start_keyword_discovery_run(
     session: AsyncSession,
     *,
     profile_id: int,
     credentials_present: bool = True,
+    seed_refs: Sequence[str] = (),
+    expected_profile_version: int | None = None,
 ) -> StartKeywordDiscoveryResult:
     """Create DiscoveryRun + queries + Job in one transaction (SRC-019).
 
@@ -155,6 +103,10 @@ async def start_keyword_discovery_run(
     """
     if not credentials_present:
         raise KeywordRunStartError("telegram_credentials_missing")
+    try:
+        normalized_seeds = normalize_seed_refs(seed_refs)
+    except ValueError as exc:
+        raise KeywordRunStartError(str(exc)) from exc
 
     active = await find_active_telegram_discovery(session)
     if active is not None:
@@ -166,6 +118,11 @@ async def start_keyword_discovery_run(
         raise KeywordRunStartError(f"profile_not_found:{profile_id}") from exc
     if profile.state != "active":
         raise KeywordRunStartError(f"profile_not_active:{profile.state}")
+    if (
+        expected_profile_version is not None
+        and int(profile.current_version) != int(expected_profile_version)
+    ):
+        raise KeywordRunStartError("profile_version_conflict")
 
     version_row = await get_current_profile_version(session, profile_id)
     queries = version_as_normalized(version_row)
@@ -202,11 +159,11 @@ async def start_keyword_discovery_run(
         async with session.begin_nested():
             session.add(run)
             await session.flush()
-            query_rows = _expand_run_queries(
+            query_rows = expand_run_queries(
                 run_id=run.id,
                 post_queries=queries.post_queries,
                 directory_queries=queries.directory_queries,
-                source_scope=queries.source_scope,
+                seed_refs=normalized_seeds,
             )
             for row in query_rows:
                 session.add(row)

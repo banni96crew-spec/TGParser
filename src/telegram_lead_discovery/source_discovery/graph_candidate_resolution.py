@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from telegram_lead_discovery.collector.ports import (
+    GatewayPermanentError,
     GatewaySourceInaccessible,
     GraphEdgeDTO,
     PublicSourceRef,
@@ -48,7 +49,7 @@ async def resolve_planned_candidate(
                 snapshot = await ctx.gateway.resolve_public_source(
                     PublicSourceRef(schema_version=1, username_or_url=username)
                 )
-        except GatewaySourceInaccessible:
+        except (GatewaySourceInaccessible, GatewayPermanentError):
             ctx.budget.unsupported_total += 1
             return None, _as_outcome(planned, "unsupported_source")
         ctx.budget.resolves_used += 1

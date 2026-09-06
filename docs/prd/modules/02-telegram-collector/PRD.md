@@ -64,7 +64,7 @@ get_message(source, message_id) -> TelegramMessageDTO | None
 
 Методы `iter_messages` и `register_live_handler` запрещены. Live envelopes публикуются из `iter_updates`. Keyword search methods добавляются COL-021.
 
-Gateway MUST преобразовывать library exceptions в `GatewayFloodWait(until)`, `GatewayUnauthorized`, `GatewayFrozen`, `GatewaySourceInaccessible`, `GatewayTransientError` и `GatewayPermanentError`.
+Gateway MUST преобразовывать library exceptions в `GatewayFloodWait(until)`, `GatewayUnauthorized`, `GatewayFrozen`, `GatewaySourceInaccessible`, `GatewayTransientError`, `GatewayTimeout` и `GatewayPermanentError`. `GatewayTimeout` is not a `GatewayTransientError`.
 
 ### COL-003 — Session startup
 
@@ -215,6 +215,10 @@ COL exposes neutral `TelegramRequestController` through a default-null context v
 
 `sample_public_graph` MUST execute exactly one raw `GetHistoryRequest(limit≤100)` and return `GraphSampleResultDTO` containing both extracted graph edges and every received valid message with id, UTC date, full text, permalink, ephemeral raw author peer id and closed `author_kind`. No per-message network lookup is allowed. The raw author peer id exists only in memory for SRC pseudonymization; ordinary `sample_public_graph_edges` remains a compatibility projection over the same response contract.
 
+### COL-030 — Graph call deadline and abandon (D-077)
+
+When a graph request controller is in context, `ControlledTelegramClient._call` MUST apply one deadline of **30 seconds** to the entire graph `_call` (exclusive-lock wait **plus** raw RPC), not 30+30. Python 3.12 `Condition.wait_for` has no `timeout`; exclusive acquire MUST use timer+cancel wakers and `wait_for(predicate)` in the same task. After decrementing `waiting_writers`, `notify_all` is required. After exclusive is held, remaining time is recomputed; `remaining <= 0` MUST raise `GatewayTimeout` without starting RPC. Otherwise RPC is `asyncio.wait({rpc_task, cancel_wait}, timeout=remaining, FIRST_COMPLETED)`. On timeout or `GraphCallCancelled` the waiter MUST NOT `cancel()` or `await` the RPC task (orphan allowed); restore settings on the waiter side only. HTTP MUST NOT `notify_all`. `GraphCallCancelled` is a `RequestControlError`, not `asyncio.CancelledError` and not `GatewayTimeout`. Ordinary `shared()` path has no 30 s deadline (COL-028). FloodWait on an orphan RPC MUST NOT terminalize the graph run.
+
 ## 8. Data ownership
 
 Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` gateway DTO и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
@@ -260,7 +264,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-028. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-030. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -295,6 +299,7 @@ MVP включает COL-001—COL-028. Исключены multiple sessions, ac
 | `AT-COL-027` | COL-027 | PeerUser human/bot, PeerChannel, anonymous admin, via_bot and missing sender fixtures | Exact closed `author_kind`; no extra per-message request; raw author identity absent from scouting persistence |
 | `AT-COL-028` | COL-028 | Intercept raw graph sender; batch/nested/error/cancel/offline-cache fixtures; ordinary concurrent reader | One sender call; limit 100; no graph retry; settings restored; cache causes zero network; ordinary path unchanged |
 | `AT-COL-029` | COL-029 | Raw history fixture with human/bot/channel/anonymous authors and 100 posts | One sender call; edges and all message fields returned; no author lookup; raw author identity not persisted by COL |
+| `AT-COL-030` | COL-030 | Infinite shared reader; swallow-cancel RPC after exclusive; Event during exclusive wait | `GatewayTimeout` within test deadline 0.2 s wall ≤1 s, `_writer is False`, `_waiting_writers == 0`, later ordinary `shared()` `_call` completes, settings restored; waiter `GatewayTimeout` without awaiting orphan; `GraphCallCancelled` ≤1 s not `GatewayTimeout` |
 
 ## 14. Принятые записи decision log
 

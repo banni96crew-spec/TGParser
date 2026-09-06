@@ -30,6 +30,7 @@ from telegram_lead_discovery.source_discovery.worker_parts.registry import (
 from telegram_lead_discovery.source_discovery.worker_parts.seed_queries import _run_seed_queries
 from telegram_lead_discovery.source_discovery.worker_parts.history_state import (
     _restore_directory_pool,
+    _restore_operator_seed_pool,
 )
 from telegram_lead_discovery.source_discovery.worker_parts.verification_phase import (
     _phase_deep_verification,
@@ -117,6 +118,7 @@ async def process_keyword_discovery_job(
 
     try:
         await _restore_directory_pool(ctx)
+        await _restore_operator_seed_pool(ctx)
         await _check_cancel(ctx)
         await _run_seed_queries(ctx)
         await _check_cancel(ctx)

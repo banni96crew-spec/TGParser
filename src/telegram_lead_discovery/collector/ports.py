@@ -9,6 +9,7 @@ from telegram_lead_discovery.collector.port_parts.errors import (
     GatewaySearchQuotaExhausted,
     GatewaySearchUnavailable,
     GatewaySourceInaccessible,
+    GatewayTimeout,
     GatewayTransientError,
     GatewayUnauthorized,
 )
@@ -25,6 +26,8 @@ from telegram_lead_discovery.collector.port_parts.messages import (
     TelegramUpdateDTO,
 )
 from telegram_lead_discovery.collector.port_parts.request_control import (
+    GRAPH_CALL_DEADLINE_SECONDS,
+    GraphCallCancelled,
     NestedTelegramRequest,
     RequestBudgetExhausted,
     RequestControlError,

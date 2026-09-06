@@ -72,6 +72,7 @@ def merge_funnel_counters(
     replacement_fetches_total: int | None = None,
     pool_exhausted: bool | None = None,
     pool_exhausted_reason: str | None = None,
+    quality_presented_total: int | None = None,
 ) -> dict[str, int | str]:
     """Merge SRC-037 funnel counters; novelty in basis points (×10000)."""
     out: dict[str, int | str] = {}
@@ -114,9 +115,15 @@ def merge_funnel_counters(
         out["pool_exhausted_reason_code"] = POOL_EXHAUSTED_REASON_CODES.get(
             pool_exhausted_reason, -1
         )
-    presented = int(out.get("presented_total", 0) or 0)
-    novel = int(out.get("novel_presented_total", 0) or 0)
-    out["novelty_ratio_bp"] = int(10000 * novel / max(1, presented))
+    if quality_presented_total is not None:
+        quality_n = int(quality_presented_total)
+        out["quality_presented_total"] = quality_n
+        if quality_n <= 0:
+            out.pop("novelty_ratio_bp", None)
+        else:
+            novel = int(out.get("novel_presented_total", 0) or 0)
+            out["novelty_ratio_bp"] = int(10000 * novel / max(1, quality_n))
+        return out
     return out
 
 

@@ -182,6 +182,16 @@ def build_seed_normalized_profile() -> NormalizedProfileQueries:
     )
 
 
+def build_v8_normalized_profile() -> NormalizedProfileQueries:
+    return normalize_profile_queries(
+        post_queries=SEED_POST_QUERIES,
+        directory_queries=(),
+        replacement_directory_queries=(),
+        additional_exclusions=SEED_ADDITIONAL_EXCLUSIONS,
+        source_scope="groups",
+    )
+
+
 def validate_profile_name(name: str) -> str:
     cleaned = name.strip()
     if not cleaned or len(cleaned) > MAX_PROFILE_NAME_LEN:
@@ -214,6 +224,7 @@ __all__ = [
     "SEED_PROFILE_VERSION",
     "SourceScope",
     "build_seed_normalized_profile",
+    "build_v8_normalized_profile",
     "match_additional_exclusion",
     "normalize_profile_queries",
     "normalize_query",

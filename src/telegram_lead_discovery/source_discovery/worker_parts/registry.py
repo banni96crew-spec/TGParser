@@ -52,6 +52,8 @@ async def _load_presented_sources(
     for row in rows:
         if row.source_telegram_id is None:
             continue
+        if (row.suppress_class or "legacy_unspecified") != "quality":
+            continue
         aliases: tuple[str, ...]
         try:
             raw = json.loads(row.aliases_json or "[]")

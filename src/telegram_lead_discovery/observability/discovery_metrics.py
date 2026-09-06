@@ -186,8 +186,5 @@ def record_funnel_observability(counters: dict[str, Any]) -> None:
             code = counters.get("pool_exhausted_reason_code")
             reason = f"code_{code}" if code is not None else "unknown"
         record_pool_exhausted(reason=str(reason))
-    presented = int(counters.get("presented_total") or 0)
-    if presented > 0:
-        record_novelty_ratio(novel / presented)
-    elif "novelty_ratio_bp" in counters:
+    if "novelty_ratio_bp" in counters:
         record_novelty_ratio(int(counters["novelty_ratio_bp"]) / 10000.0)

@@ -11,6 +11,7 @@ from telegram_lead_discovery.collector.ports import TelegramGateway
 from telegram_lead_discovery.observability.discovery import (
     note_flood_wait,
 )
+from telegram_lead_discovery.source_discovery.graph_cursor import node_from_dict
 from telegram_lead_discovery.source_discovery.identity import (
     DismissedKeywordSourceIndex,
     SourceRegistryIndex,
@@ -43,6 +44,7 @@ class _GraphWorkerContext:
     stage_results: dict[str, dict[str, Any]] = field(default_factory=dict)
     resolved_sources: dict[str, dict[str, Any]] = field(default_factory=dict)
     request_controller: Any | None = None
+    transient_counts: dict[str, int] = field(default_factory=dict)
 
 
 def _save_graph_cursor(ctx: _GraphWorkerContext) -> None:
@@ -78,6 +80,9 @@ def _save_graph_cursor(ctx: _GraphWorkerContext) -> None:
         "parent_map": {
             str(key): value for key, value in ctx.parent_by_telegram_id.items()
         },
+        "transient_counts": {
+            str(key): int(value) for key, value in ctx.transient_counts.items()
+        },
         "request_control": (
             ctx.request_controller.snapshot()
             if ctx.request_controller is not None
@@ -92,11 +97,84 @@ def _save_graph_cursor(ctx: _GraphWorkerContext) -> None:
     ctx.run.counters_json = _dumps_counters(ctx.budget.to_counters())
 
 
+def _cursor_payload(raw: str | None) -> dict[str, Any]:
+    try:
+        value = json.loads(raw or "{}")
+    except (TypeError, ValueError):
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _restore_queue(cursor: dict[str, Any], seeds: list[Any]) -> list[Any]:
+    values = cursor.get("queue")
+    if not isinstance(values, list):
+        return list(seeds)
+    return [node_from_dict(value) for value in values if isinstance(value, dict)]
+
+
+def _parent_map(cursor: dict[str, Any], seeds: list[Any]) -> dict[int, int]:
+    stored = cursor.get("parent_map")
+    if isinstance(stored, dict):
+        return {int(key): int(value) for key, value in stored.items()}
+    return {
+        seed.seed_telegram_id: seed.seed_source_id
+        for seed in seeds
+        if seed.seed_source_id is not None
+    }
+
+
+def _transient_counts(cursor: dict[str, Any]) -> dict[str, int]:
+    stored = cursor.get("transient_counts")
+    if not isinstance(stored, dict):
+        return {}
+    return {str(key): int(value) for key, value in stored.items()}
+
+
+def _reservation_writer(run_id: int, local_run: DiscoveryRun):
+    async def persist(snapshot: dict[str, Any]) -> None:
+        from telegram_lead_discovery.storage.db import session_scope
+
+        async with session_scope() as control_session:
+            row = await control_session.get(DiscoveryRun, run_id)
+            if row is None:
+                raise RuntimeError(f"graph_run_missing_during_reservation:{run_id}")
+            payload = _cursor_payload(row.cursor_json)
+            payload["schema_version"] = 3
+            payload["request_control"] = snapshot
+            row.cursor_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+            await control_session.commit()
+        local = _cursor_payload(local_run.cursor_json)
+        local["schema_version"] = 3
+        local["request_control"] = snapshot
+        local_run.cursor_json = json.dumps(local, ensure_ascii=False, sort_keys=True)
+
+    return persist
+
+
+def _job_state_for_terminal(state: str) -> str:
+    if state == "cancelled":
+        return "cancelled"
+    if state == "failed":
+        return "failed"
+    return "succeeded"
+
+
 async def _graph_maybe_heartbeat(ctx: _GraphWorkerContext) -> None:
     now = _utcnow()
     if (now - ctx.last_heartbeat_at).total_seconds() >= RUNTIME_CONFIG.HEARTBEAT_SECONDS:
-        await heartbeat_job(ctx.session, ctx.job)
-        ctx.last_heartbeat_at = now
+        await _graph_heartbeat_now(ctx)
+
+
+async def _graph_heartbeat_now(ctx: _GraphWorkerContext) -> None:
+    from telegram_lead_discovery.storage.db import session_scope
+
+    job_id = ctx.job.id
+    async with session_scope() as session:
+        job = await session.get(Job, job_id)
+        if job is None:
+            return
+        await heartbeat_job(session, job)
+    ctx.last_heartbeat_at = _utcnow()
 
 
 async def _park_graph_flood(ctx: _GraphWorkerContext, until: datetime) -> dict[str, Any]:

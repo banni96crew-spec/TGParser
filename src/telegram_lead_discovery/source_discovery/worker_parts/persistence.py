@@ -142,6 +142,7 @@ async def _record_presented_ledger(
         origin_run_id=ctx.run.id,
         origin_opportunity_id=opportunity_row.id,
         first_presented_at=opportunity_row.created_at,
+        suppress_class="non_quality",
     )
 
 

@@ -1,0 +1,39 @@
+Attempt 1 at connecting failed: TimeoutError: 
+Attempt 2 at connecting failed: TimeoutError: 
+Attempt 3 at connecting failed: TimeoutError: 
+Attempt 4 at connecting failed: TimeoutError: 
+Attempt 5 at connecting failed: TimeoutError: 
+Attempt 6 at connecting failed: TimeoutError: 
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_gateway.py", line 87, in connect
+    await self._client.connect()
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\telegrambaseclient.py", line 560, in connect
+    if not await self._sender.connect(self._connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\network\mtprotosender.py", line 133, in connect
+    await self._connect()
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\network\mtprotosender.py", line 266, in _connect
+    raise ConnectionError('Connection to Telegram failed {} time(s)'.format(self._retries))
+ConnectionError: Connection to Telegram failed 5 time(s)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\tmp\live_graph_run.py", line 227, in <module>
+    raise SystemExit(asyncio.run(main()))
+                     ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\tmp\live_graph_run.py", line 146, in main
+    account = await gateway.connect()
+              ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_gateway.py", line 100, in connect
+    raise GatewayTransientError(str(exc)) from exc
+telegram_lead_discovery.collector.port_parts.errors.GatewayTransientError: Connection to Telegram failed 5 time(s)

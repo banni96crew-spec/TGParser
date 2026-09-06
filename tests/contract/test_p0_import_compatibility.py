@@ -50,6 +50,7 @@ KEYWORD_EXPORTS = (
     "apply_neutral_noise_sample",
     "build_opportunity_from_evidence",
     "build_preliminary_candidates",
+    "diversity_reservations_for_profile",
     "evidence_from_hit",
     "dismissed_telegram_ids",
     "is_registry_suppressed",

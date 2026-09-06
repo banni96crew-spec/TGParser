@@ -37,7 +37,9 @@ async def _run_seed_queries(ctx: _WorkerContext) -> None:
         select(DiscoveryRunQuery)
         .where(
             DiscoveryRunQuery.run_id == ctx.run.id,
-            DiscoveryRunQuery.query_kind.in_(("global_message", "directory", "public_posts")),
+            DiscoveryRunQuery.query_kind.in_(
+                ("global_message", "directory", "public_posts", "operator_seed")
+            ),
         )
         .order_by(DiscoveryRunQuery.ordinal.asc())
     )
@@ -77,6 +79,9 @@ async def _run_seed_queries(ctx: _WorkerContext) -> None:
         elif query.query_kind == "public_posts":
             ctx.run.phase = "D"
             await _execute_public_posts_query(ctx, query)
+        elif query.query_kind == "operator_seed":
+            ctx.run.phase = "E"
+            await _execute_operator_seed_query(ctx, query)
         await ctx.session.flush()
 
 
@@ -237,4 +242,7 @@ async def _execute_directory_query(ctx: _WorkerContext, query: DiscoveryRunQuery
 
 from telegram_lead_discovery.source_discovery.worker_parts.public_posts import (
     _execute_public_posts_query,
+)
+from telegram_lead_discovery.source_discovery.worker_parts.operator_seed import (
+    _execute_operator_seed_query,
 )

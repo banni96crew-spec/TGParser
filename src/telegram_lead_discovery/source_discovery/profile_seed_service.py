@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from telegram_lead_discovery.source_discovery.keyword_profiles import (
     SEED_PROFILE_NAME,
     build_seed_normalized_profile,
+    build_v8_normalized_profile,
 )
 from telegram_lead_discovery.source_discovery.profile_service import (
     ProfileNotFoundError,
@@ -33,8 +34,14 @@ from telegram_lead_discovery.storage.models import (
 )
 
 
-def _seed_matches_catalog(version_row: KeywordDiscoveryProfileVersion) -> bool:
-    expected = build_seed_normalized_profile()
+def _etalon_for_version(version: int):
+    if version == 8:
+        return build_v8_normalized_profile()
+    return build_seed_normalized_profile()
+
+
+def _seed_matches_catalog(version_row: KeywordDiscoveryProfileVersion, version: int) -> bool:
+    expected = _etalon_for_version(version)
     actual = version_as_normalized(version_row)
     return (
         actual.post_queries == expected.post_queries
@@ -47,7 +54,7 @@ def _seed_matches_catalog(version_row: KeywordDiscoveryProfileVersion) -> bool:
 
 
 async def ensure_seed_keyword_profile(session: AsyncSession) -> ProfileWithVersion:
-    """Create immutable clean seed v3 or verify migration-owned operator v7."""
+    """Create immutable clean seed v3 or verify migration-owned operator v7/v8."""
     existing = await get_profile_by_name(session, SEED_PROFILE_NAME)
     if existing is None:
         seed = build_seed_normalized_profile()
@@ -72,7 +79,9 @@ async def ensure_seed_keyword_profile(session: AsyncSession) -> ProfileWithVersi
         return ProfileWithVersion(profile=profile, version=version_row)
 
     version_row = await get_current_profile_version(session, existing.id)
-    if existing.current_version in {3, 7} and _seed_matches_catalog(version_row):
+    if existing.current_version in {3, 7, 8} and _seed_matches_catalog(
+        version_row, existing.current_version
+    ):
         return ProfileWithVersion(profile=existing, version=version_row)
     raise ProfileSeedMismatchError(
         f"seed_profile_mismatch:current_version={existing.current_version}"

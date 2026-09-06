@@ -638,7 +638,7 @@ async def test_registry_known_source_suppressed_src031(db_env) -> None:
 
 @pytest.mark.asyncio
 async def test_dismissed_source_suppressed_src032(db_env) -> None:
-    """AT-SRC-032: dismissed opportunity never reappears; D-069 also hides prior shown peers."""
+    """AT-SRC-032: dismissed opportunity never reappears; non-quality presented may reappear."""
     import json
 
     gw = FakeTelegramGateway()
@@ -751,8 +751,8 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
         assert run is not None
         counters = json.loads(run.counters_json or "{}")
         assert int(counters.get("dismissed_suppressed", 0)) >= 1
-        # Peer 99 was presented in run1 → durable presented suppress (D-069).
-        assert int(counters.get("presented_suppressed", 0)) >= 1
+        # Peer 99 was presented in run1 without quality → D-076 does not hide it.
+        assert int(counters.get("presented_suppressed", 0)) == 0
         assert int(counters.get("cooldown_suppressed", 0)) == int(
             counters.get("presented_suppressed", 0)
         )
@@ -769,7 +769,7 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
             .all()
         )
         assert 52 not in evidence_ids
-        assert 99 not in evidence_ids
+        assert 99 in evidence_ids
         assert 100 in evidence_ids
 
         opp_ids = set(
@@ -784,7 +784,7 @@ async def test_dismissed_source_suppressed_src032(db_env) -> None:
             .all()
         )
         assert 52 not in opp_ids
-        assert 99 not in opp_ids
+        assert 99 in opp_ids
         assert 100 in opp_ids
 
         deep_for_hidden = list(

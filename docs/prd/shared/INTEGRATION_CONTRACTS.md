@@ -112,6 +112,7 @@ Gateway errors:
 | `GatewayFrozen` | Account → `frozen`, collector останавливается |
 | `GatewaySourceInaccessible` | Source → `inaccessible` после повторной проверки |
 | `GatewayTransientError` | bounded retry с jitter |
+| `GatewayTimeout` | graph: skip current node (SRC-056), не collector retry; ordinary/live path без 30 с deadline |
 | `GatewayPermanentError` | job failed, structured alert |
 
 ## 3. Source Registry port
@@ -138,8 +139,9 @@ Producer/owner: `SRC`; consumers: `UI`, `OBS`, `STO`; search I/O через `COL
 |---|---|---|
 | `CreateKeywordDiscoveryProfile` | `name`, queries, scope | `profile_id`, version `1` |
 | `CreateKeywordDiscoveryProfileVersion` | `profile_id`, queries, scope, optimistic `version` | новая immutable version |
-| `StartKeywordDiscoveryRun` | `profile_id`, CSRF, optimistic checks | `discovery_run_id`, Job `keyword_discovery` |
+| `StartKeywordDiscoveryRun` | `profile_id`, `seed_refs` (0..25 SRC-001 lines), CSRF, optimistic checks | `discovery_run_id`, Job `keyword_discovery` |
 | `CancelKeywordDiscoveryRun` | `run_id`, optimistic `version` | state `cancelling` → `cancelled` |
+| `CancelGraphDiscoveryRun` | `run_id`, optimistic `version` | state `cancelling` → `cancelled` (immediate `cancelled` if job is `queued`/`retry_wait` without a live worker) |
 | `PromoteOpportunityToCandidate` | `opportunity_id`, optimistic `version` | `TelegramSource(candidate)` или existing source link |
 | `DismissOpportunity` | `opportunity_id`, reason, optimistic `version` | `review_state=dismissed` + durable suppress membership |
 | `ReconsiderDismissSuppress` | `canonical_key` \| `suppress_id`, note, CSRF, optimistic `version` | removes suppress membership only; MUST emit authoritative `DismissSuppressReconsidered`; distinct from `ReconsiderSource` |
@@ -149,19 +151,19 @@ Producer/owner: `SRC`; consumers: `UI`, `OBS`, `STO`; search I/O через `COL
 | Событие | Обязательные поля |
 |---|---|
 | `KeywordDiscoveryRunStarted` | `event_id`, `run_id`, `profile_version_id`, `rule_set_version_id`, `occurred_at` |
-| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters (`acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` / alias `cooldown_suppressed`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`), `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio`, `occurred_at` |
-| `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method` (`keyword_search`\|`linked_discussion`), `occurred_at` |
+| `KeywordDiscoveryRunFinished` | `event_id`, `run_id`, `state`, funnel counters (`acquired_total`, `canonicalized_total`, `registry_suppressed`, `dismissed_suppressed`, `duplicate_in_run`, `presented_suppressed` / alias `cooldown_suppressed`, `operator_seed_skipped`, `qualified_total`, `presented_total`, `novel_presented_total`, `replacement_fetches_total`), `pool_exhausted`, `pool_exhausted_reason`, `novelty_ratio` (`float | null`), `occurred_at` |
+| `SourceOpportunityPromoted` | `event_id`, `opportunity_id`, `source_id`, `method` (`keyword_search`\|`linked_discussion`\|`operator_seed`), `occurred_at` |
 | `DismissSuppressReconsidered` | sole authoritative audit for reconsider (owner `SRC`); `event_id`, `canonical_key` \| `suppress_id`, `note`, `occurred_at` |
 
 Isolation (D-052): keyword search hits записываются только в `SourceDiscoveryEvidence` / `SourceOpportunitySnapshot`. Они MUST NOT публиковать `TelegramEventEnvelope`, MUST NOT создавать `TelegramMessage`/`Lead`/`LeadScore`/notification outbox и MUST NOT изменять `CollectorCheckpoint`.
 
 Detection reuse: SRC вызывает pure DET evaluation на normalized scouting text через shared detect function / port с `analysis_text` и зафиксированными `rule_set_version_id` + checksum; результат сохраняется в evidence fields, не как pipeline `DetectionResult` row lead-path (см. DET-015 / DET-016). Pipeline detection MUST load rules only by pinned version+checksum; `SEED_RULES` is bootstrap-only (D-065).
 
-Acquisition stages (machine-readable, D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provider provenance method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`.
+Acquisition stages (machine-readable, D-063): `acquired` → `canonicalized` → `suppressed` → `qualified` → `presented`. Provider provenance method ∈ existing discovery methods + `keyword_search`/`linked_discussion`/`recommendation`/`public_link`/`mention`/`forward_origin`/`operator_seed`. SEARCH for NFR-QLT-008 is `global_message` in `discovery_channels`, not `operator_seed`.
 
-ActiveClientChat v1 (D-070): channel hits are ephemeral parents only; registry/dismiss/presented suppress is applied before `get_linked_discussion`; only an unsuppressed public `megagroup` enters verification. `DiscoveryRun.started_at` is the immutable reference `T`. Cursor schema v2 persists T, continuation, frozen counters including `unknown_author_message_count`, UTC active dates, source-scoped human author keys, request identities, request-author keys, normalized hashes, hard-exclusion count, latest request and stop state. Unknown-author count uses unique nonempty `[T-30d,T]` messages after Telegram identity then exact normalized-hash dedupe. FloodWait/crash returns a resumable state and MUST NOT publish terminal truth, metric or presented suppress.
+ActiveClientChat v1 (D-070 / D-073 / D-074 / D-076): keyword `search_global` is groups-only; posts bulk-skip after first Premium remains. Channel hits are ephemeral parents only; registry/dismiss/quality presented suppress is applied before `get_linked_discussion`; only an unsuppressed public `megagroup` enters verification. Operator seed resolves after global/posts and before selection of 25; channel/private/invalid skip without `get_linked_discussion`. `DiscoveryRun.started_at` is the immutable reference `T`. Cursor schema v2 persists T, continuation, frozen counters including `unknown_author_message_count`, UTC active dates, source-scoped human author keys, request identities, request-author keys, normalized hashes, hard-exclusion count, latest request and stop state. Unknown-author count uses unique nonempty `[T-30d,T]` messages after Telegram identity then exact normalized-hash dedupe. FloodWait/crash returns a resumable state and MUST NOT publish terminal truth, metric or presented suppress.
 
-Terminalization inserts `SourceOpportunitySnapshot` and immutable `DiscoveryTerminalOutcome` in one transaction. First inclusion of that terminal opportunity in a result set idempotently upserts `PresentedKeywordSource`. Before terminal transition the opportunity MUST NOT be visible or suppressed.
+Terminalization inserts `SourceOpportunitySnapshot` and immutable `DiscoveryTerminalOutcome` in one transaction. First inclusion of a terminal **quality** opportunity in a result set idempotently upserts `PresentedKeywordSource` with `suppress_class=quality`. Non-quality presentation MAY write `non_quality` and MUST NOT match future suppress. Before terminal transition the opportunity MUST NOT be visible or suppressed.
 
 ## 4. Telegram event envelope
 

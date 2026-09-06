@@ -10,13 +10,13 @@
 
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
-| Source Discovery | `SRC-001..054` | `AT-SRC-001..054` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider; durable graph cursor/results |
-| Telegram Collector | `COL-001..029` | `AT-COL-001..029` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response |
+| Source Discovery | `SRC-001..057` | `AT-SRC-001..057` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider; durable graph cursor/results; groups SEARCH + operator_seed; graph timeout skip and cancel |
+| Telegram Collector | `COL-001..030` | `AT-COL-001..030` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response; graph call deadline |
 | Message Processing | `PROC-001..019` | `AT-PROC-001..019` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum |
-| Lead Detection | `DET-001..019` | `AT-DET-001..019` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
+| Lead Detection | `DET-001..020` | `AT-DET-001..020` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
-| Lead Storage | `STO-001..023` | `AT-STO-001..023` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence migrations |
-| Lead Dashboard | `UI-001..027` | `AT-UI-001..027` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults |
+| Lead Storage | `STO-001..025` | `AT-STO-001..025` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence, suppress_class and profile v8 migrations, in-flight discovery reclaim exception |
+| Lead Dashboard | `UI-001..029` | `AT-UI-001..029` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs` и graph run cancel |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..015` | `AT-SET-001..015` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation и local-access suite |
 | Administration & Observability | `OBS-001..022` | `AT-OBS-001..022` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity and durable terminal metrics |
@@ -84,7 +84,7 @@
 | Journey | Requirements | Gate |
 |---|---|---|
 | Add and approve source | `SRC-001`, `SRC-007..014`, `COL-004..005`, `UI-006` | Candidate не мониторится до approve; backfill создаётся один раз |
-| Keyword scouting → ActiveClientChat → promote → approve | `SRC-017..050`, `COL-021..027`, `DET-015..019`, `STO-015..021`, `UI-017..027`, `OBS-017..022`, `SEC-016..018`, `INF-021..022`, `NFR-QLT-008` | Public megagroup passes D-070; owner confirms 3 actionable messages; evidence ∉ Lead pipeline; Zero Stars; presented peers permanently suppressed; promote → candidate only |
+| Keyword scouting → ActiveClientChat → promote → approve | `SRC-017..055`, `COL-021..027`, `DET-015..020`, `STO-015..024`, `UI-017..028`, `OBS-017..022`, `SEC-016..018`, `INF-021..022`, `NFR-QLT-008` | Public megagroup passes D-070; SEARCH provenance `global_message`; owner confirms 3 actionable messages; evidence ∉ Lead pipeline; Zero Stars; quality presented suppressed; operator_seed не заменяет SEARCH; promote → candidate only |
 | Live lead | `COL-006`, `COL-023..026`, `PROC-001..004`, `PROC-019`, `DET-004..014`, `DET-016`, `SCR-001..013`, `STO-001..005`, `UI-002..005`, `NOT-001..008` | Lead виден ≤10 s; hot alert ≤30 s только при `delivery_mode=live`+secrets; в shadow Lead без outbox; peer-ref I/O |
 | Disconnect recovery | `COL-007..010`, `COL-017..020`, `STO-010`, `STO-018`, `OBS-001..016`, `OBS-020..021`, `INF-002..010`, `INF-022` | Gap ≤20 min; duplicates `0`; named loops not deferred |
 | Edit/delete/repost | `COL-013..015`, `PROC-005..014`, `STO-003..007`, `UI-012..014`, `NOT-009..015` | Revision/tombstone/canonical behavior детерминировано |
@@ -142,11 +142,11 @@ Release evidence включает:
 
 ## 9. ActiveClientChat v1 contract freeze (D-070)
 
-- D-070 supersedes D-068 qualification/score/truth/run gate and only the D-069 clause about two live PASS runs; SRC-041/SRC-050 permanent suppress remains unchanged.
+- D-070 supersedes D-068 qualification/score/truth/run gate and only the D-069 clause about two live PASS runs. The D-070 clause that SRC-041/SRC-050 remain unchanged is superseded by D-076.
 - Updated owner requirements keep their existing AT IDs: `SRC-023`, `SRC-024`, `SRC-025`, `SRC-044`, `SRC-046`, `SRC-047`, `SRC-048`, `SRC-049`, `UI-025`, `NFR-QLT-007`.
 - New 1:1 module requirements: `COL-027` ↔ `AT-COL-027`; `DET-019` ↔ `AT-DET-019`; `STO-021` ↔ `AT-STO-021`; `UI-027` ↔ `AT-UI-027`; `OBS-022` ↔ `AT-OBS-022`; `SEC-018` ↔ `AT-SEC-018`.
 - `NFR-QLT-008` uses the shared quality acceptance/evidence mapping; `AT-NFR-QLT-008` does not exist.
-- Automated completion is insufficient: release requires one live quality public megagroup and explicit owner confirmation of three evidence messages. Until then status is not achieved.
+- Automated completion is insufficient: release requires one live quality public megagroup with SEARCH/`global_message` provenance and explicit owner confirmation of three evidence messages. Until then status is not achieved.
 
 ## 10. Graph request-control isolation (D-071)
 
@@ -165,3 +165,22 @@ Release evidence включает:
 - `SRC-054`: graph post rows and cursor v3 stage receipt commit before the next Telegram call; saved stage never repeats the request.
 - `COL-029`: one raw history response returns edges plus every message field required for durable qualification, with no per-message lookup.
 - `STO-023`: migration `008`, unique post identity, provenance/request metadata, pseudonymous authors and 30/90-day retention.
+
+## 12. Keyword SEARCH usefulness (D-073..D-076)
+
+- Coverage: `SRC-017`, `SRC-019`, `SRC-020`, `SRC-024`, `SRC-037`, `SRC-040`, `SRC-041`, `SRC-049`, `SRC-050`, `SRC-055` ↔ same `AT-SRC-*`; `DET-020` ↔ `AT-DET-020`; `STO-024` ↔ `AT-STO-024`; `UI-028` ↔ `AT-UI-028`; `NFR-QLT-006`, `NFR-QLT-008`.
+- D-073: groups-only `search_global`; posts bulk-skip after first Premium remains; SEARCH success = deep-verification occupancy.
+- D-074: profile v8 empty directory + `source_scope=groups`; migration `010` only `7→8`; `ensure_seed` `{3,7,8}`; Directory reservation `0`; operator_seed lane; graph not invoked from keyword start.
+- D-075: `ru-mvp-5` = `ru-mvp-4` + `NEG-ADV-020`; `ru-mvp-1..4` immutable.
+- D-076: migration `009` `suppress_class`; match only `quality`; rejected MAY reappear; novelty only over quality.
+- NFR-QLT-008 live: empty `seed_refs` first; `global_message`/`groups` `request_count>0` on buyer queries (step 1, not a substitute); quality from SEARCH/`global_message` + three owner-confirmed permalinks. Operator-seed quality is not a substitute.
+- D-070 numeric thresholds MUST NOT be lowered. Graph and Stars remain out of this slice.
+
+## 13. Graph hang hard-stop (D-077)
+
+- Coverage: `COL-030` ↔ `AT-COL-030`; `SRC-056` ↔ `AT-SRC-056`; `SRC-057` ↔ `AT-SRC-057`; `UI-029` ↔ `AT-UI-029`; `STO-025` ↔ `AT-STO-025`.
+- `COL-030`: one 30 s budget for graph exclusive wait + RPC; `GatewayTimeout` ≠ transient; orphan RPC allowed.
+- `SRC-056`: timeout skips remaining stages empty, continues BFS; one transient `retry_wait` per node.
+- `SRC-057`: `CancelGraphDiscoveryRun`, graph `cancelling`, Event interrupts wait, `cancelled` ≤30 s.
+- `UI-029`: dispatcher on existing GET/POST discovery run paths; graph page without keyword HTMX fragments.
+- `STO-025`: in-process `job_type=discovery` is not requeued by `recover_stale_jobs`.

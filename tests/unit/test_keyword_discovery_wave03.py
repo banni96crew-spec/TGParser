@@ -370,18 +370,16 @@ def test_seed_directory_covers_service_families_and_client_communities() -> None
     assert len(set(SEED_DIRECTORY_QUERIES) & set(SEED_DIRECTORY_REPLACEMENT_QUERIES)) == 0
 
 
-def test_five_run_novelty_fixture_ge_80_percent_and_dismissed_zero() -> None:
-    """Deterministic novelty ≥80% with sufficient pool; dismissed recurrence = 0."""
+def test_five_run_novelty_quality_only_and_dismissed_zero() -> None:
+    """Dismissed peers stay hidden; novelty is not required without quality presented."""
     dismissed_ids = frozenset({42})
     presented_history: list[frozenset[int]] = []
-    novel_ratios: list[float] = []
 
-    pool = list(range(100, 220))  # sufficient replacement pool
+    pool = list(range(100, 220))
     cursor = 0
     for _run_idx in range(5):
         page = pool[cursor : cursor + 40]
         cursor += 20
-        # Inject dismissed peer into every run's provider page.
         provider_ids = [42, *page]
         prior = (
             frozenset().union(*presented_history) if presented_history else frozenset()
@@ -393,24 +391,30 @@ def test_five_run_novelty_fixture_ge_80_percent_and_dismissed_zero() -> None:
         )
         presented = frozenset(acquired.qualified_candidate_ids[:20])
         assert 42 not in presented
-        novel = presented - prior
-        ratio = len(novel) / max(1, len(presented))
-        novel_ratios.append(ratio)
         counters = merge_funnel_counters(
             {},
             acquired_total=acquired.acquired_total,
             suppressed_total=acquired.suppressed_total,
             presented_total=len(presented),
-            novel_presented_total=len(novel),
+            novel_presented_total=0,
+            quality_presented_total=0,
         )
-        assert counters["novelty_ratio_bp"] >= 0
+        assert "novelty_ratio_bp" not in counters
         presented_history.append(presented)
 
-    # After first run, subsequent novelty should keep overall gate ≥80% median.
-    after_first = novel_ratios[1:]
-    assert all(r >= 0.80 for r in after_first)
     dismissed_recurrence = sum(1 for batch in presented_history if 42 in batch)
     assert dismissed_recurrence == 0
+
+
+def test_novelty_ratio_from_quality_presented_only() -> None:
+    counters = merge_funnel_counters(
+        {},
+        presented_total=10,
+        novel_presented_total=2,
+        quality_presented_total=2,
+    )
+    assert counters["novelty_ratio_bp"] == 10000
+    assert counters["quality_presented_total"] == 2
 
 
 def test_funnel_stages_counters_merge() -> None:
@@ -435,7 +439,7 @@ def test_funnel_stages_counters_merge() -> None:
     assert counters["qualified_total"] == 40
     assert counters["presented_total"] == 25
     assert counters["novel_presented_total"] == 20
-    assert counters["novelty_ratio_bp"] == 8000  # 20/25 * 10000
+    assert "novelty_ratio_bp" not in counters
     assert counters["pool_exhausted"] == 1
     assert counters["pool_exhausted_reason_code"] >= 0
 

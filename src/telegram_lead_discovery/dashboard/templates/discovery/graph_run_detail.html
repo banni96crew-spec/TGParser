@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-header">
+  <h1>Граф #{{ run.id }}</h1>
+  <p class="page-meta zero-stars">{{ zero_stars_label }}</p>
+</header>
+
+<section class="panel discovery-panel" id="graph-run-status">
+  <h2 class="section-title">Статус</h2>
+  <ul class="meta-list">
+    <li>State: <span class="mono">{{ run.state }}</span></li>
+    <li>Phase: <span class="mono">{{ run.phase or "—" }}</span></li>
+    <li>Version: <span class="mono">{{ run.version }}</span></li>
+    <li>Ошибка: <span class="mono">{{ run.last_error_code or "—" }}</span></li>
+    <li>Причина завершения:
+      <span class="mono">{{ run.run_termination_reason or "—" }}</span>
+    </li>
+    <li>node_timeout_total:
+      <span class="mono">{{ run.counters.get("node_timeout_total", 0) }}</span>
+    </li>
+    <li>created_candidates:
+      <span class="mono">{{ run.counters.get("created_candidates", 0) }}</span>
+    </li>
+    <li>resolves: <span class="mono">{{ run.counters.get("resolves", 0) }}</span></li>
+  </ul>
+
+  {% if run.can_cancel %}
+  <form method="post" action="/discovery/runs/{{ run.id }}/cancel" class="discovery-cancel-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="expected_version" value="{{ run.version }}" />
+    <button type="submit" class="btn-secondary">Отменить</button>
+  </form>
+  {% endif %}
+</section>
+
+<p class="discovery-actions"><a href="/discovery">← К разведке</a></p>
+{% endblock %}

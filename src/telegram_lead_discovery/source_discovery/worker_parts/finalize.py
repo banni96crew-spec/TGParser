@@ -39,6 +39,7 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
 
     unique_evidence_sources = {row.source_telegram_id for row in evidence_rows}
     presented = len(opportunities)
+    quality_rows = [row for row in opportunities if row.truth_status == "quality"]
     counters = merge_funnel_counters(
         _loads_counters(ctx.run.counters_json),
         canonicalized_total=len(unique_evidence_sources),
@@ -47,7 +48,8 @@ async def _phase_finalize_opportunities(ctx: _WorkerContext) -> None:
         cooldown_suppressed=len(ctx.presented_suppressed_ids),
         qualified_total=sum(1 for row in opportunities if row.client_request_count > 0),
         presented_total=presented,
-        novel_presented_total=presented,
+        novel_presented_total=len(quality_rows),
+        quality_presented_total=len(quality_rows),
     )
     counters["evidence_count"] = len(evidence_rows)
     counters["unique_sources"] = presented

@@ -215,7 +215,7 @@ UI MUST показывать: активный профиль/version, лими�
 | `POST /sources/{id}/state` | Pause/resume/disable |
 | `POST /discovery/profiles` | Создать keyword profile |
 | `POST /discovery/profiles/{id}/versions` | Создать profile version |
-| `POST /discovery/runs` | Запустить keyword discovery |
+| `POST /discovery/runs` | Запустить keyword discovery (`seed_refs` 0..25, CSRF) |
 | `POST /discovery/runs/{id}/cancel` | Отменить keyword run |
 | `POST /discovery/results/{id}/promote` | Promote opportunity → candidate |
 | `POST /discovery/results/{id}/dismiss` | Скрыть opportunity |
@@ -291,6 +291,8 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-025 | Keyword run truth UI (D-070) | MUST | Run page defaults to all truth buckets: качественные / почти / недоказанные / отклонённые; shows `gate_status` and real counters (`quality_sources/1`, countable requests/authors, scanned/run cap, current source, flood wait until); MUST NOT hide weak/non-quality by default |
 | UI-026 | Open in Telegram + manual monitoring (D-068) | MUST | Opportunity detail: «Открыть в Telegram» (public_url/permalink); promote→candidate then existing Sources approve→monitoring path (CSRF + optimistic version); no direct SQL; no outreach |
 | UI-027 | ActiveClientChat v1 evidence and explanation (D-070) | MUST | Result card/detail show six frozen counters, latest client request, qualification version, ordered reasons, truth/score/band and Telegram links; historical rows show `legacy`; raw/pseudonymous author identity is never rendered |
+| UI-028 | Keyword start `seed_refs` (D-074 / SRC-055) | MUST | Форма старта keyword: поле `seed_refs` 0..25 строк, нормализация SRC-001, CSRF, optimistic version; `StartKeywordDiscoveryRun` передаёт `profile_id` + `seed_refs`; пустое поле допустимо; graph не вызывается |
+| UI-029 | Graph run detail and cancel on existing discovery URLs (D-077) | MUST | Dispatcher inside existing `GET/POST /discovery/runs/{id}` and cancel path by `run_type`; no second FastAPI handler on the same path. Graph GET: state, phase, counters, error, CSRF cancel form (UI-018). Graph page MUST NOT include keyword HTMX `status-fragment`/`results-fragment`; refresh is full GET. POST cancel without CSRF does not change state; CSRF+version → `303` and `cancelling` if a worker may still run, `cancelled` only when no live worker (`queued`/`retry_wait`). Keyword GET/cancel unchanged |
 
 ## 15. Observability
 
@@ -344,6 +346,8 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-025 | Keyword run page default | All truth buckets visible; gate pass/fail and counters shown |
 | AT-UI-026 | Opportunity detail actions | Open-in-Telegram link present; promote + Sources monitoring handoff with CSRF |
 | AT-UI-027 | ActiveClientChat v1 and legacy fixtures | Exact counters/latest/version/reasons/links rendered; stable truth-score sort; no author key/ID/name/username in HTML |
+| AT-UI-028 | POST `/discovery/runs` with 0, 1, 25, 26 seed lines; missing CSRF; stale version | 0..25 accepted; 26 and invalid SRC-001 rejected without run; CSRF/stale version reject without write; graph not started |
+| AT-UI-029 | GET `/discovery/runs/{id}` for graph on the existing path; CSRF cancel; HTMX fragments; POST without/with CSRF | Not 404; one handler; CSRF form present; HTML has no `hx-get` to `status-fragment` or `results-fragment`; POST without CSRF leaves state; CSRF+version → `303` `cancelling` if worker may run, `cancelled` if queued/retry_wait; keyword GET/cancel unchanged |
 
 ## 18. DEFERRED
 

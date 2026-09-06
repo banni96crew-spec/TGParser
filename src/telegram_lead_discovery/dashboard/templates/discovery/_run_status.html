@@ -79,8 +79,12 @@
       {% endif %}
     </li>
     <li>novelty_ratio:
+      {% if run.novelty_ratio_pct %}
       <span class="mono">{{ run.novelty_ratio_pct }}</span>
       (<span class="mono">{{ run.novelty_ratio_bp }}</span> bp)
+      {% else %}
+      <span class="mono">n/a</span>
+      {% endif %}
     </li>
   </ul>
 

@@ -747,7 +747,7 @@ async def seed_startup_catalog(session: Any) -> None:
     """Startup catalog seed boundary used by ``run_command`` start/run.
 
     MUST activate the current remediation catalog (``seed_active_ruleset`` →
-    ``ru-mvp-3``), never historical ``seed_ruleset_ru_mvp_1`` alone. Checksum
+    ``ru-mvp-5``), never historical ``seed_ruleset_ru_mvp_1`` alone. Checksum
     mismatch fails loudly via ``seed_active_ruleset`` (no silent fallback).
     """
     from telegram_lead_discovery.detection.seed import seed_active_ruleset

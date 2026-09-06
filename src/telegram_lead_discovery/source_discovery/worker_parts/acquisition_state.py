@@ -32,7 +32,7 @@ async def _classify_acquisition_stop(
                 select(DiscoveryRunQuery).where(
                     DiscoveryRunQuery.run_id == ctx.run.id,
                     DiscoveryRunQuery.query_kind.in_(
-                        ("global_message", "directory", "public_posts")
+                        ("global_message", "directory", "public_posts", "operator_seed")
                     ),
                 )
             )

@@ -85,6 +85,7 @@ from telegram_lead_discovery.source_discovery.keyword_search import (
     aggregate_search_hits,
     build_opportunity_from_evidence,
     build_preliminary_candidates,
+    diversity_reservations_for_profile,
     is_registry_suppressed,
     linked_discussion_opportunity,
     merge_funnel_counters,

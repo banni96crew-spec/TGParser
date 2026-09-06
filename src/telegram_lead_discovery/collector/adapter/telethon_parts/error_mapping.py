@@ -11,6 +11,7 @@ from telegram_lead_discovery.collector.ports import (
     GatewaySearchQuotaExhausted,
     GatewaySearchUnavailable,
     GatewaySourceInaccessible,
+    GatewayTimeout,
     GatewayTransientError,
     GatewayUnauthorized,
     RequestControlError,
@@ -29,6 +30,7 @@ def _raise_mapped(exc: BaseException) -> BaseException:
         | GatewaySearchQuotaExhausted
         | GatewaySearchUnavailable
         | GatewaySourceInaccessible
+        | GatewayTimeout
         | GatewayTransientError
         | GatewayUnauthorized,
     ):
@@ -75,7 +77,29 @@ def _map_telethon_error(exc: BaseException) -> Exception | None:
     if frozen_cls is not None and isinstance(exc, frozen_cls):
         return GatewayFrozen(str(exc))
 
-    if isinstance(exc, te.ChannelPrivateError | te.ChatForbiddenError):
+    inaccessible_types = tuple(
+        cls
+        for cls in (
+            te.ChannelPrivateError,
+            te.ChatForbiddenError,
+            getattr(te, "UsernameNotOccupiedError", None),
+            getattr(te, "ChannelInvalidError", None),
+        )
+        if cls is not None
+    )
+    if inaccessible_types and isinstance(exc, inaccessible_types):
+        # #region agent log
+        import json as _json
+        import time as _time
+        from pathlib import Path as _Path
+        try:
+            with _Path(r"c:\Users\Николай\Desktop\Telegram Parser\debug-1c5371.log").open(
+                "a", encoding="utf-8"
+            ) as _f:
+                _f.write(_json.dumps({"sessionId":"1c5371","hypothesisId":"H3","location":"error_mapping.py:_map_telethon_error","message":"mapped_inaccessible","data":{"exc":type(exc).__name__},"timestamp":int(_time.time()*1000),"runId":"post-fix"})+"\n")
+        except Exception:
+            pass
+        # #endregion
         return GatewaySourceInaccessible(str(exc))
 
     premium_cls = getattr(te, "PremiumAccountRequiredError", None)
@@ -99,6 +123,16 @@ def _map_telethon_error(exc: BaseException) -> Exception | None:
         if "FLOOD" in message or "TOO MANY REQUESTS" in message:
             seconds = int(getattr(exc, "seconds", 0) or 0)
             return GatewayFloodWait(datetime.now(UTC) + timedelta(seconds=max(seconds, 1)))
+        if any(
+            token in message
+            for token in (
+                "USERNAME_NOT_OCCUPIED",
+                "CHANNEL_PRIVATE",
+                "CHANNEL_INVALID",
+                "CHAT_FORBIDDEN",
+            )
+        ):
+            return GatewaySourceInaccessible(str(exc))
         if getattr(exc, "code", None) in {400, 403}:
             return GatewayPermanentError(str(exc))
         if getattr(exc, "code", None) in {500, 503}:

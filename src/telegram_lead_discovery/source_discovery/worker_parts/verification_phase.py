@@ -2,8 +2,6 @@ from __future__ import annotations
 
 # ruff: noqa: F403,F405,I001
 
-from typing import Any
-
 from telegram_lead_discovery.source_discovery.worker_parts.dependencies import *
 
 from telegram_lead_discovery.source_discovery.worker_parts.cap_finalize import (
@@ -26,6 +24,7 @@ from telegram_lead_discovery.source_discovery.worker_parts.history_state import 
     _get_or_create_verification_query,
     _load_run_cursor,
     _restore_directory_pool,
+    _restore_operator_seed_pool,
     _run_history_scanned,
     _verification_started,
     _verification_scanned_by_source,
@@ -54,71 +53,28 @@ from telegram_lead_discovery.source_discovery.worker_parts.truth_state import (
     _gate_satisfied_from_persisted,
     _persist_acquisition_pool,
 )
+from telegram_lead_discovery.source_discovery.worker_parts.verification_pool import (
+    _build_phase_candidates,
+    _candidate_pool_item,
+    _directory_ids_from_cursor,
+    _refresh_phase_candidates,
+    _select_phase_candidates,
+    _should_rebuild_acquisition_pool,
+)
 from telegram_lead_discovery.source_discovery.worker_parts.verification_resume import (
     _resume_source_verification,
 )
-
-
-def _candidate_pool_item(candidate: Any) -> dict[str, Any]:
-    freshest = candidate.freshest_seed_evidence_at
-    return {
-        "telegram_id": candidate.telegram_id,
-        "username": candidate.username,
-        "title": candidate.title,
-        "source_type": candidate.source_type,
-        "public_url": f"https://t.me/{candidate.username}",
-        "selection_phase": candidate.selection_phase,
-        "selected_lane": candidate.selected_lane,
-        "selection_reason": candidate.selection_reason,
-        "preliminary_position": candidate.preliminary_position,
-        "strong_buyer_intent_count": candidate.strong_buyer_intent_count,
-        "qualified_evidence_count": candidate.qualified_evidence_count,
-        "qualified_distinct_query_count": candidate.qualified_distinct_query_count,
-        "potential_need_count": candidate.potential_need_count,
-        "raw_evidence_count": candidate.raw_evidence_count,
-        "hard_excluded_count": candidate.hard_excluded_count,
-        "freshest_seed_evidence_at": freshest.isoformat() if freshest else None,
-        "is_search_candidate": candidate.is_search_candidate,
-        "is_directory_candidate": candidate.is_directory_candidate,
-        "is_linked_discussion": candidate.is_linked_discussion,
-        "linked_parent_telegram_id": candidate.linked_parent_telegram_id,
-    }
-
-
-def _should_rebuild_acquisition_pool(
-    existing_pool: Any, *, verification_started: bool
-) -> bool:
-    return not (
-        verification_started and isinstance(existing_pool, list) and bool(existing_pool)
-    )
 
 
 async def _phase_deep_verification(ctx: _WorkerContext) -> None:
     ctx.run.phase = "G"
     await ctx.session.flush()
     await _restore_directory_pool(ctx)
+    await _restore_operator_seed_pool(ctx)
     run_cursor = _load_run_cursor(ctx)
-    directory_candidate_ids = {
-        int(item["telegram_id"])
-        for item in run_cursor.get("directory_pool") or []
-        if isinstance(item, dict)
-        and "telegram_id" in item
-        and bool(item.get("is_directory_candidate", True))
-    }
+    directory_candidate_ids = _directory_ids_from_cursor(run_cursor)
     evidence_rows = await _load_evidence_records(ctx)
-    candidates = build_preliminary_candidates(
-        evidence_rows,
-        directory_sources=ctx.directory_sources,
-        directory_query_texts=(
-            *ctx.directory_queries,
-            *ctx.replacement_directory_queries,
-        ),
-        directory_candidate_ids=directory_candidate_ids,
-        linked_parent_ids=ctx.linked_parents,
-        registry=ctx.registry,
-        dismissed=ctx.dismissed,
-        presented=ctx.presented,
-    )
+    candidates = _build_phase_candidates(ctx, evidence_rows, directory_candidate_ids)
     known = registry_telegram_ids(ctx.registry)
     dir_suppressed = {s.telegram_id for s in ctx.directory_sources if s.telegram_id in known}
     await _note_registry_suppressed(ctx, dir_suppressed)
@@ -167,18 +123,14 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
         )
         cursor = int(run_cursor.get("acquisition_pool_cursor") or 0)
     else:
-        eligible_candidates = [
-            candidate for candidate in candidates if candidate.telegram_id not in suppressed_ids
-        ]
-        selected = select_preliminary_candidates(
-            eligible_candidates,
-            capacity=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
-        )
+        selected = _select_phase_candidates(ctx, candidates, suppressed_ids)
         replacement_fetches = 0
 
-        # SRC-040 / D-069: after mass suppress, expand free directory queries
-        # before declaring no_unseen_after_suppress.
-        if len(selected) < RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES:
+        # SRC-040 / D-074: v8 must not run directory replacement.
+        if (
+            ctx.profile_version.version != 8
+            and len(selected) < RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES
+        ):
             extra_fetches, _expanded_ids = await _expand_directory_replacement(
                 ctx,
                 suppressed_ids=suppressed_ids,
@@ -193,34 +145,10 @@ async def _phase_deep_verification(ctx: _WorkerContext) -> None:
                 | set(ctx.dismissed_suppressed_ids)
                 | set(ctx.presented_suppressed_ids)
             )
-            refreshed_cursor = _load_run_cursor(ctx)
-            directory_candidate_ids = {
-                int(item["telegram_id"])
-                for item in refreshed_cursor.get("directory_pool") or []
-                if isinstance(item, dict)
-                and "telegram_id" in item
-                and bool(item.get("is_directory_candidate", True))
-            }
-            candidates = build_preliminary_candidates(
-                await _load_evidence_records(ctx),
-                directory_sources=ctx.directory_sources,
-                directory_query_texts=(
-                    *ctx.directory_queries,
-                    *ctx.replacement_directory_queries,
-                ),
-                directory_candidate_ids=directory_candidate_ids,
-                linked_parent_ids=ctx.linked_parents,
-                registry=ctx.registry,
-                dismissed=ctx.dismissed,
-                presented=ctx.presented,
-            )
-            selected = select_preliminary_candidates(
-                [
-                    candidate
-                    for candidate in candidates
-                    if candidate.telegram_id not in suppressed_ids
-                ],
-                capacity=RUNTIME_CONFIG.MAX_DEEP_VERIFICATION_SOURCES,
+            candidates, selected = await _refresh_phase_candidates(
+                ctx,
+                run_cursor=_load_run_cursor(ctx),
+                suppressed_ids=suppressed_ids,
             )
 
         if replacement_fetches:

@@ -285,7 +285,7 @@ Rollback отключает новые collector jobs и notification delivery, 
 - Rule set воспроизводит category, score и explanation по сохранённой версии.
 - Security scan не находит secrets/session в database, logs, exports или backups.
 - Success metrics раздела 14 достигнуты.
-- Для working-client-search одних fixtures, зелёных тестов и успешных Telegram API calls недостаточно: обязательны один live `ActiveClientChat v1` и явное подтверждение оператором трёх actionable evidence messages (`NFR-QLT-008`).
+- Для working-client-search одних fixtures, зелёных тестов и успешных Telegram API calls недостаточно: обязательны один live quality public megagroup с provenance SEARCH (`global_message`) и явное подтверждение оператором трёх actionable evidence messages (`NFR-QLT-008`). Quality только из `operator_seed` этот критерий не закрывает.
 
 ## 17. Сопутствующие документы
 

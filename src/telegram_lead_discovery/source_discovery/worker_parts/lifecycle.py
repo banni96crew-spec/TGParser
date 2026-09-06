@@ -90,6 +90,7 @@ async def _mark_cancelled(ctx: _WorkerContext) -> dict[str, Any]:
     ctx.run.gate_status = "inconclusive"
     opportunities = await _terminal_opportunities(ctx)
     evidence_rows = await _load_evidence_records(ctx)
+    quality_rows = [row for row in opportunities if row.truth_status == "quality"]
     counters = merge_funnel_counters(
         _loads_counters(ctx.run.counters_json),
         canonicalized_total=len({row.source_telegram_id for row in evidence_rows}),
@@ -97,7 +98,8 @@ async def _mark_cancelled(ctx: _WorkerContext) -> dict[str, Any]:
         presented_suppressed=len(ctx.presented_suppressed_ids),
         qualified_total=sum(1 for row in opportunities if row.client_request_count > 0),
         presented_total=len(opportunities),
-        novel_presented_total=len(opportunities),
+        novel_presented_total=len(quality_rows),
+        quality_presented_total=len(quality_rows),
     )
     counters["evidence_count"] = len(evidence_rows)
     counters["unique_sources"] = len(opportunities)

@@ -3,7 +3,6 @@ from __future__ import annotations
 import pytest
 
 from telegram_lead_discovery.detection.catalog import (
-    ACTIVE_SEED_RULES,
     SEED_RULES_RU_MVP_3,
     SEED_RULES_RU_MVP_4,
 )
@@ -13,7 +12,6 @@ from telegram_lead_discovery.detection.engine import seed_catalog_detect
 def test_v4_keeps_v3_immutable_and_replaces_only_marketplace_service_rule() -> None:
     v3_by_id = {rule.stable_rule_id: rule for rule in SEED_RULES_RU_MVP_3}
     v4_by_id = {rule.stable_rule_id: rule for rule in SEED_RULES_RU_MVP_4}
-    assert ACTIVE_SEED_RULES == SEED_RULES_RU_MVP_4
     assert len(v4_by_id) == len(v3_by_id) + 6
     for rule_id, rule in v3_by_id.items():
         if rule_id == "SVC-ECOM-002":

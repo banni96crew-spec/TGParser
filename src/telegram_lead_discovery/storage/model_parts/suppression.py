@@ -3,8 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -13,7 +11,6 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     event,
-    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,7 +60,7 @@ def _dismissed_keyword_source_ensure_canonical_key(mapper, connection, target) -
 
 
 class PresentedKeywordSource(Base):
-    """Durable already-shown suppress ledger (STO-020 / SRC-041/050 / D-069)."""
+    """Durable already-shown suppress ledger (STO-020 / SRC-041/050 / D-076)."""
 
     __tablename__ = "presented_keyword_sources"
     __table_args__ = (
@@ -81,6 +78,12 @@ class PresentedKeywordSource(Base):
     origin_run_id: Mapped[int | None] = mapped_column(Integer)
     origin_opportunity_id: Mapped[int | None] = mapped_column(Integer)
     first_presented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    suppress_class: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default="legacy_unspecified",
+        server_default="legacy_unspecified",
+    )
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

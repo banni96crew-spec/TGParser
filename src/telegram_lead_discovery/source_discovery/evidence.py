@@ -28,6 +28,7 @@ DiscoveryChannel = Literal[
     "public_posts",
     "source_verification",
     "linked_discussion",
+    "operator_seed",
 ]
 
 # Evidence budget (D-068): qualified client evidence has absolute priority over noise.

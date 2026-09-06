@@ -140,3 +140,45 @@ async def _restore_directory_pool(ctx: _WorkerContext) -> None:
             )
         )
     ctx.directory_sources = restored
+
+
+async def _persist_operator_seed_pool(ctx: _WorkerContext) -> None:
+    payload = _load_run_cursor(ctx)
+    seen: dict[int, dict[str, Any]] = {}
+    for item in payload.get("operator_seed_pool") or []:
+        if isinstance(item, dict) and "telegram_id" in item:
+            seen[int(item["telegram_id"])] = item
+    for snap in ctx.operator_seed_sources:
+        seen[snap.telegram_id] = {
+            "telegram_id": snap.telegram_id,
+            "username": snap.username,
+            "title": snap.title,
+            "source_type": snap.source_type,
+            "public_url": snap.public_url,
+        }
+    payload["operator_seed_pool"] = list(seen.values())
+    ctx.run.cursor_json = json.dumps(payload, ensure_ascii=False)
+    await ctx.session.flush()
+
+
+async def _restore_operator_seed_pool(ctx: _WorkerContext) -> None:
+    if ctx.operator_seed_sources:
+        return
+    payload = _load_run_cursor(ctx)
+    restored: list[SourceSnapshot] = []
+    for item in payload.get("operator_seed_pool") or []:
+        if not isinstance(item, dict) or "telegram_id" not in item:
+            continue
+        tid = int(item["telegram_id"])
+        restored.append(
+            SourceSnapshot(
+                schema_version=1,
+                telegram_id=tid,
+                username=item.get("username") or "",
+                title=str(item.get("title") or item.get("username") or tid),
+                source_type=str(item.get("source_type") or "megagroup"),  # type: ignore[arg-type]
+                public_url=item.get("public_url"),
+                accessible=True,
+            )
+        )
+    ctx.operator_seed_sources = restored

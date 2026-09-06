@@ -45,6 +45,7 @@ class _WorkerContext:
     dismissed_suppressed_ids: set[int] = field(default_factory=set)
     presented_suppressed_ids: set[int] = field(default_factory=set)
     presented: PresentedKeywordSourceIndex = field(default_factory=PresentedKeywordSourceIndex)
+    operator_seed_sources: list[SourceSnapshot] = field(default_factory=list)
 
 
 def _utcnow() -> datetime:

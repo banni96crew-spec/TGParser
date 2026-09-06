@@ -249,4 +249,5 @@ async def _apply_source_truth(
         origin_run_id=ctx.run.id,
         origin_opportunity_id=row.id,
         first_presented_at=now,
+        suppress_class="quality" if evaluation.truth_status == "quality" else "non_quality",
     )

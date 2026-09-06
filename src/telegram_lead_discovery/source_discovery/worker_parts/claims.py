@@ -202,8 +202,31 @@ class GraphDiscoveryClaimLoop:
                     )
                     claimed = outcome is not None
             except asyncio.CancelledError:
+                # #region agent log
+                import json as _json, time as _time
+                from pathlib import Path as _Path
+                try:
+                    with _Path(r"c:\Users\Николай\Desktop\Telegram Parser\debug-1c5371.log").open(
+                        "a", encoding="utf-8"
+                    ) as _f:
+                        _f.write(_json.dumps({"sessionId":"1c5371","hypothesisId":"H3","location":"claims.py:GraphDiscoveryClaimLoop._run","message":"loop_cancelled","data":{},"timestamp":int(_time.time()*1000)})+"\n")
+                except Exception:
+                    pass
+                # #endregion
                 raise
             except Exception:  # noqa: BLE001 — one job must not kill the loop
+                # #region agent log
+                import json as _json, time as _time, sys as _sys
+                from pathlib import Path as _Path
+                _et, _ev, _ = _sys.exc_info()
+                try:
+                    with _Path(r"c:\Users\Николай\Desktop\Telegram Parser\debug-1c5371.log").open(
+                        "a", encoding="utf-8"
+                    ) as _f:
+                        _f.write(_json.dumps({"sessionId":"1c5371","hypothesisId":"H3","location":"claims.py:GraphDiscoveryClaimLoop._run","message":"loop_exception","data":{"exc":None if _et is None else _et.__name__},"timestamp":int(_time.time()*1000)})+"\n")
+                except Exception:
+                    pass
+                # #endregion
                 _log.exception("graph discovery claim/process failed")
                 claimed = True
 

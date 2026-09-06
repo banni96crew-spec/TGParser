@@ -3,7 +3,6 @@
 from telegram_lead_discovery.detection.catalog_types import SeedRule, _r
 from telegram_lead_discovery.detection.catalog_v1 import SEED_RULES
 
-
 _REMEDIATION_RULES_V2: tuple[SeedRule, ...] = (
     _r(
         "NEG-ADV-004",
@@ -192,15 +191,25 @@ SEED_RULES_RU_MVP_4: tuple[SeedRule, ...] = tuple(
     _ECOMMERCE_TECHNICAL_V4 if rule.stable_rule_id == "SVC-ECOM-002" else rule
     for rule in SEED_RULES_RU_MVP_3
 ) + _ACTIVE_CLIENT_RULES_V4
-ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_4
+_NEG_ADV_020 = _r(
+    "NEG-ADV-020",
+    139,
+    "advertising",
+    "hard_exclusion",
+    0,
+    r"(?s)^(?!.*\b(?:нужен|ищу|требуется|посоветуйте|порекомендуйте)\b.{0,80}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|магазин)).*\b(?:занимаюсь|разрабатываю|пишу)\b.{0,80}\b(?:сайт(?:ов|а|ы)?|лендинг|бот|интеграц|автоматизац|парсер|магазин|нейросет)",
+    "advertising_first_person_practice",
+)
+SEED_RULES_RU_MVP_5: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_4 + (_NEG_ADV_020,)
+ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_5
 
 
 __all__ = [
     "ACTIVE_SEED_RULES",
-    "RULE_FLAGS",
     "SEED_RULES",
     "SEED_RULES_RU_MVP_2",
     "SEED_RULES_RU_MVP_3",
     "SEED_RULES_RU_MVP_4",
+    "SEED_RULES_RU_MVP_5",
     "SeedRule",
 ]

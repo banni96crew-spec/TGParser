@@ -1,0 +1,8 @@
+ГЛОБАЛЬНЫЙ ПОИСК ПУБЛИЧНЫХ СООБЩЕНИЙ TELEGRAM
+Запуск UTC: 2026-09-10T15:33:40.460662+00:00
+Период проверки: 2026-08-11T15:33:40.460662+00:00 — 2026-09-10T15:33:40.460662+00:00
+Оплата Stars: запрещена; используются только бесплатные запросы
+
+КАНДИДАТЫ:
+ЗАПРОС 'нужен разработчик': free=True, premium=False, stars=10
+ОСТАНОВЛЕНО TELEGRAM: GatewayPremiumRequired: A premium account is required to execute this action (caused by SearchPostsRequest)

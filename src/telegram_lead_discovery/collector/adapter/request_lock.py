@@ -33,7 +33,8 @@ async def _await_cancelled(task: asyncio.Task[Any] | None) -> None:
     if not task.done():
         task.cancel()
     # #region agent log
-    import json as _json, time as _time
+    import json as _json
+    import time as _time
     from pathlib import Path as _Path
     _dbg = _Path(r"c:\Users\Николай\Desktop\Telegram Parser\debug-1c5371.log")
     try:
@@ -65,23 +66,35 @@ class AsyncReadWriteLock:
     def __init__(self) -> None:
         self._condition = asyncio.Condition()
         self._readers = 0
+        self._reader_depths: dict[asyncio.Task[Any], int] = {}
         self._writer = False
         self._waiting_writers = 0
 
     @asynccontextmanager
     async def shared(self) -> AsyncIterator[None]:
+        task = asyncio.current_task()
+        if task is None:
+            raise RuntimeError("shared lock requires an asyncio task")
         async with self._condition:
-            await self._condition.wait_for(
-                lambda: not self._writer and self._waiting_writers == 0
-            )
-            self._readers += 1
+            depth = self._reader_depths.get(task, 0)
+            if depth == 0:
+                await self._condition.wait_for(
+                    lambda: not self._writer and self._waiting_writers == 0
+                )
+                self._readers += 1
+            self._reader_depths[task] = depth + 1
         try:
             yield
         finally:
             async with self._condition:
-                self._readers -= 1
-                if self._readers == 0:
-                    self._condition.notify_all()
+                depth = self._reader_depths[task] - 1
+                if depth == 0:
+                    del self._reader_depths[task]
+                    self._readers -= 1
+                    if self._readers == 0:
+                        self._condition.notify_all()
+                else:
+                    self._reader_depths[task] = depth
 
     @asynccontextmanager
     async def exclusive(self) -> AsyncIterator[None]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from typing import Any
 
 from telegram_lead_discovery.collector.adapter.telethon_parts.cursor_mapping import (
@@ -44,6 +45,7 @@ from telegram_lead_discovery.collector.ports import (
     PublicSourceRef,
     SourceSnapshot,
 )
+from telegram_lead_discovery.infrastructure.windows_proxy import TelegramConnectionConfig
 from telegram_lead_discovery.security.secrets import load_secret_presence
 from telegram_lead_discovery.security.session_paths import session_path
 
@@ -54,9 +56,24 @@ class TelethonTelegramGateway(
 ):
     """Thin Telethon adapter. Connect may stub when session/secrets are absent."""
 
-    def __init__(self, *, client: Any | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        client: Any | None = None,
+        connection_config: TelegramConnectionConfig | None = None,
+    ) -> None:
         self._client = client
         self._connected = client is not None
+        self._connection_config = connection_config or TelegramConnectionConfig.direct()
+
+    @property
+    def connection_route(self) -> str:
+        return self._connection_config.route
+
+    @property
+    def proxy_type(self) -> str | None:
+        proxy = self._connection_config.proxy
+        return None if proxy is None else proxy.proxy_type
 
     async def connect(self) -> AccountSnapshot:
         presence = load_secret_presence()
@@ -79,10 +96,14 @@ class TelethonTelegramGateway(
             api_hash = require_env("TG_API_HASH")
             path = session_path()
             path.parent.mkdir(parents=True, exist_ok=True)
+            proxy = self._connection_config.proxy
+            if proxy is not None and importlib.util.find_spec("python_socks") is None:
+                raise GatewayPermanentError("telegram_proxy_dependency_missing")
             self._client = ControlledTelegramClient(
                 str(path.with_suffix("")),
                 api_id,
                 api_hash,
+                proxy=None if proxy is None else proxy.as_telethon_proxy(),
             )
             await self._client.connect()
             self._connected = True
@@ -97,7 +118,9 @@ class TelethonTelegramGateway(
             mapped = _map_telethon_error(exc)
             if mapped is not None:
                 raise mapped from exc
-            raise GatewayTransientError(str(exc)) from exc
+            if isinstance(exc, GatewayPermanentError | GatewayTransientError):
+                raise
+            raise GatewayTransientError("telegram_connect_failed") from exc
 
     async def disconnect(self) -> None:
         if self._client is not None:

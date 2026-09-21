@@ -14,6 +14,10 @@ _SENSITIVE_KEYS = frozenset(
         "authorization",
         "session",
         "password",
+        "proxy",
+        "proxy_url",
+        "proxy_server",
+        "username",
         "token",
         "secret",
     }

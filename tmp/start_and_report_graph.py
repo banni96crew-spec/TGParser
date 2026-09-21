@@ -26,18 +26,18 @@ from telegram_lead_discovery.storage.models import (
 )
 
 SEED_REFS = [
-    "@workk_onchat",
-    "@designer_jobs",
-    "@GetClient",
-    "@program_job",
-    "@poiskfreelance",
-    "@mari_vakansii",
-    "@freelance_chatik0",
+    "@python_chatt",
     "@freelancerscha",
-    "@rueventjob4at",
+    "@frilans_na_legke",
+    "@digitaltender",
+    "@TRemoters",
+    "@n8n_community",
+    "@coding_ru",
+    "@js_ru",
+    "@nodejs_ru",
 ]
 
-OUT_PATH = Path(__file__).resolve().parent / "graph_run_result.txt"
+OUT_PATH = Path(__file__).resolve().parent / "requested_adjacent_sources_result.txt"
 
 
 async def _resolve_seed_ids(session) -> tuple[list[int], list[tuple[str, str]]]:

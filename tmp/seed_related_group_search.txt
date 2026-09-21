@@ -1,0 +1,17 @@
+ПОИСК ПО СМЕЖНЫМ ИСТОЧНИКАМ TELEGRAM
+Запуск UTC: 2026-09-10T15:48:46.134616+00:00
+Глубина рекомендаций: 3 уровня
+
+СИДЫ:
+@python_chatt
+@freelancerscha
+@frilans_na_legke
+@digitaltender
+@TRemoters
+@n8n_community
+@coding_ru
+@js_ru
+@nodejs_ru
+
+НАЙДЕННЫЕ ИСТОЧНИКИ:
+ОШИБКА: GatewayTransientError: telegram_connect_failed

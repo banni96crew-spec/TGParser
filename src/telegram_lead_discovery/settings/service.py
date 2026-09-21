@@ -119,6 +119,8 @@ async def snapshot(session: AsyncSession) -> dict[str, Any]:
 
 
 def _validate(key: str, value: Any) -> None:
+    if key == "telegram.proxy_mode" and value not in {"auto", "direct"}:
+        raise SettingsValidationError("proxy_mode must be auto|direct")
     if key == "notifications.delivery_mode" and value not in {"shadow", "live"}:
         raise SettingsValidationError("delivery_mode must be shadow|live")
     if key == "collector.reconciliation_interval_minutes":

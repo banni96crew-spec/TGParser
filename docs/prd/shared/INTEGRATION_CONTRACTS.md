@@ -356,6 +356,8 @@ HTTP routes вызывают application ports; прямой SQL из route hand
 
 Secrets, tokens, session content, raw environment и full message text запрещены в `fields`.
 
+Telegram connection configuration (D-078) передаётся в COL нейтральным DTO: `route=direct|system_proxy` и optional proxy с `proxy_type=http|socks5|socks4`, host, port, optional credentials и `rdns`. Proxy material запрещён в persistence/log/metric/export/UI; наружу разрешены только route, proxy type и закрытые reason codes `telegram_proxy_invalid|telegram_proxy_dependency_missing|telegram_connect_failed`.
+
 ## 12. Job leasing
 
 - Worker atomically claims one eligible job and sets `lease_until=now+5 minutes`.

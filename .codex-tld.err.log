@@ -1,0 +1,81 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [uvicorn.error] Started server process [24480]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO  [uvicorn.access] 127.0.0.1:59486 - "GET /health HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59502 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59544 - "GET /discovery/profiles/1 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59631 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59632 - "POST /discovery/runs HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:59663 - "GET /discovery/runs/42 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:60295 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61732 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61798 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61822 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:61862 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61995 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62017 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62185 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62260 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62284 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62324 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:62479 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62696 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62717 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:62730 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62747 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62888 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:62903 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63057 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63081 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63225 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63431 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63448 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63459 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63501 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63514 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63539 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63600 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63628 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63655 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63695 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63763 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63785 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63807 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63841 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63861 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63888 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63912 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63945 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63960 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63993 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64008 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64022 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64041 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64058 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64078 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64101 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64509 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64749 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64871 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64910 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64978 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65180 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65193 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65205 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65235 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65258 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65294 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65330 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65346 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65408 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65442 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65461 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65478 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65517 - "GET /discovery/runs/42/status-fragment HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: [WinError 64] Указанное сетевое имя более недоступно

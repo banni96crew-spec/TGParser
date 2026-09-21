@@ -78,4 +78,23 @@ def create_settings_router() -> APIRouter:
             return HTMLResponse(str(exc), status_code=400)
         return await settings_page(request)
 
+    @router.post("/settings/telegram/check")
+    async def telegram_connection_check(
+        request: Request,
+        csrf_token: str = Form(...),
+    ) -> HTMLResponse:
+        rejected = _csrf_or_403(request, csrf_token)
+        if rejected is not None:
+            return rejected
+        coordinator = getattr(request.app.state, "runtime_coordinator", None)
+        gateway = getattr(coordinator, "gateway", None)
+        route = getattr(gateway, "connection_route", "direct")
+        connected = bool(
+            coordinator is not None
+            and getattr(coordinator, "_telegram_loops_started", False)
+        )
+        state = "подключено" if connected else "подключение не установлено"
+        route_label = "системный прокси" if route == "system_proxy" else "напрямую"
+        return HTMLResponse(f"Telegram: {state}; маршрут: {route_label}")
+
     return router

@@ -1,0 +1,6 @@
+ПРОВЕРКА ГРУПП ИЗ ПУБЛИЧНЫХ КАТАЛОГОВ
+UTC: 2026-09-07T11:25:55.695053+00:00
+
+@theremoterz | not_qualified | activity_messages,activity_authors,client_requests,client_authors,freshness
+@onlayn_rabota | not_qualified | activity_messages,client_requests,client_authors,freshness
+@bizneschats | not_qualified | client_requests,client_authors,freshness

@@ -24,6 +24,7 @@ SETTING_GROUPS = (
 # key -> (value_type, default_value)
 DEFAULT_SETTINGS: dict[str, tuple[str, Any]] = {
     "telegram.account_label": ("string", "primary"),
+    "telegram.proxy_mode": ("string", "auto"),
     "discovery.max_depth": ("integer", 2),
     "discovery.expansion_cap": ("integer", 25),
     "collector.reconciliation_interval_minutes": ("integer", 30),

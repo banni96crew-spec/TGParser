@@ -1,0 +1,8 @@
+СВЯЗАННЫЕ ПУБЛИЧНЫЕ ОБСУЖДЕНИЯ НАЙДЕННЫХ КАНАЛОВ
+Проверка UTC: 2026-09-07T11:30:59.545031+00:00
+Найдено: 2
+
+@freelance_rabota_chat | not_qualified | client_authors,freshness
+  https://t.me/freelance_rabota_chat/3151200
+  https://t.me/freelance_rabota_chat/3150821
+@proffreelancee | not_qualified | activity_messages,activity_authors,client_requests,client_authors,freshness

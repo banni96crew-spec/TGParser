@@ -13,6 +13,7 @@ from telegram_lead_discovery.collector.adapter.telethon_gateway import (
     TelethonTelegramGateway,
 )
 from telegram_lead_discovery.infrastructure.paths import database_path
+from telegram_lead_discovery.infrastructure.windows_proxy import resolve_telegram_connection
 from telegram_lead_discovery.storage.db import init_engine, session_scope
 from tmp.live_graph_run import _ensure_seed
 
@@ -33,7 +34,9 @@ SEED_REFS = [
 
 async def main() -> int:
     await init_engine(database_path())
-    gateway = TelethonTelegramGateway()
+    gateway = TelethonTelegramGateway(
+        connection_config=resolve_telegram_connection("auto")
+    )
     account = await gateway.connect()
     if not account.connected:
         print("FAIL: telegram_not_connected", flush=True)

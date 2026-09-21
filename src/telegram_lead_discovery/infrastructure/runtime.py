@@ -24,6 +24,7 @@ from telegram_lead_discovery.infrastructure.paths import (
     lock_path,
 )
 from telegram_lead_discovery.infrastructure.process_lock import ProcessLock
+from telegram_lead_discovery.infrastructure.windows_proxy import TelegramConnectionConfig
 from telegram_lead_discovery.notifications.worker import NotificationOutboxLoop
 from telegram_lead_discovery.observability.discovery import (
     mark_discovery_blocked,
@@ -42,7 +43,7 @@ from telegram_lead_discovery.processing.pipeline import (
 )
 from telegram_lead_discovery.security.bind_guard import assert_loopback_bind
 from telegram_lead_discovery.security.preflight import run_security_preflight
-from telegram_lead_discovery.settings.service import seed_defaults
+from telegram_lead_discovery.settings.service import get_setting, seed_defaults
 from telegram_lead_discovery.source_discovery.worker import (
     GraphDiscoveryClaimLoop,
     KeywordDiscoveryClaimLoop,
@@ -61,6 +62,13 @@ from telegram_lead_discovery.storage.session import run_write
 logger = StructuredLogger("INF")
 
 START_DISABLED_TELEGRAM_CREDENTIALS_MISSING = "telegram_credentials_missing"
+TELEGRAM_CONNECTION_REASON_CODES = frozenset(
+    {
+        "telegram_connect_failed",
+        "telegram_proxy_dependency_missing",
+        "telegram_proxy_invalid",
+    }
+)
 PERIODIC_RECONCILE_SECONDS = 15 * 60
 WATCHDOG_INTERVAL_SECONDS = 60.0
 LOOP_IDLE_SECONDS = 0.5
@@ -69,6 +77,11 @@ LOOP_SHUTDOWN_TIMEOUT_SECONDS = 30.0
 
 def _task_alive(task: asyncio.Task[Any] | None) -> bool:
     return task is not None and not task.done()
+
+
+def _telegram_connect_reason(exc: Exception) -> str:
+    reason = str(exc)
+    return reason if reason in TELEGRAM_CONNECTION_REASON_CODES else "telegram_connect_failed"
 
 
 @dataclass
@@ -160,8 +173,16 @@ class RuntimeCoordinator:
     notification_client_factory: Callable[[], Any] | None = field(default=None, repr=False)
     periodic_reconcile_seconds: float = PERIODIC_RECONCILE_SECONDS
     idle_seconds: float = LOOP_IDLE_SECONDS
+    connection_config: TelegramConnectionConfig = field(
+        default_factory=TelegramConnectionConfig.direct,
+        repr=False,
+    )
+    connection_error_reason: str | None = None
+    reconnect_delays: tuple[float, ...] = (1.0, 5.0, 30.0, 120.0, 300.0)
     _registry: HealthRegistry | None = field(default=None, repr=False)
     _started: bool = field(default=False, repr=False)
+    _telegram_loops_started: bool = field(default=False, repr=False)
+    _connection_task: asyncio.Task[None] | None = field(default=None, repr=False)
     _heartbeat_at: dict[str, datetime] = field(default_factory=dict, repr=False)
 
     @property
@@ -249,6 +270,22 @@ class RuntimeCoordinator:
         self.credentials_present = True
         self.start_disabled_reason = None
 
+        if self.connection_error_reason is not None:
+            self.start_disabled_reason = self.connection_error_reason
+            self.gateway = None
+            mark_discovery_blocked(
+                reason_code=self.connection_error_reason,
+                registry=registry,
+            )
+            self._set_health(
+                "collector",
+                HealthState.BLOCKED,
+                reason_code=self.connection_error_reason,
+            )
+            await self._start_non_telegram_loops()
+            self._started = True
+            return
+
         if gateway is not None:
             self.gateway = gateway
         else:
@@ -256,20 +293,22 @@ class RuntimeCoordinator:
                 TelethonTelegramGateway,
             )
 
-            self.gateway = TelethonTelegramGateway()
+            self.gateway = TelethonTelegramGateway(
+                connection_config=self.connection_config
+            )
 
         try:
             await self.gateway.connect()
         except Exception as exc:  # noqa: BLE001 — UI must stay up
-            self.gateway = None
+            reason_code = _telegram_connect_reason(exc)
             mark_discovery_blocked(
-                reason_code="telegram_connect_failed",
+                reason_code=reason_code,
                 registry=registry,
             )
             self._set_health(
                 "collector",
                 HealthState.BLOCKED,
-                reason_code="telegram_connect_failed",
+                reason_code=reason_code,
             )
             logger.emit(
                 level="error",
@@ -279,8 +318,19 @@ class RuntimeCoordinator:
             )
             await self._start_non_telegram_loops()
             self._started = True
+            self._connection_task = asyncio.create_task(
+                self._connection_recovery_loop(),
+                name="telegram-connection-recovery-loop",
+            )
             return
 
+        await self._start_telegram_loops(registry)
+        await self._start_non_telegram_loops()
+        self._finish_startup()
+
+    async def _start_telegram_loops(self, registry: HealthRegistry) -> None:
+        if self._telegram_loops_started or self.gateway is None:
+            return
         self.discovery_loop = KeywordDiscoveryClaimLoop(
             self.gateway, idle_seconds=self.idle_seconds
         )
@@ -305,8 +355,6 @@ class RuntimeCoordinator:
             shutdown_timeout_seconds=5.0,
         )
         self.live_updates_loop.start()
-
-        await self._start_non_telegram_loops()
 
         # Startup reconciliation for monitoring sources (D-019).
         async with session_scope() as session:
@@ -338,6 +386,9 @@ class RuntimeCoordinator:
             event_code="discovery.worker_started",
             result="ok",
         )
+        self._telegram_loops_started = True
+
+    def _finish_startup(self) -> None:
         logger.emit(
             level="info",
             event_code="runtime.named_loops_started",
@@ -346,6 +397,42 @@ class RuntimeCoordinator:
         )
         self._publish_named_loop_health()
         self._started = True
+
+    async def _connection_recovery_loop(self) -> None:
+        attempt = 0
+        while self.gateway is not None and not self._telegram_loops_started:
+            delay = self.reconnect_delays[min(attempt, len(self.reconnect_delays) - 1)]
+            await asyncio.sleep(delay)
+            try:
+                await self.gateway.connect()
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                reason_code = _telegram_connect_reason(exc)
+                mark_discovery_blocked(reason_code=reason_code, registry=self._registry)
+                self._set_health(
+                    "collector", HealthState.BLOCKED, reason_code=reason_code
+                )
+                logger.emit(
+                    level="warning",
+                    event_code="telegram_gateway.reconnect_failed",
+                    result="failed",
+                    fields={"attempt": attempt + 1, "error_type": type(exc).__name__},
+                )
+                attempt += 1
+                continue
+            registry = self._registry
+            if registry is not None:
+                await self._start_telegram_loops(registry)
+            self.start_disabled_reason = None
+            self._publish_named_loop_health()
+            logger.emit(
+                level="info",
+                event_code="telegram_gateway.reconnected",
+                result="ok",
+                fields={"attempt": attempt + 1},
+            )
+            return
 
     def _publish_named_loop_health(self) -> None:
         """Project INF-022 running map onto OBS-020 loop component names."""
@@ -644,6 +731,14 @@ class RuntimeCoordinator:
         """Stop named loops, then disconnect gateway."""
         gateway = self.gateway
 
+        if self._connection_task is not None:
+            self._connection_task.cancel()
+            try:
+                await self._connection_task
+            except asyncio.CancelledError:
+                pass
+            self._connection_task = None
+
         # Signal stop on supervised loops first (non-blocking flag).
         for loop in (
             self.watchdog_loop,
@@ -841,6 +936,7 @@ async def run_command(
 
         async with session_scope() as session:
             await seed_defaults(session)
+            telegram_proxy_mode = str(await get_setting(session, "telegram.proxy_mode"))
             await seed_startup_catalog(session)
             recovered = await recover_stale_jobs(session)
             await recover_stale_envelopes(session)
@@ -858,7 +954,16 @@ async def run_command(
         from telegram_lead_discovery.dashboard.app import create_app
 
         app = create_app()
-        coordinator = RuntimeCoordinator()
+        from telegram_lead_discovery.infrastructure.windows_proxy import (
+            TelegramProxyConfigurationError,
+            resolve_telegram_connection,
+        )
+
+        try:
+            connection_config = resolve_telegram_connection(telegram_proxy_mode)
+            coordinator = RuntimeCoordinator(connection_config=connection_config)
+        except TelegramProxyConfigurationError as exc:
+            coordinator = RuntimeCoordinator(connection_error_reason=exc.reason_code)
         await coordinator.start(registry)
         app.state.gateway = coordinator.gateway
         app.state.runtime_coordinator = coordinator

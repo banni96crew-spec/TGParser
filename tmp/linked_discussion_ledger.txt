@@ -1,0 +1,2 @@
+@freelance_rabota_chat | not_qualified | client_authors,freshness
+@proffreelancee | not_qualified | activity_messages,activity_authors,client_requests,client_authors,freshness

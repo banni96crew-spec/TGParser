@@ -52,6 +52,7 @@
 | SET-013 | UI MUST предоставлять действие проверки Telegram session и отдельное действие проверки канала уведомлений без сохранения новых значений. |
 | SET-014 | Удаление обычной настройки MUST возвращать утверждённое default-значение и создавать revision с причиной `reset_to_default`. |
 | SET-015 | Каждое изменение MUST фиксировать UTC-время, ключ, старое и новое несекретное значение, `reason` и `change_source` ∈ {`ui`, `startup_seed`, `migration`, `system`}. |
+| SET-016 | `telegram.proxy_mode` MUST быть enum `auto|direct`, default `auto`; UI MUST давать выбор и read-only проверку текущей Telegram-сессии без сохранения proxy material. |
 
 ## 5. Acceptance criteria
 
@@ -72,6 +73,7 @@
 | AT-SET-013 | Проверки Telegram session и notification channel возвращают результат без изменения настроек и revisions. |
 | AT-SET-014 | Reset возвращает default, увеличивает версию и создаёт revision с причиной `reset_to_default`. |
 | AT-SET-015 | Revision содержит UTC-время, key, старое и новое несекретное значение, `reason` и `change_source` ∈ {`ui`, `startup_seed`, `migration`, `system`}. Переход `shadow→live` не создаёт backlog `hot_lead` outbox. |
+| AT-SET-016 | Seed/default/update/reset/UI для proxy mode | Принимаются только `auto|direct`; default/reset=`auto`; проверка сессии не меняет настройки и не показывает proxy material |
 
 ## 6. Входные и выходные контракты
 
@@ -150,7 +152,7 @@
 ## 14. Acceptance test catalogue
 
 - `SET-LOOPBACK`: AT-SET-001, AT-SET-002.
-- `SET-VALIDATION`: AT-SET-003, AT-SET-004, AT-SET-005, AT-SET-006, AT-SET-010, AT-SET-011, AT-SET-014, AT-SET-015.
+- `SET-VALIDATION`: AT-SET-003, AT-SET-004, AT-SET-005, AT-SET-006, AT-SET-010, AT-SET-011, AT-SET-014, AT-SET-015, AT-SET-016.
 - `SET-SECRETS`: AT-SET-007, AT-SET-008, AT-SET-009, AT-SET-012, AT-SET-013.
 - `SET-RECOVERY`: AT-SET-003, AT-SET-011.
 

@@ -17,6 +17,7 @@ def test_bind_loopback_only() -> None:
 
 def test_delivery_mode_default_shadow() -> None:
     assert DEFAULT_SETTINGS["notifications.delivery_mode"][1] == "shadow"
+    assert DEFAULT_SETTINGS["telegram.proxy_mode"] == ("string", "auto")
 
 
 def test_secret_presence_no_values() -> None:

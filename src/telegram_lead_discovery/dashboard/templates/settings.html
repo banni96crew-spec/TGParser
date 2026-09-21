@@ -22,6 +22,26 @@
 </section>
 
 <section class="panel">
+  <h2 class="section-title">Подключение Telegram</h2>
+  <form method="post" action="/settings">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <input type="hidden" name="expected_settings_version" value="{{ snapshot.settings_version }}" />
+    <input type="hidden" name="key" value="telegram.proxy_mode" />
+    <label>Маршрут
+      <select name="value">
+        <option value="auto" {% if snapshot.values['telegram.proxy_mode'] == 'auto' %}selected{% endif %}>Системный прокси Windows</option>
+        <option value="direct" {% if snapshot.values['telegram.proxy_mode'] == 'direct' %}selected{% endif %}>Напрямую</option>
+      </select>
+    </label>
+    <button type="submit">Сохранить</button>
+  </form>
+  <form method="post" action="/settings/telegram/check">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+    <button type="submit">Проверить текущую сессию</button>
+  </form>
+</section>
+
+<section class="panel">
   <h2 class="section-title">Секреты (наличие)</h2>
   <ul class="meta-list">
     {% for name, state in secrets.items() %}

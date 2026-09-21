@@ -1,0 +1,106 @@
+КВАЛИФИКАЦИЯ ЧАТОВ, НАЙДЕННЫХ ГРАФОВЫМ ОБХОДОМ
+Дата проверки UTC: 2026-09-06T17:04:46.713094+00:00
+Исходный графовый прогон: 41
+Глобальный поиск: НЕ ИСПОЛЬЗОВАЛСЯ
+Всего источников: 87; полностью: 0; частично: 7; не соответствует: 80
+
+1. ПОЛНОСТЬЮ СООТВЕТСТВУЕТ КРИТЕРИЯМ
+(нет)
+
+2. ЧАСТИЧНО СООТВЕТСТВУЕТ
+@digitaltalks — DIGITAL Talks / Freelance | сообщения 14д: 18/100; дни: 8/10; авторы: 0/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 32; завершение: window_complete
+  Не выполнено: activity_messages, activity_days, activity_authors, client_requests, client_authors, freshness
+@dmitriy_content — Связь с администратором. Пишите по поводу рекламы и подомным предложениям | сообщения 14д: 0/100; дни: 0/10; авторы: 0/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 0; завершение: window_complete
+  Не выполнено: activity_messages, activity_days, activity_authors, client_requests, client_authors, freshness
+@getfrilans — GetFrilans | Чат фрилансеров | сообщения 14д: 999/100; дни: 15/10; авторы: 104/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 1500; завершение: source_cap
+  Не выполнено: client_requests, client_authors, freshness
+@hr_chat — 🏠 Digital HR chat | сообщения 14д: 11/100; дни: 8/10; авторы: 0/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 34; завершение: window_complete
+  Не выполнено: activity_messages, activity_days, activity_authors, client_requests, client_authors, freshness
+@proffreelancee_chat — НАСТОЯЩИЙ ФРИЛАНС ЧАТ №1 | сообщения 14д: 92/100; дни: 14/10; авторы: 27/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 187; завершение: window_complete
+  Не выполнено: activity_messages, client_requests, client_authors, freshness
+@rueventjob4at — rueventjob4at | сообщения 14д: 156/100; дни: 14/10; авторы: 5/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 401; завершение: window_complete
+  Не выполнено: activity_authors, client_requests, client_authors, freshness
+@theremoterz — Remoter @ удаленщики да фрилансёры | сообщения 14д: 39/100; дни: 14/10; авторы: 1/20; запросы 30д: 0/3; авторы запросов: 0/3; последний запрос: нет; проверено сообщений: 73; завершение: window_complete
+  Не выполнено: activity_messages, activity_authors, client_requests, client_authors, freshness
+
+3. НЕ СООТВЕТСТВУЕТ
+@ancient_web — ancient_web | причина: тип channel, а обязателен публичный megagroup
+@astya_r — ПОМОГАТОР | ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА | причина: тип channel, а обязателен публичный megagroup
+@bakushevaseo — SEOшница | причина: тип channel, а обязателен публичный megagroup
+@birgasofi — БИРЖА ТРУДА Кристины Софи | причина: тип channel, а обязателен публичный megagroup
+@budujobs — БУДУ | причина: тип channel, а обязателен публичный megagroup
+@burzhunet — Англоязычное SEO | причина: тип channel, а обязателен публичный megagroup
+@businessatmosphere — Бизнес Атмосфера | причина: тип channel, а обязателен публичный megagroup
+@chooseajob — Выбери Работу: работа - вакансии | причина: тип channel, а обязателен публичный megagroup
+@design_nastaciia — ВЕБ-ДИЗАЙНЕР 🌿🤍 | причина: тип channel, а обязателен публичный megagroup
+@design_profii — Design Profi (Фриланс) | причина: тип channel, а обязателен публичный megagroup
+@designer_vacancies — Вакансии для дизайнеров | причина: тип channel, а обязателен публичный megagroup
+@designs_job — Уголок дизайнера | Вакансии | причина: тип channel, а обязателен публичный megagroup
+@designs_squad — Designs squad | Дизайн вакансии | причина: тип channel, а обязателен публичный megagroup
+@devshr — DEVs HR - вакансии для разработчиков | причина: тип channel, а обязателен публичный megagroup
+@digital_expertise — Центр диджитал экспертизы | причина: тип channel, а обязателен публичный megagroup
+@distantsiya — Дистанция | причина: тип channel, а обязателен публичный megagroup
+@distantsiya2 — ВАКАНСИИ фрилансеру | причина: тип channel, а обязателен публичный megagroup
+@dnative — DNative — блог Ткачука про SMM | причина: тип channel, а обязателен публичный megagroup
+@dnative_job — Вакансии SMM и Digital | причина: тип channel, а обязателен публичный megagroup
+@dnative_job100 — Dnative Job 150k+ | причина: тип channel, а обязателен публичный megagroup
+@forallmarketing — Job for Marketing | причина: тип channel, а обязателен публичный megagroup
+@free_design1 — Pixel | Фриланс | Дизайн заказы | Работа в интернете | причина: тип channel, а обязателен публичный megagroup
+@freelancce — ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА | причина: тип channel, а обязателен публичный megagroup
+@freelancebay — Бухта Фриланса | причина: тип channel, а обязателен публичный megagroup
+@freelanceeboom — Копирайтер на фрилансе? Заходи! | причина: тип channel, а обязателен публичный megagroup
+@freelancetaverna — Фриланс Таверна Official | Вакансии Удаленная работа | причина: тип channel, а обязателен публичный megagroup
+@frelanserr — Вакансии каждый день | причина: тип channel, а обязателен публичный megagroup
+@frilancekomfort — Работа в комфорте🧘‍♀ | причина: тип channel, а обязателен публичный megagroup
+@frilanser_vacansii — ФРИЛАНСЕР удаленная работа и вакансии | причина: тип channel, а обязателен публичный megagroup
+@getclient — GetClient | Фриланс вакансии | причина: тип channel, а обязателен публичный megagroup
+@golang_google — Golang | причина: тип channel, а обязателен публичный megagroup
+@haccking — Life-Hack - Хакер | причина: тип channel, а обязателен публичный megagroup
+@huggabletalents — A-Teams | Карьера | причина: тип channel, а обязателен публичный megagroup
+@jobfortarget — Вакансии для Таргетологов | причина: тип channel, а обязателен публичный megagroup
+@kadrof_work — Вакансии для фрилансеров, удаленная работа | причина: тип channel, а обязателен публичный megagroup
+@linkedin_salaries_central — 🆓💼🌍 Linkedin Salaries Central | причина: тип channel, а обязателен публичный megagroup
+@makwin_vpn — Маквин VPN🏎 | причина: тип channel, а обязателен публичный megagroup
+@marketing_jobs — 🎯 marketing jobs — вакансии для маркетологов | причина: тип channel, а обязателен публичный megagroup
+@mirrox_hub — Бредни автоматизатора | причина: тип channel, а обязателен публичный megagroup
+@mpmanagers — Менеджеры маркетплейсов | Вакансии | причина: тип channel, а обязателен публичный megagroup
+@naudalenkebro — Удаленка 2.0 | Finder.work | причина: тип channel, а обязателен публичный megagroup
+@nodejsrussia — Node.js Russia | причина: тип channel, а обязателен публичный megagroup
+@normrabota — Норм работа | причина: тип channel, а обязателен публичный megagroup
+@olzori — OLZORI - полезные советы для кожи | причина: тип channel, а обязателен публичный megagroup
+@over100 — Работа в Digital от 100 000 рублей или 1200 долларов | причина: тип channel, а обязателен публичный megagroup
+@partnerkin_job — Вакансии: Арбитраж трафика, SEO, Affiliate [Партнеркин] | причина: тип channel, а обязателен публичный megagroup
+@polyaluzjob — ФРИЛАНСИКИ | причина: тип channel, а обязателен публичный megagroup
+@proffreelancee — НАСТОЯЩИЙ ФРИЛАНС | Удаленная Работа | причина: тип channel, а обязателен публичный megagroup
+@profimika — profimika | причина: тип channel, а обязателен публичный megagroup
+@rabota_is_doma_vakansii — РАБОТА ИЗ ДОМА | ВАКАНСИИ | причина: тип channel, а обязателен публичный megagroup
+@rueventjob — Удаленка - вся творческая работа | причина: тип channel, а обязателен публичный megagroup
+@searcher_freelance — СЁРЧЕР | ВАКАНСИИ | УДАЛЕНКА | причина: тип channel, а обязателен публичный megagroup
+@seniinnusername — ИНФОГРАФИКА WB/OZON😍😍 | причина: тип channel, а обязателен публичный megagroup
+@seo_feya_and_ranking_factors — SEO_feya и факторы ранжирования | причина: тип channel, а обязателен публичный megagroup
+@seoantteam — SEO от Ant-Team | причина: тип channel, а обязателен публичный megagroup
+@seohr — SEO HR, digital-вакансии, офис и удалёнка | причина: тип channel, а обязателен публичный megagroup
+@seopraktika — SEO практика | Кравцов Виталий | причина: тип channel, а обязателен публичный megagroup
+@seosekretiki — SEO-секретики | причина: тип channel, а обязателен публичный megagroup
+@seowork_hub — Дата Хаб | про SEO, директ, ИИ и онлайн продажи | причина: тип channel, а обязателен публичный megagroup
+@shakinru — SEO канал Михаила Шакина | причина: тип channel, а обязателен публичный megagroup
+@sova_freelance — СОВА на ФРИЛАНСЕ 🦉 | причина: тип channel, а обязателен публичный megagroup
+@stage_1st — Первая ступень | причина: тип channel, а обязателен публичный megagroup
+@talentedpeoples — talentedpeoples | причина: тип channel, а обязателен публичный megagroup
+@theblueprintcareer — «Карьера» The Blueprint | причина: тип channel, а обязателен публичный megagroup
+@theypaywell — Вакансии с ЗП выше 100 тысяч | причина: тип channel, а обязателен публичный megagroup
+@traffic_jobs — Таргет | Арбитраж | Вакансии | причина: тип channel, а обязателен публичный megagroup
+@udafrii — Удалённо - Работа и вакансии | причина: тип channel, а обязателен публичный megagroup
+@uvetrovoi — ФРИЛАНС | причина: тип channel, а обязателен публичный megagroup
+@vacanciesrus — Digital вакансии в Telegram | причина: тип channel, а обязателен публичный megagroup
+@vacancysmm — SMM работа, вакансии, фриланс | причина: тип channel, а обязателен публичный megagroup
+@vacantcist — чатик вакансий | причина: тип channel, а обязателен публичный megagroup
+@vakansi_rus — Creative Freelancer | причина: тип channel, а обязателен публичный megagroup
+@vakansii_design — 🎨 Таверна Дизайна | РАБОТА | вакансии чат | причина: тип channel, а обязателен публичный megagroup
+@vueist — Vueist | причина: тип channel, а обязателен публичный megagroup
+@workfordesigner — Дизайнер? Есть работа! | причина: тип channel, а обязателен публичный megagroup
+@workk_on — WORK ON | причина: тип channel, а обязателен публичный megagroup
+@workk_onhr — WORK ON | HR | причина: тип channel, а обязателен публичный megagroup
+@workk_onstream — WORK ON | STREAM | причина: тип channel, а обязателен публичный megagroup
+@worksvsem — Удалёнка для всех | причина: тип channel, а обязателен публичный megagroup
+@worldeventjob — worldeventjob | причина: тип channel, а обязателен публичный megagroup

@@ -11,17 +11,17 @@
 | Module | Requirement range | Acceptance range | Owner document | Downstream verification |
 |---|---|---|---|---|
 | Source Discovery | `SRC-001..057` | `AT-SRC-001..057` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider; durable graph cursor/results; groups SEARCH + operator_seed; graph timeout skip and cancel |
-| Telegram Collector | `COL-001..030` | `AT-COL-001..030` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response; graph call deadline |
+| Telegram Collector | `COL-001..031` | `AT-COL-001..031` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response; graph call deadline; system proxy transport |
 | Message Processing | `PROC-001..019` | `AT-PROC-001..019` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum |
 | Lead Detection | `DET-001..020` | `AT-DET-001..020` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
 | Lead Storage | `STO-001..025` | `AT-STO-001..025` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence, suppress_class and profile v8 migrations, in-flight discovery reclaim exception |
 | Lead Dashboard | `UI-001..029` | `AT-UI-001..029` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs` и graph run cancel |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
-| Operator Settings | `SET-001..015` | `AT-SET-001..015` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation и local-access suite |
-| Administration & Observability | `OBS-001..022` | `AT-OBS-001..022` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity and durable terminal metrics |
-| Security | `SEC-001..018` | `AT-SEC-001..018` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, pseudonymous scouting authors, injection suite |
-| Deployment & Infrastructure | `INF-001..023` | `AT-INF-001..023` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, named runtime loops, backup/restore suite, Telegram discovery execution lock |
+| Operator Settings | `SET-001..016` | `AT-SET-001..016` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation, proxy mode и local-access suite |
+| Administration & Observability | `OBS-001..023` | `AT-OBS-001..023` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity, durable terminal and safe connection metrics |
+| Security | `SEC-001..019` | `AT-SEC-001..019` | [PRD](modules/11-security/PRD.md) | Static scan, ACL, CSRF, Zero Stars, pseudonymous scouting authors, proxy redaction, injection suite |
+| Deployment & Infrastructure | `INF-001..024` | `AT-INF-001..024` | [PRD](modules/12-deployment-infrastructure/PRD.md) | Clean install, startup, named runtime loops, backup/restore, discovery lock and connection recovery |
 
 ## 3. Shared quality requirements
 
@@ -184,3 +184,10 @@ Release evidence включает:
 - `SRC-057`: `CancelGraphDiscoveryRun`, graph `cancelling`, Event interrupts wait, `cancelled` ≤30 s.
 - `UI-029`: dispatcher on existing GET/POST discovery run paths; graph page without keyword HTMX fragments.
 - `STO-025`: in-process `job_type=discovery` is not requeued by `recover_stale_jobs`.
+
+## 14. Windows system proxy for Telegram (D-078)
+
+- Coverage: `COL-020`, `COL-031`, `SET-016`, `SEC-019`, `INF-024`, `OBS-023` ↔ matching `AT-*`.
+- `auto` reads only enabled static HKCU WinINET proxy; `direct` never reads it; PAC/WPAD is deferred.
+- Invalid enabled static configuration fails closed. Proxy endpoint and credentials remain memory-only.
+- Startup failure keeps local UI/non-Telegram loops alive and one recovery loop starts Telegram work exactly once after connection succeeds.

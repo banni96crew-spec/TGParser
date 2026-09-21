@@ -1,0 +1,534 @@
+GRAPH ADJACENT DISCOVERY RESULT
+generated_at_utc=2026-09-06T13:27:41.579894+00:00
+run_id=41
+run_type=graph
+state=partial
+phase=done
+started_at=2026-09-06 13:07:40.112824
+finished_at=2026-09-06 13:27:38.517533
+last_error_code=None
+termination={'reason': 'request_cap', 'error_code': None}
+job_id=233
+job_state=succeeded
+job_attempt=1
+seed_refs=['@python_chatt', '@freelancerscha', '@frilans_na_legke', '@digitaltender', '@TRemoters', '@n8n_community', '@coding_ru', '@js_ru', '@nodejs_ru']
+seed_source_ids=[122, 66, 55, 123, 111, 124, 125, 126, 127]
+seeds_resolved=['@python_chatt id=122 tg=1853488227', '@freelancerscha id=66 tg=1184161419', '@frilans_na_legke id=55 tg=1387008187', '@digitaltender id=123 tg=1113535556', '@tremoters id=111 tg=1357003020', '@n8n_community id=124 tg=1481574785', '@coding_ru id=125 tg=1004766182', '@js_ru id=126 tg=1071397096', '@nodejs_ru id=127 tg=1041204341']
+seeds_skipped=[]
+counters={"budget_skipped_total": 0, "created_candidates": 55, "depth_skipped_total": 0, "dismissed_suppressed": 0, "duplicate_in_run": 65, "invalid_references": 0, "merged_candidates": 32, "node_timeout_total": 0, "registry_suppressed": 0, "resolves": 16, "unsupported_sources": 126}
+request_control={"reserved_total": 200, "last_request_at_utc": "2026-09-06T13:27:38.184405+00:00", "rolling_reservations_utc": ["2026-09-06T13:26:44.035070+00:00", "2026-09-06T13:26:50.055099+00:00", "2026-09-06T13:26:56.054588+00:00", "2026-09-06T13:27:02.073215+00:00", "2026-09-06T13:27:08.090576+00:00", "2026-09-06T13:27:14.104874+00:00", "2026-09-06T13:27:20.109357+00:00", "2026-09-06T13:27:26.125066+00:00", "2026-09-06T13:27:32.144448+00:00", "2026-09-06T13:27:38.184405+00:00"]}
+events_total=278
+graph_posts_total=2015
+candidates_found=87
+
+=== COMPLETED STAGES ===
+{
+  "peer:1004766182": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1041204341": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1071397096": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1113535556": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1184161419": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1357003020": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1387008187": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1481574785": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1853488227": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1463891195": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:2095179199": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1017371671": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1799919407": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1329809676": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1265252992": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1101692370": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:2009862743": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1218368406": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1674990228": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1303819569": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1380804755": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1204160156": [
+    "linked_discussion",
+    "message_sample_100",
+    "recommendations",
+    "resolve"
+  ],
+  "peer:1871985623": [
+    "linked_discussion",
+    "recommendations",
+    "resolve"
+  ]
+}
+
+=== EVENTS ===
+id=595 method=linked_discussion outcome=candidate raw='@nodejsrussia' norm='nodejsrussia' source_id=128 depth=1
+id=596 method=public_link outcome=candidate raw='https://t.me/ancient_web' norm='ancient_web' source_id=129 depth=1
+id=597 method=recommendation outcome=candidate raw='@seohr' norm='seohr' source_id=130 depth=1
+id=598 method=recommendation outcome=candidate raw='@freelancetaverna' norm='freelancetaverna' source_id=131 depth=1
+id=599 method=recommendation outcome=merged raw='@rueventjob' norm='rueventjob' source_id=17 depth=1
+id=600 method=recommendation outcome=candidate raw='@over100' norm='over100' source_id=132 depth=1
+id=601 method=recommendation outcome=candidate raw='@dnative_job' norm='dnative_job' source_id=133 depth=1
+id=602 method=recommendation outcome=candidate raw='@distantsiya2' norm='distantsiya2' source_id=134 depth=1
+id=603 method=recommendation outcome=candidate raw='@stage_1st' norm='stage_1st' source_id=135 depth=1
+id=604 method=recommendation outcome=merged raw='@getclient' norm='getclient' source_id=12 depth=1
+id=605 method=recommendation outcome=merged raw='@workk_on' norm='workk_on' source_id=15 depth=1
+id=606 method=recommendation outcome=candidate raw='@proffreelancee' norm='proffreelancee' source_id=136 depth=1
+id=607 method=linked_discussion outcome=candidate raw='@digitaltalks' norm='digitaltalks' source_id=137 depth=1
+id=608 method=public_link outcome=duplicate_in_run raw='https://t.me/freelancerscha' norm='freelancerscha' source_id=None depth=1
+id=609 method=mention outcome=merged raw='@dmitriy_content' norm='dmitriy_content' source_id=68 depth=1
+id=610 method=recommendation outcome=merged raw='@worksvsem' norm='worksvsem' source_id=94 depth=1
+id=611 method=recommendation outcome=merged raw='@sova_freelance' norm='sova_freelance' source_id=41 depth=1
+id=612 method=recommendation outcome=merged raw='@talentedpeoples' norm='talentedpeoples' source_id=80 depth=1
+id=613 method=recommendation outcome=merged raw='@frilancekomfort' norm='frilancekomfort' source_id=114 depth=1
+id=614 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=1
+id=615 method=recommendation outcome=merged raw='@workfordesigner' norm='workfordesigner' source_id=27 depth=1
+id=616 method=recommendation outcome=merged raw='@rabota_is_doma_vakansii' norm='rabota_is_doma_vakansii' source_id=93 depth=1
+id=617 method=recommendation outcome=merged raw='@freelanceeboom' norm='freelanceeboom' source_id=83 depth=1
+id=618 method=recommendation outcome=merged raw='@searcher_freelance' norm='searcher_freelance' source_id=42 depth=1
+id=619 method=recommendation outcome=merged raw='@designs_job' norm='designs_job' source_id=13 depth=1
+id=620 method=linked_discussion outcome=candidate raw='@theremoterz' norm='theremoterz' source_id=138 depth=1
+id=621 method=mention outcome=unsupported_source raw='@alisakonevaa' norm='alisakonevaa' source_id=None depth=1
+id=622 method=mention outcome=unsupported_source raw='@karina68890' norm='karina68890' source_id=None depth=1
+id=623 method=mention outcome=unsupported_source raw='@snezhanar22' norm='snezhanar22' source_id=None depth=1
+id=624 method=mention outcome=unsupported_source raw='@maksdnx' norm='maksdnx' source_id=None depth=1
+id=625 method=mention outcome=unsupported_source raw='@artemkotyagin' norm='artemkotyagin' source_id=None depth=1
+id=626 method=mention outcome=unsupported_source raw='@alexandra_aiwagg' norm='alexandra_aiwagg' source_id=None depth=1
+id=627 method=mention outcome=unsupported_source raw='@alinna_voron' norm='alinna_voron' source_id=None depth=1
+id=628 method=mention outcome=unsupported_source raw='@an_vik1' norm='an_vik1' source_id=None depth=1
+id=629 method=mention outcome=unsupported_source raw='@dmitryfrolo' norm='dmitryfrolo' source_id=None depth=1
+id=630 method=mention outcome=unsupported_source raw='@art_vrntsv' norm='art_vrntsv' source_id=None depth=1
+id=631 method=mention outcome=unsupported_source raw='@selannaaaa' norm='selannaaaa' source_id=None depth=1
+id=632 method=mention outcome=unsupported_source raw='@mrborodulik' norm='mrborodulik' source_id=None depth=1
+id=633 method=mention outcome=unsupported_source raw='@grindmashine' norm='grindmashine' source_id=None depth=1
+id=634 method=mention outcome=unsupported_source raw='@janajoluskina' norm='janajoluskina' source_id=None depth=1
+id=635 method=public_link outcome=candidate raw='https://t.me/mirrox_hub' norm='mirrox_hub' source_id=139 depth=1
+id=636 method=mention outcome=unsupported_source raw='@isbu228' norm='isbu228' source_id=None depth=1
+id=637 method=public_link outcome=candidate raw='https://t.me/makwin_vpn' norm='makwin_vpn' source_id=140 depth=1
+id=638 method=linked_discussion outcome=duplicate_in_run raw='@nodejs_ru' norm='nodejs_ru' source_id=None depth=2
+id=639 method=public_link outcome=duplicate_in_run raw='https://t.me/nodejsrussia' norm='nodejsrussia' source_id=None depth=2
+id=640 method=public_link outcome=duplicate_in_run raw='https://t.me/nodejs_ru' norm='nodejs_ru' source_id=None depth=2
+id=641 method=mention outcome=unsupported_source raw='@denisizmaylov' norm='denisizmaylov' source_id=None depth=2
+id=642 method=forward_origin outcome=candidate raw='@golang_google' norm='golang_google' source_id=141 depth=2
+id=643 method=forward_origin outcome=candidate raw='@vueist' norm='vueist' source_id=142 depth=2
+id=644 method=forward_origin outcome=candidate raw='@haccking' norm='haccking' source_id=143 depth=2
+id=645 method=recommendation outcome=duplicate_in_run raw='@over100' norm='over100' source_id=None depth=2
+id=646 method=recommendation outcome=candidate raw='@shakinru' norm='shakinru' source_id=144 depth=2
+id=647 method=recommendation outcome=candidate raw='@bakushevaseo' norm='bakushevaseo' source_id=145 depth=2
+id=648 method=recommendation outcome=candidate raw='@seosekretiki' norm='seosekretiki' source_id=146 depth=2
+id=649 method=recommendation outcome=candidate raw='@burzhunet' norm='burzhunet' source_id=147 depth=2
+id=650 method=recommendation outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=651 method=recommendation outcome=candidate raw='@marketing_jobs' norm='marketing_jobs' source_id=148 depth=2
+id=652 method=recommendation outcome=candidate raw='@seopraktika' norm='seopraktika' source_id=149 depth=2
+id=653 method=recommendation outcome=candidate raw='@seoantteam' norm='seoantteam' source_id=150 depth=2
+id=654 method=recommendation outcome=merged raw='@normrabota' norm='normrabota' source_id=92 depth=2
+id=655 method=linked_discussion outcome=candidate raw='@hr_chat' norm='hr_chat' source_id=151 depth=2
+id=656 method=mention outcome=duplicate_in_run raw='@seohr' norm='seohr' source_id=None depth=2
+id=657 method=mention outcome=unsupported_source raw='@seohrfeedbackbot' norm='seohrfeedbackbot' source_id=None depth=2
+id=658 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=2
+id=659 method=recommendation outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=660 method=recommendation outcome=duplicate_in_run raw='@normrabota' norm='normrabota' source_id=None depth=2
+id=661 method=recommendation outcome=candidate raw='@distantsiya' norm='distantsiya' source_id=152 depth=2
+id=662 method=recommendation outcome=candidate raw='@naudalenkebro' norm='naudalenkebro' source_id=153 depth=2
+id=663 method=recommendation outcome=duplicate_in_run raw='@workk_on' norm='workk_on' source_id=None depth=2
+id=664 method=recommendation outcome=duplicate_in_run raw='@dnative_job' norm='dnative_job' source_id=None depth=2
+id=665 method=recommendation outcome=merged raw='@freelancce' norm='freelancce' source_id=20 depth=2
+id=666 method=recommendation outcome=duplicate_in_run raw='@getclient' norm='getclient' source_id=None depth=2
+id=667 method=mention outcome=unsupported_source raw='@supervictorr' norm='supervictorr' source_id=None depth=2
+id=668 method=mention outcome=unsupported_source raw='@jarche_27' norm='jarche_27' source_id=None depth=2
+id=669 method=mention outcome=unsupported_source raw='@anastadr' norm='anastadr' source_id=None depth=2
+id=670 method=mention outcome=unsupported_source raw='@iren_volf' norm='iren_volf' source_id=None depth=2
+id=671 method=mention outcome=unsupported_source raw='@alexandrakononenko' norm='alexandrakononenko' source_id=None depth=2
+id=672 method=mention outcome=unsupported_source raw='@pr_nina' norm='pr_nina' source_id=None depth=2
+id=673 method=mention outcome=unsupported_source raw='@lowkeymarkagency' norm='lowkeymarkagency' source_id=None depth=2
+id=674 method=mention outcome=unsupported_source raw='@kkkkkkkosss9' norm='kkkkkkkosss9' source_id=None depth=2
+id=675 method=mention outcome=unsupported_source raw='@veronmikhailova' norm='veronmikhailova' source_id=None depth=2
+id=676 method=mention outcome=unsupported_source raw='@leonovatata' norm='leonovatata' source_id=None depth=2
+id=677 method=mention outcome=unsupported_source raw='@angel_hrdigital' norm='angel_hrdigital' source_id=None depth=2
+id=678 method=mention outcome=unsupported_source raw='@suzannahr' norm='suzannahr' source_id=None depth=2
+id=679 method=mention outcome=unsupported_source raw='@hattori_hr' norm='hattori_hr' source_id=None depth=2
+id=680 method=mention outcome=unsupported_source raw='@xaiez' norm='xaiez' source_id=None depth=2
+id=681 method=mention outcome=unsupported_source raw='@evgeniya_cpa' norm='evgeniya_cpa' source_id=None depth=2
+id=682 method=mention outcome=unsupported_source raw='@dimaargentina' norm='dimaargentina' source_id=None depth=2
+id=683 method=recommendation outcome=duplicate_in_run raw='@talentedpeoples' norm='talentedpeoples' source_id=None depth=2
+id=684 method=recommendation outcome=merged raw='@worldeventjob' norm='worldeventjob' source_id=77 depth=2
+id=685 method=recommendation outcome=merged raw='@uvetrovoi' norm='uvetrovoi' source_id=56 depth=2
+id=686 method=recommendation outcome=duplicate_in_run raw='@workfordesigner' norm='workfordesigner' source_id=None depth=2
+id=687 method=recommendation outcome=merged raw='@designer_vacancies' norm='designer_vacancies' source_id=90 depth=2
+id=688 method=recommendation outcome=duplicate_in_run raw='@workk_on' norm='workk_on' source_id=None depth=2
+id=689 method=recommendation outcome=duplicate_in_run raw='@designs_job' norm='designs_job' source_id=None depth=2
+id=690 method=recommendation outcome=merged raw='@vakansi_rus' norm='vakansi_rus' source_id=29 depth=2
+id=691 method=recommendation outcome=merged raw='@polyaluzjob' norm='polyaluzjob' source_id=91 depth=2
+id=692 method=recommendation outcome=duplicate_in_run raw='@normrabota' norm='normrabota' source_id=None depth=2
+id=693 method=linked_discussion outcome=merged raw='@rueventjob4at' norm='rueventjob4at' source_id=67 depth=2
+id=694 method=mention outcome=duplicate_in_run raw='@karina68890' norm='karina68890' source_id=None depth=2
+id=695 method=mention outcome=unsupported_source raw='@kovalantoninahr' norm='kovalantoninahr' source_id=None depth=2
+id=696 method=mention outcome=duplicate_in_run raw='@maksdnx' norm='maksdnx' source_id=None depth=2
+id=697 method=mention outcome=unsupported_source raw='@asyaloveyouu' norm='asyaloveyouu' source_id=None depth=2
+id=698 method=mention outcome=unsupported_source raw='@iamnotnik' norm='iamnotnik' source_id=None depth=2
+id=699 method=mention outcome=unsupported_source raw='@michaelscottch' norm='michaelscottch' source_id=None depth=2
+id=700 method=mention outcome=unsupported_source raw='@nikiwhitee' norm='nikiwhitee' source_id=None depth=2
+id=701 method=mention outcome=unsupported_source raw='@annared0101' norm='annared0101' source_id=None depth=2
+id=702 method=mention outcome=unsupported_source raw='@onehundredandoneroses' norm='onehundredandoneroses' source_id=None depth=2
+id=703 method=mention outcome=unsupported_source raw='@aliinka_17' norm='aliinka_17' source_id=None depth=2
+id=704 method=mention outcome=unsupported_source raw='@ivanovakiraa' norm='ivanovakiraa' source_id=None depth=2
+id=705 method=mention outcome=unsupported_source raw='@arinabochkarevaa' norm='arinabochkarevaa' source_id=None depth=2
+id=706 method=mention outcome=unsupported_source raw='@abylaikhan_xo' norm='abylaikhan_xo' source_id=None depth=2
+id=707 method=mention outcome=unsupported_source raw='@your_jeisus' norm='your_jeisus' source_id=None depth=2
+id=708 method=recommendation outcome=duplicate_in_run raw='@seohr' norm='seohr' source_id=None depth=2
+id=709 method=recommendation outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=710 method=recommendation outcome=candidate raw='@seowork_hub' norm='seowork_hub' source_id=154 depth=2
+id=711 method=recommendation outcome=candidate raw='@devshr' norm='devshr' source_id=155 depth=2
+id=712 method=recommendation outcome=duplicate_in_run raw='@seoantteam' norm='seoantteam' source_id=None depth=2
+id=713 method=recommendation outcome=candidate raw='@forallmarketing' norm='forallmarketing' source_id=156 depth=2
+id=714 method=recommendation outcome=duplicate_in_run raw='@marketing_jobs' norm='marketing_jobs' source_id=None depth=2
+id=715 method=recommendation outcome=candidate raw='@vacanciesrus' norm='vacanciesrus' source_id=157 depth=2
+id=716 method=recommendation outcome=candidate raw='@digital_expertise' norm='digital_expertise' source_id=158 depth=2
+id=717 method=recommendation outcome=candidate raw='@seo_feya_and_ranking_factors' norm='seo_feya_and_ranking_factors' source_id=159 depth=2
+id=718 method=mention outcome=duplicate_in_run raw='@over100' norm='over100' source_id=None depth=2
+id=719 method=mention outcome=duplicate_in_run raw='@seohr' norm='seohr' source_id=None depth=2
+id=720 method=mention outcome=duplicate_in_run raw='@seohrfeedbackbot' norm='seohrfeedbackbot' source_id=None depth=2
+id=721 method=recommendation outcome=candidate raw='@dnative_job100' norm='dnative_job100' source_id=160 depth=2
+id=722 method=recommendation outcome=candidate raw='@huggabletalents' norm='huggabletalents' source_id=161 depth=2
+id=723 method=recommendation outcome=duplicate_in_run raw='@normrabota' norm='normrabota' source_id=None depth=2
+id=724 method=recommendation outcome=candidate raw='@budujobs' norm='budujobs' source_id=162 depth=2
+id=725 method=recommendation outcome=candidate raw='@dnative' norm='dnative' source_id=163 depth=2
+id=726 method=recommendation outcome=merged raw='@vacancysmm' norm='vacancysmm' source_id=59 depth=2
+id=727 method=recommendation outcome=candidate raw='@theblueprintcareer' norm='theblueprintcareer' source_id=164 depth=2
+id=728 method=recommendation outcome=duplicate_in_run raw='@marketing_jobs' norm='marketing_jobs' source_id=None depth=2
+id=729 method=recommendation outcome=candidate raw='@vacantcist' norm='vacantcist' source_id=165 depth=2
+id=730 method=public_link outcome=unsupported_source raw='https://t.me/kirillmakogon' norm='kirillmakogon' source_id=None depth=2
+id=731 method=public_link outcome=unsupported_source raw='https://t.me/ellairrr' norm='ellairrr' source_id=None depth=2
+id=732 method=mention outcome=unsupported_source raw='@orient_911' norm='orient_911' source_id=None depth=2
+id=733 method=mention outcome=unsupported_source raw='@lizafilatovaa' norm='lizafilatovaa' source_id=None depth=2
+id=734 method=mention outcome=unsupported_source raw='@sorocinakate' norm='sorocinakate' source_id=None depth=2
+id=735 method=mention outcome=unsupported_source raw='@artem_beloff' norm='artem_beloff' source_id=None depth=2
+id=736 method=mention outcome=unsupported_source raw='@denominant' norm='denominant' source_id=None depth=2
+id=737 method=public_link outcome=unsupported_source raw='https://t.me/pr_mdi' norm='pr_mdi' source_id=None depth=2
+id=738 method=public_link outcome=unsupported_source raw='https://t.me/medmarketing_sl' norm='medmarketing_sl' source_id=None depth=2
+id=739 method=public_link outcome=unsupported_source raw='https://t.me/hriqdev' norm='hriqdev' source_id=None depth=2
+id=740 method=public_link outcome=duplicate_in_run raw='https://t.me/hattori_hr' norm='hattori_hr' source_id=None depth=2
+id=741 method=public_link outcome=unsupported_source raw='https://t.me/uli_materiya' norm='uli_materiya' source_id=None depth=2
+id=742 method=public_link outcome=unsupported_source raw='https://t.me/formula_doma01' norm='formula_doma01' source_id=None depth=2
+id=743 method=public_link outcome=unsupported_source raw='https://t.me/valeryhr_cg' norm='valeryhr_cg' source_id=None depth=2
+id=744 method=mention outcome=candidate raw='@olzori' norm='olzori' source_id=166 depth=2
+id=745 method=public_link outcome=unsupported_source raw='https://t.me/dianayama' norm='dianayama' source_id=None depth=2
+id=746 method=recommendation outcome=duplicate_in_run raw='@stage_1st' norm='stage_1st' source_id=None depth=2
+id=747 method=recommendation outcome=duplicate_in_run raw='@freelancetaverna' norm='freelancetaverna' source_id=None depth=2
+id=748 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=2
+id=749 method=recommendation outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=750 method=recommendation outcome=duplicate_in_run raw='@workk_on' norm='workk_on' source_id=None depth=2
+id=751 method=recommendation outcome=duplicate_in_run raw='@naudalenkebro' norm='naudalenkebro' source_id=None depth=2
+id=752 method=recommendation outcome=candidate raw='@birgasofi' norm='birgasofi' source_id=167 depth=2
+id=753 method=recommendation outcome=candidate raw='@design_profii' norm='design_profii' source_id=168 depth=2
+id=754 method=recommendation outcome=duplicate_in_run raw='@normrabota' norm='normrabota' source_id=None depth=2
+id=755 method=mention outcome=unsupported_source raw='@nikagolomaga' norm='nikagolomaga' source_id=None depth=2
+id=756 method=mention outcome=candidate raw='@profimika' norm='profimika' source_id=169 depth=2
+id=757 method=mention outcome=unsupported_source raw='@sofia_karimova' norm='sofia_karimova' source_id=None depth=2
+id=758 method=public_link outcome=unsupported_source raw='https://t.me/lira1818' norm='lira1818' source_id=None depth=2
+id=759 method=mention outcome=unsupported_source raw='@nilina_a' norm='nilina_a' source_id=None depth=2
+id=760 method=mention outcome=unsupported_source raw='@riarh_rrr' norm='riarh_rrr' source_id=None depth=2
+id=761 method=mention outcome=unsupported_source raw='@isgorozhankin' norm='isgorozhankin' source_id=None depth=2
+id=762 method=mention outcome=unsupported_source raw='@videograph_aneliya12' norm='videograph_aneliya12' source_id=None depth=2
+id=763 method=public_link outcome=candidate raw='https://t.me/theypaywell' norm='theypaywell' source_id=170 depth=2
+id=764 method=mention outcome=unsupported_source raw='@laconihome_assistant' norm='laconihome_assistant' source_id=None depth=2
+id=765 method=mention outcome=unsupported_source raw='@yulia19ch' norm='yulia19ch' source_id=None depth=2
+id=766 method=mention outcome=unsupported_source raw='@lebedeva_valerosha' norm='lebedeva_valerosha' source_id=None depth=2
+id=767 method=mention outcome=unsupported_source raw='@karinovoo' norm='karinovoo' source_id=None depth=2
+id=768 method=mention outcome=unsupported_source raw='@khokhlova_digital' norm='khokhlova_digital' source_id=None depth=2
+id=769 method=mention outcome=unsupported_source raw='@diweum' norm='diweum' source_id=None depth=2
+id=770 method=mention outcome=unsupported_source raw='@onegina_jane' norm='onegina_jane' source_id=None depth=2
+id=771 method=recommendation outcome=duplicate_in_run raw='@distantsiya2' norm='distantsiya2' source_id=None depth=2
+id=772 method=recommendation outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=773 method=recommendation outcome=candidate raw='@chooseajob' norm='chooseajob' source_id=171 depth=2
+id=774 method=recommendation outcome=candidate raw='@partnerkin_job' norm='partnerkin_job' source_id=172 depth=2
+id=775 method=recommendation outcome=duplicate_in_run raw='@birgasofi' norm='birgasofi' source_id=None depth=2
+id=776 method=recommendation outcome=candidate raw='@businessatmosphere' norm='businessatmosphere' source_id=173 depth=2
+id=777 method=recommendation outcome=candidate raw='@kadrof_work' norm='kadrof_work' source_id=174 depth=2
+id=778 method=recommendation outcome=duplicate_in_run raw='@freelancetaverna' norm='freelancetaverna' source_id=None depth=2
+id=779 method=recommendation outcome=duplicate_in_run raw='@workk_on' norm='workk_on' source_id=None depth=2
+id=780 method=mention outcome=duplicate_in_run raw='@stage_1st' norm='stage_1st' source_id=None depth=2
+id=781 method=mention outcome=unsupported_source raw='@veronica_gph' norm='veronica_gph' source_id=None depth=2
+id=782 method=mention outcome=unsupported_source raw='@gitelman' norm='gitelman' source_id=None depth=2
+id=783 method=mention outcome=unsupported_source raw='@strel_vlr' norm='strel_vlr' source_id=None depth=2
+id=784 method=public_link outcome=unsupported_source raw='https://t.me/uiuuuiuiu' norm='uiuuuiuiu' source_id=None depth=2
+id=785 method=mention outcome=unsupported_source raw='@chernikova_katya' norm='chernikova_katya' source_id=None depth=2
+id=786 method=mention outcome=unsupported_source raw='@sm_stasya' norm='sm_stasya' source_id=None depth=2
+id=787 method=public_link outcome=unsupported_source raw='https://t.me/azamat57' norm='azamat57' source_id=None depth=2
+id=788 method=mention outcome=unsupported_source raw='@ag_assistants' norm='ag_assistants' source_id=None depth=2
+id=789 method=mention outcome=unsupported_source raw='@ekaterinashasheleva' norm='ekaterinashasheleva' source_id=None depth=2
+id=790 method=mention outcome=unsupported_source raw='@geniusmanager' norm='geniusmanager' source_id=None depth=2
+id=791 method=mention outcome=unsupported_source raw='@llesaff' norm='llesaff' source_id=None depth=2
+id=792 method=mention outcome=unsupported_source raw='@shikpromotion' norm='shikpromotion' source_id=None depth=2
+id=793 method=mention outcome=unsupported_source raw='@veronika_cherr' norm='veronika_cherr' source_id=None depth=2
+id=794 method=mention outcome=unsupported_source raw='@maria_mashnina' norm='maria_mashnina' source_id=None depth=2
+id=795 method=mention outcome=unsupported_source raw='@verarauhak' norm='verarauhak' source_id=None depth=2
+id=796 method=recommendation outcome=duplicate_in_run raw='@designs_job' norm='designs_job' source_id=None depth=2
+id=797 method=recommendation outcome=duplicate_in_run raw='@workk_on' norm='workk_on' source_id=None depth=2
+id=798 method=recommendation outcome=merged raw='@free_design1' norm='free_design1' source_id=16 depth=2
+id=799 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=2
+id=800 method=recommendation outcome=merged raw='@vakansii_design' norm='vakansii_design' source_id=18 depth=2
+id=801 method=recommendation outcome=merged raw='@jobfortarget' norm='jobfortarget' source_id=19 depth=2
+id=802 method=recommendation outcome=duplicate_in_run raw='@freelancce' norm='freelancce' source_id=None depth=2
+id=803 method=recommendation outcome=merged raw='@designs_squad' norm='designs_squad' source_id=21 depth=2
+id=804 method=recommendation outcome=merged raw='@traffic_jobs' norm='traffic_jobs' source_id=22 depth=2
+id=805 method=recommendation outcome=duplicate_in_run raw='@sova_freelance' norm='sova_freelance' source_id=None depth=2
+id=806 method=linked_discussion outcome=merged raw='@getfrilans' norm='getfrilans' source_id=23 depth=2
+id=807 method=mention outcome=unsupported_source raw='@yuli_texx' norm='yuli_texx' source_id=None depth=2
+id=808 method=mention outcome=unsupported_source raw='@getclient_tg_bot' norm='getclient_tg_bot' source_id=None depth=2
+id=809 method=public_link outcome=unsupported_source raw='https://t.me/alekseicoach_bot' norm='alekseicoach_bot' source_id=None depth=2
+id=810 method=mention outcome=unsupported_source raw='@leadmagnet_mp_bot' norm='leadmagnet_mp_bot' source_id=None depth=2
+id=811 method=forward_origin outcome=merged raw='@mpmanagers' norm='mpmanagers' source_id=25 depth=2
+id=812 method=public_link outcome=candidate raw='https://t.me/design_nastaciia' norm='design_nastaciia' source_id=175 depth=2
+id=813 method=mention outcome=unsupported_source raw='@dialog011' norm='dialog011' source_id=None depth=2
+id=814 method=mention outcome=unsupported_source raw='@pet_vladimir' norm='pet_vladimir' source_id=None depth=2
+id=815 method=mention outcome=unsupported_source raw='@help_podcast' norm='help_podcast' source_id=None depth=2
+id=816 method=mention outcome=unsupported_source raw='@sashalightman' norm='sashalightman' source_id=None depth=2
+id=817 method=mention outcome=unsupported_source raw='@ludvilalo' norm='ludvilalo' source_id=None depth=2
+id=818 method=mention outcome=candidate raw='@linkedin_salaries_central' norm='linkedin_salaries_central' source_id=176 depth=2
+id=819 method=mention outcome=unsupported_source raw='@windowsrepairauae' norm='windowsrepairauae' source_id=None depth=2
+id=820 method=public_link outcome=candidate raw='https://t.me/seniinnusername' norm='seniinnusername' source_id=177 depth=2
+id=821 method=recommendation outcome=candidate raw='@workk_onstream' norm='workk_onstream' source_id=178 depth=2
+id=822 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=2
+id=823 method=recommendation outcome=duplicate_in_run raw='@getclient' norm='getclient' source_id=None depth=2
+id=824 method=recommendation outcome=duplicate_in_run raw='@dnative_job' norm='dnative_job' source_id=None depth=2
+id=825 method=recommendation outcome=duplicate_in_run raw='@freelancce' norm='freelancce' source_id=None depth=2
+id=826 method=recommendation outcome=candidate raw='@workk_onhr' norm='workk_onhr' source_id=179 depth=2
+id=827 method=recommendation outcome=duplicate_in_run raw='@designs_job' norm='designs_job' source_id=None depth=2
+id=828 method=recommendation outcome=candidate raw='@frelanserr' norm='frelanserr' source_id=180 depth=2
+id=829 method=recommendation outcome=candidate raw='@freelancebay' norm='freelancebay' source_id=181 depth=2
+id=830 method=mention outcome=unsupported_source raw='@birullinhr' norm='birullinhr' source_id=None depth=2
+id=831 method=mention outcome=unsupported_source raw='@valeeia_manager_av' norm='valeeia_manager_av' source_id=None depth=2
+id=832 method=mention outcome=unsupported_source raw='@lena5243' norm='lena5243' source_id=None depth=2
+id=833 method=mention outcome=unsupported_source raw='@podnajmi' norm='podnajmi' source_id=None depth=2
+id=834 method=mention outcome=unsupported_source raw='@dibuslaeva' norm='dibuslaeva' source_id=None depth=2
+id=835 method=mention outcome=unsupported_source raw='@ponomareva1405' norm='ponomareva1405' source_id=None depth=2
+id=836 method=mention outcome=unsupported_source raw='@sayf1260' norm='sayf1260' source_id=None depth=2
+id=837 method=mention outcome=unsupported_source raw='@ao_anastasiahr' norm='ao_anastasiahr' source_id=None depth=2
+id=838 method=mention outcome=unsupported_source raw='@leilafedorova' norm='leilafedorova' source_id=None depth=2
+id=839 method=mention outcome=unsupported_source raw='@krisiooo' norm='krisiooo' source_id=None depth=2
+id=840 method=mention outcome=unsupported_source raw='@kirill_viz' norm='kirill_viz' source_id=None depth=2
+id=841 method=mention outcome=unsupported_source raw='@larisa_tantra_yoga' norm='larisa_tantra_yoga' source_id=None depth=2
+id=842 method=mention outcome=unsupported_source raw='@savastariy' norm='savastariy' source_id=None depth=2
+id=843 method=mention outcome=unsupported_source raw='@salamona28' norm='salamona28' source_id=None depth=2
+id=844 method=mention outcome=unsupported_source raw='@espannaanna' norm='espannaanna' source_id=None depth=2
+id=845 method=mention outcome=unsupported_source raw='@ksenia_3366' norm='ksenia_3366' source_id=None depth=2
+id=846 method=recommendation outcome=duplicate_in_run raw='@frilans_na_legke' norm='frilans_na_legke' source_id=None depth=2
+id=847 method=recommendation outcome=merged raw='@udafrii' norm='udafrii' source_id=50 depth=2
+id=848 method=recommendation outcome=merged raw='@astya_r' norm='astya_r' source_id=54 depth=2
+id=849 method=recommendation outcome=duplicate_in_run raw='@freelancce' norm='freelancce' source_id=None depth=2
+id=850 method=recommendation outcome=duplicate_in_run raw='@frilancekomfort' norm='frilancekomfort' source_id=None depth=2
+id=851 method=recommendation outcome=duplicate_in_run raw='@rueventjob' norm='rueventjob' source_id=None depth=2
+id=852 method=recommendation outcome=duplicate_in_run raw='@talentedpeoples' norm='talentedpeoples' source_id=None depth=2
+id=853 method=recommendation outcome=duplicate_in_run raw='@sova_freelance' norm='sova_freelance' source_id=None depth=2
+id=854 method=recommendation outcome=merged raw='@frilanser_vacansii' norm='frilanser_vacansii' source_id=45 depth=2
+id=855 method=recommendation outcome=duplicate_in_run raw='@vacancysmm' norm='vacancysmm' source_id=None depth=2
+id=856 method=linked_discussion outcome=candidate raw='@proffreelancee_chat' norm='proffreelancee_chat' source_id=182 depth=2
+id=857 method=public_link outcome=unsupported_source raw='https://t.me/tshustova' norm='tshustova' source_id=None depth=2
+id=858 method=public_link outcome=unsupported_source raw='https://t.me/yelizavetadddexi' norm='yelizavetadddexi' source_id=None depth=2
+id=859 method=public_link outcome=unsupported_source raw='https://t.me/viktoriya_alekss11' norm='viktoriya_alekss11' source_id=None depth=2
+id=860 method=public_link outcome=duplicate_in_run raw='https://t.me/iren_volf' norm='iren_volf' source_id=None depth=2
+id=861 method=public_link outcome=unsupported_source raw='https://t.me/linalinaami' norm='linalinaami' source_id=None depth=2
+id=862 method=public_link outcome=unsupported_source raw='https://t.me/hranastasiabrodskaya' norm='hranastasiabrodskaya' source_id=None depth=2
+id=863 method=public_link outcome=unsupported_source raw='https://t.me/zvalexg' norm='zvalexg' source_id=None depth=2
+id=864 method=public_link outcome=unsupported_source raw='https://t.me/zhamilya_alieva' norm='zhamilya_alieva' source_id=None depth=2
+id=865 method=public_link outcome=unsupported_source raw='https://t.me/almira_abisheva' norm='almira_abisheva' source_id=None depth=2
+id=866 method=public_link outcome=unsupported_source raw='https://t.me/kateeeeeeeeeeeeee' norm='kateeeeeeeeeeeeee' source_id=None depth=2
+id=867 method=public_link outcome=duplicate_in_run raw='https://t.me/birullinhr' norm='birullinhr' source_id=None depth=2
+id=868 method=public_link outcome=unsupported_source raw='https://t.me/nordic_ronin' norm='nordic_ronin' source_id=None depth=2
+id=869 method=public_link outcome=unsupported_source raw='https://t.me/victoriaaivanova' norm='victoriaaivanova' source_id=None depth=2
+id=870 method=public_link outcome=unsupported_source raw='https://t.me/your_englishschool' norm='your_englishschool' source_id=None depth=2
+id=871 method=linked_discussion outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+id=872 method=forward_origin outcome=duplicate_in_run raw='@digitaltender' norm='digitaltender' source_id=None depth=2
+
+=== CANDIDATE / MERGED SOURCES ===
+id=12 @getclient tg=1674990228 title='GetClient | Фриланс вакансии' state=candidate
+id=13 @designs_job tg=1731384171 title='Уголок дизайнера | Вакансии' state=candidate
+id=15 @workk_on tg=1303819569 title='WORK ON' state=candidate
+id=16 @free_design1 tg=2105035557 title='Pixel | Фриланс | Дизайн заказы | Работа в интернете' state=candidate
+id=17 @rueventjob tg=1329809676 title='Удаленка - вся творческая работа' state=candidate
+id=18 @vakansii_design tg=1973445337 title='🎨 Таверна Дизайна | РАБОТА | вакансии чат' state=candidate
+id=19 @jobfortarget tg=1362408356 title='Вакансии для Таргетологов' state=candidate
+id=20 @freelancce tg=1485944670 title='ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА' state=candidate
+id=21 @designs_squad tg=1835848655 title='Designs squad | Дизайн вакансии' state=candidate
+id=22 @traffic_jobs tg=1588181790 title='Таргет | Арбитраж | Вакансии' state=candidate
+id=23 @getfrilans tg=1669984427 title='GetFrilans | Чат фрилансеров' state=candidate
+id=25 @mpmanagers tg=1718248552 title='Менеджеры маркетплейсов | Вакансии' state=candidate
+id=27 @workfordesigner tg=1938067478 title='Дизайнер? Есть работа!' state=candidate
+id=29 @vakansi_rus tg=1548363362 title='Creative Freelancer' state=candidate
+id=41 @sova_freelance tg=1386609786 title='СОВА на ФРИЛАНСЕ 🦉' state=candidate
+id=42 @searcher_freelance tg=2131884646 title='СЁРЧЕР | ВАКАНСИИ | УДАЛЕНКА' state=candidate
+id=45 @frilanser_vacansii tg=1348489999 title='ФРИЛАНСЕР удаленная работа и вакансии' state=candidate
+id=50 @udafrii tg=1476261781 title='Удалённо - Работа и вакансии' state=candidate
+id=54 @astya_r tg=1234213254 title='ПОМОГАТОР | ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА' state=candidate
+id=56 @uvetrovoi tg=1684134475 title='ФРИЛАНС' state=candidate
+id=59 @vacancysmm tg=1308418619 title='SMM работа, вакансии, фриланс' state=candidate
+id=67 @rueventjob4at tg=1418651811 title='rueventjob4at' state=candidate
+id=68 @dmitriy_content tg=1871985623 title='Связь с администратором. Пишите по поводу рекламы и подомным предложениям' state=candidate
+id=77 @worldeventjob tg=1422305543 title='worldeventjob' state=candidate
+id=80 @talentedpeoples tg=1283023213 title='talentedpeoples' state=candidate
+id=83 @freelanceeboom tg=1935424927 title='Копирайтер на фрилансе? Заходи!' state=candidate
+id=90 @designer_vacancies tg=1964574584 title='Вакансии для дизайнеров' state=candidate
+id=91 @polyaluzjob tg=1253405554 title='ФРИЛАНСИКИ' state=candidate
+id=92 @normrabota tg=1113237926 title='Норм работа' state=candidate
+id=93 @rabota_is_doma_vakansii tg=1316517472 title='РАБОТА ИЗ ДОМА | ВАКАНСИИ' state=candidate
+id=94 @worksvsem tg=1551880614 title='Удалёнка для всех' state=candidate
+id=114 @frilancekomfort tg=1226791971 title='Работа в комфорте🧘\u200d♀' state=candidate
+id=128 @nodejsrussia tg=1463891195 title='Node.js Russia' state=candidate
+id=129 @ancient_web tg=2095179199 title='ancient_web' state=candidate
+id=130 @seohr tg=1017371671 title='SEO HR, digital-вакансии, офис и удалёнка' state=candidate
+id=131 @freelancetaverna tg=1799919407 title='Фриланс Таверна Official | Вакансии Удаленная работа' state=candidate
+id=132 @over100 tg=1265252992 title='Работа в Digital от 100 000 рублей или 1200 долларов' state=candidate
+id=133 @dnative_job tg=1101692370 title='Вакансии SMM и Digital' state=candidate
+id=134 @distantsiya2 tg=2009862743 title='ВАКАНСИИ фрилансеру' state=candidate
+id=135 @stage_1st tg=1218368406 title='Первая ступень' state=candidate
+id=136 @proffreelancee tg=1380804755 title='НАСТОЯЩИЙ ФРИЛАНС | Удаленная Работа' state=candidate
+id=137 @digitaltalks tg=1204160156 title='DIGITAL Talks / Freelance' state=candidate
+id=138 @theremoterz tg=1188809272 title='Remoter @ удаленщики да фрилансёры' state=candidate
+id=139 @mirrox_hub tg=1984571852 title='Бредни автоматизатора' state=candidate
+id=140 @makwin_vpn tg=4302895228 title='Маквин VPN🏎' state=candidate
+id=141 @golang_google tg=1360992328 title='Golang' state=candidate
+id=142 @vueist tg=1996418937 title='Vueist' state=candidate
+id=143 @haccking tg=1071752104 title='Life-Hack - Хакер' state=candidate
+id=144 @shakinru tg=1087286179 title='SEO канал Михаила Шакина' state=candidate
+id=145 @bakushevaseo tg=1134879272 title='SEOшница' state=candidate
+id=146 @seosekretiki tg=1208173854 title='SEO-секретики' state=candidate
+id=147 @burzhunet tg=1272357680 title='Англоязычное SEO' state=candidate
+id=148 @marketing_jobs tg=1122046018 title='🎯 marketing jobs — вакансии для маркетологов' state=candidate
+id=149 @seopraktika tg=1034172520 title='SEO практика | Кравцов Виталий' state=candidate
+id=150 @seoantteam tg=1496055678 title='SEO от Ant-Team' state=candidate
+id=151 @hr_chat tg=1349851439 title='🏠 Digital HR chat' state=candidate
+id=152 @distantsiya tg=1000735083 title='Дистанция' state=candidate
+id=153 @naudalenkebro tg=1375081471 title='Удаленка 2.0 | Finder.work' state=candidate
+id=154 @seowork_hub tg=1441044941 title='Дата Хаб | про SEO, директ, ИИ и онлайн продажи' state=candidate
+id=155 @devshr tg=1221965845 title='DEVs HR - вакансии для разработчиков' state=candidate
+id=156 @forallmarketing tg=1390355862 title='Job for Marketing' state=candidate
+id=157 @vacanciesrus tg=1005154620 title='Digital вакансии в Telegram' state=candidate
+id=158 @digital_expertise tg=1143721014 title='Центр диджитал экспертизы' state=candidate
+id=159 @seo_feya_and_ranking_factors tg=1207734569 title='SEO_feya и факторы ранжирования' state=candidate
+id=160 @dnative_job100 tg=1773695891 title='Dnative Job 150k+' state=candidate
+id=161 @huggabletalents tg=1648398214 title='A-Teams | Карьера' state=candidate
+id=162 @budujobs tg=1254975956 title='БУДУ' state=candidate
+id=163 @dnative tg=1096245320 title='DNative — блог Ткачука про SMM' state=candidate
+id=164 @theblueprintcareer tg=1134514798 title='«Карьера» The Blueprint' state=candidate
+id=165 @vacantcist tg=1910685351 title='чатик вакансий' state=candidate
+id=166 @olzori tg=1613122560 title='OLZORI - полезные советы для кожи' state=candidate
+id=167 @birgasofi tg=1741553302 title='БИРЖА ТРУДА Кристины Софи' state=candidate
+id=168 @design_profii tg=1842885237 title='Design Profi (Фриланс)' state=candidate
+id=169 @profimika tg=4330163564 title='profimika' state=candidate
+id=170 @theypaywell tg=1357231748 title='Вакансии с ЗП выше 100 тысяч' state=candidate
+id=171 @chooseajob tg=1345983576 title='Выбери Работу: работа - вакансии' state=candidate
+id=172 @partnerkin_job tg=1192851538 title='Вакансии: Арбитраж трафика, SEO, Affiliate [Партнеркин]' state=candidate
+id=173 @businessatmosphere tg=1437658163 title='Бизнес Атмосфера' state=candidate
+id=174 @kadrof_work tg=1367389085 title='Вакансии для фрилансеров, удаленная работа' state=candidate
+id=175 @design_nastaciia tg=1951065164 title='ВЕБ-ДИЗАЙНЕР 🌿🤍' state=candidate
+id=176 @linkedin_salaries_central tg=3943914149 title='🆓💼🌍 Linkedin Salaries Central' state=candidate
+id=177 @seniinnusername tg=3447062987 title='ИНФОГРАФИКА WB/OZON😍😍' state=candidate
+id=178 @workk_onstream tg=1175348966 title='WORK ON | STREAM' state=candidate
+id=179 @workk_onhr tg=1798198950 title='WORK ON | HR' state=candidate
+id=180 @frelanserr tg=1977181984 title='Вакансии каждый день' state=candidate
+id=181 @freelancebay tg=1254078712 title='Бухта Фриланса' state=candidate
+id=182 @proffreelancee_chat tg=1273061948 title='НАСТОЯЩИЙ ФРИЛАНС ЧАТ №1' state=candidate
+
+NOTE: run_type=graph only; keyword/global search was NOT started.

@@ -78,6 +78,52 @@ async def test_coordinator_starts_named_loops_not_deferred(db_env) -> None:
 
 
 @pytest.mark.asyncio
+async def test_initial_connect_failure_recovers_once(db_env) -> None:
+    class RecoveringGateway(FakeTelegramGateway):
+        def __init__(self) -> None:
+            super().__init__()
+            self.connect_calls = 0
+
+        async def connect(self):
+            self.connect_calls += 1
+            if self.connect_calls == 1:
+                raise OSError("temporary")
+            return await super().connect()
+
+    registry = reset_health_registry()
+    gateway = RecoveringGateway()
+    coordinator = RuntimeCoordinator(
+        idle_seconds=0.05,
+        periodic_reconcile_seconds=3600,
+        reconnect_delays=(0.01,),
+    )
+
+    await coordinator.start(registry, gateway=gateway)
+    assert coordinator.gateway is gateway
+    assert coordinator._connection_task is not None
+    await asyncio.wait_for(coordinator._connection_task, timeout=1)
+
+    assert gateway.connect_calls == 2
+    assert coordinator._telegram_loops_started is True
+    assert coordinator.named_loops_running()["live_updates"] is True
+    await coordinator.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_invalid_proxy_keeps_non_telegram_runtime_available(db_env) -> None:
+    registry = reset_health_registry()
+    coordinator = RuntimeCoordinator(connection_error_reason="telegram_proxy_invalid")
+
+    await coordinator.start(registry)
+
+    assert coordinator.gateway is None
+    assert coordinator.start_disabled_reason == "telegram_proxy_invalid"
+    assert registry.components["collector"].state is HealthState.BLOCKED
+    assert coordinator.named_loops_running()["processing"] is True
+    await coordinator.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_one_loop_failure_does_not_kill_siblings(db_env) -> None:
     registry = reset_health_registry()
     gateway = FakeTelegramGateway()

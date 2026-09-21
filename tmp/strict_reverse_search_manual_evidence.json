@@ -1,0 +1,142 @@
+{
+  "accepted": [
+    {
+      "username": "freelancesam",
+      "orders": [
+        {
+          "message_id": 6122912,
+          "published_at": "2026-09-15T10:24:33+00:00",
+          "author_id": 6037405131,
+          "permalink": "https://t.me/freelancesam/6122912",
+          "manual_verdict": "valid",
+          "summary": "Нужен опытный создатель лендинга."
+        },
+        {
+          "message_id": 6122515,
+          "published_at": "2026-09-15T06:47:59+00:00",
+          "author_id": 6321604473,
+          "permalink": "https://t.me/freelancesam/6122515",
+          "manual_verdict": "valid",
+          "summary": "Ищет исполнителя для создания сайта."
+        },
+        {
+          "message_id": 6107796,
+          "published_at": "2026-09-09T18:36:15+00:00",
+          "author_id": 8974579911,
+          "permalink": "https://t.me/freelancesam/6107796",
+          "manual_verdict": "valid",
+          "summary": "Платный заказ на техническую проверку страниц сайта."
+        }
+      ],
+      "activity": {
+        "passed": true,
+        "history_complete": true,
+        "messages": 21246,
+        "days": 15,
+        "authors": 486
+      }
+    },
+    {
+      "username": "vakansi_chat",
+      "orders": [
+        {
+          "message_id": 7573117,
+          "published_at": "2026-09-15T09:42:19+00:00",
+          "author_id": 7268197382,
+          "permalink": "https://t.me/vakansi_chat/7573117",
+          "manual_verdict": "valid",
+          "summary": "Ищет специалиста по интеграции 1С с сайтом."
+        },
+        {
+          "message_id": 7572381,
+          "published_at": "2026-09-15T01:41:23+00:00",
+          "author_id": 6037405131,
+          "permalink": "https://t.me/vakansi_chat/7572381",
+          "manual_verdict": "valid",
+          "summary": "Нужен опытный создатель лендинга."
+        },
+        {
+          "message_id": 7569263,
+          "published_at": "2026-09-13T21:01:47+00:00",
+          "author_id": 8931061236,
+          "permalink": "https://t.me/vakansi_chat/7569263",
+          "manual_verdict": "valid",
+          "summary": "Ищет разработчика для страницы на Tilda и интеграций."
+        }
+      ],
+      "activity": {
+        "passed": true,
+        "history_complete": true,
+        "messages": 22960,
+        "days": 15,
+        "authors": 537
+      }
+    },
+    {
+      "username": "chat_frilans",
+      "orders": [
+        {
+          "message_id": 8662240,
+          "published_at": "2026-09-15T10:25:02+00:00",
+          "author_id": 6037405131,
+          "permalink": "https://t.me/chat_frilans/8662240",
+          "manual_verdict": "valid",
+          "summary": "Нужен опытный создатель лендинга."
+        },
+        {
+          "message_id": 8661805,
+          "published_at": "2026-09-15T06:48:27+00:00",
+          "author_id": 6321604473,
+          "permalink": "https://t.me/chat_frilans/8661805",
+          "manual_verdict": "valid",
+          "summary": "Ищет исполнителя для создания сайта."
+        },
+        {
+          "message_id": 8645637,
+          "published_at": "2026-09-09T10:00:00+00:00",
+          "author_id": 5966442666,
+          "permalink": "https://t.me/chat_frilans/8645637",
+          "manual_verdict": "valid",
+          "summary": "Платный заказ на техническую проверку страниц сайта."
+        }
+      ],
+      "activity": {
+        "passed": true,
+        "history_complete": true,
+        "messages": 15043,
+        "days": 15,
+        "authors": 226
+      }
+    }
+  ],
+  "rejected": [
+    {
+      "username": "botoid",
+      "reason": "Нет прямых заказов: обсуждения и реклама."
+    },
+    {
+      "username": "work_it_tg",
+      "reason": "Нет прямых заказов: реклама исполнителей."
+    },
+    {
+      "username": "frilancru",
+      "reason": "Нет трех заказов от разных авторов: почти все совпадения являются рекламой исполнителей, реальные запросы дублируются одним автором."
+    },
+    {
+      "username": "getfrilans",
+      "reason": "Только один прямой технический заказ."
+    },
+    {
+      "username": "proffreelancee_chat",
+      "reason": "Нет трех прямых технических заказов от разных авторов."
+    },
+    {
+      "username": "pomogator1",
+      "reason": "Есть три старых запроса, но последний допустимый заказ опубликован более семи дней назад."
+    },
+    {
+      "username": "frilanc",
+      "reason": "Только один прямой технический заказ."
+    }
+  ]
+}

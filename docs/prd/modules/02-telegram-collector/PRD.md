@@ -166,7 +166,7 @@ Job имеет type `initial_backfill`, `startup_reconciliation`, `periodic_reco
 
 ### COL-020 — Connection recovery
 
-При disconnect Gateway переподключается через `1`, `5`, `30`, `120`, затем каждые `300` секунд без ограничения числа попыток. После reconnect снова запускается `iter_updates` и startup reconciliation.
+При startup connect failure или disconnect Gateway переподключается через `1`, `5`, `30`, `120`, `300`, затем каждые `300` секунд без ограничения числа попыток. Один Gateway сохраняется, а Telegram loops, `iter_updates` и startup reconciliation запускаются после успешного connect ровно один раз.
 
 ### COL-021 — Keyword search ports
 
@@ -219,6 +219,10 @@ COL exposes neutral `TelegramRequestController` through a default-null context v
 
 When a graph request controller is in context, `ControlledTelegramClient._call` MUST apply one deadline of **30 seconds** to the entire graph `_call` (exclusive-lock wait **plus** raw RPC), not 30+30. Python 3.12 `Condition.wait_for` has no `timeout`; exclusive acquire MUST use timer+cancel wakers and `wait_for(predicate)` in the same task. After decrementing `waiting_writers`, `notify_all` is required. After exclusive is held, remaining time is recomputed; `remaining <= 0` MUST raise `GatewayTimeout` without starting RPC. Otherwise RPC is `asyncio.wait({rpc_task, cancel_wait}, timeout=remaining, FIRST_COMPLETED)`. On timeout or `GraphCallCancelled` the waiter MUST NOT `cancel()` or `await` the RPC task (orphan allowed); restore settings on the waiter side only. HTTP MUST NOT `notify_all`. `GraphCallCancelled` is a `RequestControlError`, not `asyncio.CancelledError` and not `GatewayTimeout`. Ordinary `shared()` path has no 30 s deadline (COL-028). FloodWait on an orphan RPC MUST NOT terminalize the graph run.
 
+### COL-031 — System proxy transport (D-078)
+
+Gateway MUST принимать neutral connection config и передавать Telethon proxy dict только для `route=system_proxy`. Поддерживаются HTTP CONNECT, SOCKS5 и SOCKS4; SOCKS использует remote DNS. При отсутствии `python-socks[asyncio]` proxy connection MUST fail closed с `telegram_proxy_dependency_missing`. Raw proxy material не входит в exception message.
+
 ## 8. Data ownership
 
 Модуль владеет `CollectorCheckpoint`, semantics `CollectionJob`, `TelegramEventEnvelope`, `TelegramPeerRef` gateway DTO и runtime health. Он не владеет `TelegramSource.state` и публикует запрос состояния его владельцу.
@@ -264,7 +268,7 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-030. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-031. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -300,6 +304,7 @@ MVP включает COL-001—COL-030. Исключены multiple sessions, ac
 | `AT-COL-028` | COL-028 | Intercept raw graph sender; batch/nested/error/cancel/offline-cache fixtures; ordinary concurrent reader | One sender call; limit 100; no graph retry; settings restored; cache causes zero network; ordinary path unchanged |
 | `AT-COL-029` | COL-029 | Raw history fixture with human/bot/channel/anonymous authors and 100 posts | One sender call; edges and all message fields returned; no author lookup; raw author identity not persisted by COL |
 | `AT-COL-030` | COL-030 | Infinite shared reader; swallow-cancel RPC after exclusive; Event during exclusive wait | `GatewayTimeout` within test deadline 0.2 s wall ≤1 s, `_writer is False`, `_waiting_writers == 0`, later ordinary `shared()` `_call` completes, settings restored; waiter `GatewayTimeout` without awaiting orphan; `GraphCallCancelled` ≤1 s not `GatewayTimeout` |
+| `AT-COL-031` | COL-031 | Inject direct, HTTP, SOCKS5 and missing dependency configs into adapter | Telethon receives exact safe proxy dict only for proxy routes; dependency failure is closed and contains no proxy material |
 
 ## 14. Принятые записи decision log
 

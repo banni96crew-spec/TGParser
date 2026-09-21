@@ -1,0 +1,1259 @@
+[
+  {
+    "id": 129,
+    "username_normalized": "ancient_web",
+    "title": "ancient_web",
+    "telegram_id": 2095179199,
+    "access_hash": 7923553206120081315,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 54,
+    "username_normalized": "astya_r",
+    "title": "ПОМОГАТОР | ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА",
+    "telegram_id": 1234213254,
+    "access_hash": 2795873069845284747,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 145,
+    "username_normalized": "bakushevaseo",
+    "title": "SEOшница",
+    "telegram_id": 1134879272,
+    "access_hash": 393079529660522322,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 167,
+    "username_normalized": "birgasofi",
+    "title": "БИРЖА ТРУДА Кристины Софи",
+    "telegram_id": 1741553302,
+    "access_hash": -1928944906457879588,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 162,
+    "username_normalized": "budujobs",
+    "title": "БУДУ",
+    "telegram_id": 1254975956,
+    "access_hash": -4679806162730117687,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 147,
+    "username_normalized": "burzhunet",
+    "title": "Англоязычное SEO",
+    "telegram_id": 1272357680,
+    "access_hash": 2531642975199420765,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 173,
+    "username_normalized": "businessatmosphere",
+    "title": "Бизнес Атмосфера",
+    "telegram_id": 1437658163,
+    "access_hash": -7317727479167364490,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 171,
+    "username_normalized": "chooseajob",
+    "title": "Выбери Работу: работа - вакансии",
+    "telegram_id": 1345983576,
+    "access_hash": 4051079687045127135,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 175,
+    "username_normalized": "design_nastaciia",
+    "title": "ВЕБ-ДИЗАЙНЕР 🌿🤍",
+    "telegram_id": 1951065164,
+    "access_hash": -5424428957189380219,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 168,
+    "username_normalized": "design_profii",
+    "title": "Design Profi (Фриланс)",
+    "telegram_id": 1842885237,
+    "access_hash": 3785168925783149112,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 90,
+    "username_normalized": "designer_vacancies",
+    "title": "Вакансии для дизайнеров",
+    "telegram_id": 1964574584,
+    "access_hash": -284114487194885601,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 13,
+    "username_normalized": "designs_job",
+    "title": "Уголок дизайнера | Вакансии",
+    "telegram_id": 1731384171,
+    "access_hash": -8544898381136530034,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 21,
+    "username_normalized": "designs_squad",
+    "title": "Designs squad | Дизайн вакансии",
+    "telegram_id": 1835848655,
+    "access_hash": -7654898189572598035,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 155,
+    "username_normalized": "devshr",
+    "title": "DEVs HR - вакансии для разработчиков",
+    "telegram_id": 1221965845,
+    "access_hash": 7432226088430451035,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 158,
+    "username_normalized": "digital_expertise",
+    "title": "Центр диджитал экспертизы",
+    "telegram_id": 1143721014,
+    "access_hash": 701405906225454364,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 152,
+    "username_normalized": "distantsiya",
+    "title": "Дистанция",
+    "telegram_id": 1000735083,
+    "access_hash": 211939319535870768,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 134,
+    "username_normalized": "distantsiya2",
+    "title": "ВАКАНСИИ фрилансеру",
+    "telegram_id": 2009862743,
+    "access_hash": -2364965078545771187,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 163,
+    "username_normalized": "dnative",
+    "title": "DNative — блог Ткачука про SMM",
+    "telegram_id": 1096245320,
+    "access_hash": -7035565317428337109,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 133,
+    "username_normalized": "dnative_job",
+    "title": "Вакансии SMM и Digital",
+    "telegram_id": 1101692370,
+    "access_hash": -8143867195666523041,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 160,
+    "username_normalized": "dnative_job100",
+    "title": "Dnative Job 150k+",
+    "telegram_id": 1773695891,
+    "access_hash": -8689534334052305613,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 156,
+    "username_normalized": "forallmarketing",
+    "title": "Job for Marketing",
+    "telegram_id": 1390355862,
+    "access_hash": -6798971721672512601,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 16,
+    "username_normalized": "free_design1",
+    "title": "Pixel | Фриланс | Дизайн заказы | Работа в интернете",
+    "telegram_id": 2105035557,
+    "access_hash": 3986836491500375719,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 20,
+    "username_normalized": "freelancce",
+    "title": "ФРИЛАНС | ВАКАНСИИ | УДАЛЕНКА",
+    "telegram_id": 1485944670,
+    "access_hash": 1804957502858732208,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 181,
+    "username_normalized": "freelancebay",
+    "title": "Бухта Фриланса",
+    "telegram_id": 1254078712,
+    "access_hash": 5113979987604498222,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 83,
+    "username_normalized": "freelanceeboom",
+    "title": "Копирайтер на фрилансе? Заходи!",
+    "telegram_id": 1935424927,
+    "access_hash": 4714067692406885036,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 131,
+    "username_normalized": "freelancetaverna",
+    "title": "Фриланс Таверна Official | Вакансии Удаленная работа",
+    "telegram_id": 1799919407,
+    "access_hash": 4002310017893837162,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 180,
+    "username_normalized": "frelanserr",
+    "title": "Вакансии каждый день",
+    "telegram_id": 1977181984,
+    "access_hash": 471294894410216348,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 114,
+    "username_normalized": "frilancekomfort",
+    "title": "Работа в комфорте🧘‍♀",
+    "telegram_id": 1226791971,
+    "access_hash": 6383278006283948118,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 45,
+    "username_normalized": "frilanser_vacansii",
+    "title": "ФРИЛАНСЕР удаленная работа и вакансии",
+    "telegram_id": 1348489999,
+    "access_hash": -6262776253674422718,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 12,
+    "username_normalized": "getclient",
+    "title": "GetClient | Фриланс вакансии",
+    "telegram_id": 1674990228,
+    "access_hash": 8484408251234383756,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 141,
+    "username_normalized": "golang_google",
+    "title": "Golang",
+    "telegram_id": 1360992328,
+    "access_hash": 20610481453201973,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 143,
+    "username_normalized": "haccking",
+    "title": "Life-Hack - Хакер",
+    "telegram_id": 1071752104,
+    "access_hash": -6053957311930267701,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 161,
+    "username_normalized": "huggabletalents",
+    "title": "A-Teams | Карьера",
+    "telegram_id": 1648398214,
+    "access_hash": 6055483449244011830,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 19,
+    "username_normalized": "jobfortarget",
+    "title": "Вакансии для Таргетологов",
+    "telegram_id": 1362408356,
+    "access_hash": 949696407390717696,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 174,
+    "username_normalized": "kadrof_work",
+    "title": "Вакансии для фрилансеров, удаленная работа",
+    "telegram_id": 1367389085,
+    "access_hash": 7231677839746324726,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 176,
+    "username_normalized": "linkedin_salaries_central",
+    "title": "🆓💼🌍 Linkedin Salaries Central",
+    "telegram_id": 3943914149,
+    "access_hash": -8613878846969001230,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 140,
+    "username_normalized": "makwin_vpn",
+    "title": "Маквин VPN🏎",
+    "telegram_id": 4302895228,
+    "access_hash": -1912801880725903832,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 148,
+    "username_normalized": "marketing_jobs",
+    "title": "🎯 marketing jobs — вакансии для маркетологов",
+    "telegram_id": 1122046018,
+    "access_hash": -7889390250903600881,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 139,
+    "username_normalized": "mirrox_hub",
+    "title": "Бредни автоматизатора",
+    "telegram_id": 1984571852,
+    "access_hash": -7443398783346680570,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 25,
+    "username_normalized": "mpmanagers",
+    "title": "Менеджеры маркетплейсов | Вакансии",
+    "telegram_id": 1718248552,
+    "access_hash": -3363283992027612934,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 153,
+    "username_normalized": "naudalenkebro",
+    "title": "Удаленка 2.0 | Finder.work",
+    "telegram_id": 1375081471,
+    "access_hash": 1418895769391304033,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 128,
+    "username_normalized": "nodejsrussia",
+    "title": "Node.js Russia",
+    "telegram_id": 1463891195,
+    "access_hash": -2406102351336162397,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 92,
+    "username_normalized": "normrabota",
+    "title": "Норм работа",
+    "telegram_id": 1113237926,
+    "access_hash": 6616938705694994483,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 166,
+    "username_normalized": "olzori",
+    "title": "OLZORI - полезные советы для кожи",
+    "telegram_id": 1613122560,
+    "access_hash": -5230195132771055748,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 132,
+    "username_normalized": "over100",
+    "title": "Работа в Digital от 100 000 рублей или 1200 долларов",
+    "telegram_id": 1265252992,
+    "access_hash": 1574481915061476220,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 172,
+    "username_normalized": "partnerkin_job",
+    "title": "Вакансии: Арбитраж трафика, SEO, Affiliate [Партнеркин]",
+    "telegram_id": 1192851538,
+    "access_hash": 696573841466277663,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 91,
+    "username_normalized": "polyaluzjob",
+    "title": "ФРИЛАНСИКИ",
+    "telegram_id": 1253405554,
+    "access_hash": -5067854735118559041,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 136,
+    "username_normalized": "proffreelancee",
+    "title": "НАСТОЯЩИЙ ФРИЛАНС | Удаленная Работа",
+    "telegram_id": 1380804755,
+    "access_hash": -5221997512965909349,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 169,
+    "username_normalized": "profimika",
+    "title": "profimika",
+    "telegram_id": 4330163564,
+    "access_hash": -8769461015158224365,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 93,
+    "username_normalized": "rabota_is_doma_vakansii",
+    "title": "РАБОТА ИЗ ДОМА | ВАКАНСИИ",
+    "telegram_id": 1316517472,
+    "access_hash": -2265496072473965983,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 17,
+    "username_normalized": "rueventjob",
+    "title": "Удаленка - вся творческая работа",
+    "telegram_id": 1329809676,
+    "access_hash": 6328095508382651470,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 42,
+    "username_normalized": "searcher_freelance",
+    "title": "СЁРЧЕР | ВАКАНСИИ | УДАЛЕНКА",
+    "telegram_id": 2131884646,
+    "access_hash": -2366961946259306967,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 177,
+    "username_normalized": "seniinnusername",
+    "title": "ИНФОГРАФИКА WB/OZON😍😍",
+    "telegram_id": 3447062987,
+    "access_hash": -4027780536538376763,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 159,
+    "username_normalized": "seo_feya_and_ranking_factors",
+    "title": "SEO_feya и факторы ранжирования",
+    "telegram_id": 1207734569,
+    "access_hash": 8245297592433745986,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 150,
+    "username_normalized": "seoantteam",
+    "title": "SEO от Ant-Team",
+    "telegram_id": 1496055678,
+    "access_hash": -4647221974219021119,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 130,
+    "username_normalized": "seohr",
+    "title": "SEO HR, digital-вакансии, офис и удалёнка",
+    "telegram_id": 1017371671,
+    "access_hash": -5063578396020376807,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 149,
+    "username_normalized": "seopraktika",
+    "title": "SEO практика | Кравцов Виталий",
+    "telegram_id": 1034172520,
+    "access_hash": 1850309446323082093,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 146,
+    "username_normalized": "seosekretiki",
+    "title": "SEO-секретики",
+    "telegram_id": 1208173854,
+    "access_hash": -6734306398092517452,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 154,
+    "username_normalized": "seowork_hub",
+    "title": "Дата Хаб | про SEO, директ, ИИ и онлайн продажи",
+    "telegram_id": 1441044941,
+    "access_hash": -6112799718824211968,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 144,
+    "username_normalized": "shakinru",
+    "title": "SEO канал Михаила Шакина",
+    "telegram_id": 1087286179,
+    "access_hash": -2647783442925187967,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 41,
+    "username_normalized": "sova_freelance",
+    "title": "СОВА на ФРИЛАНСЕ 🦉",
+    "telegram_id": 1386609786,
+    "access_hash": 377309210815123783,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 135,
+    "username_normalized": "stage_1st",
+    "title": "Первая ступень",
+    "telegram_id": 1218368406,
+    "access_hash": -462305760968803233,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 80,
+    "username_normalized": "talentedpeoples",
+    "title": "talentedpeoples",
+    "telegram_id": 1283023213,
+    "access_hash": 5356443976113765734,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 164,
+    "username_normalized": "theblueprintcareer",
+    "title": "«Карьера» The Blueprint",
+    "telegram_id": 1134514798,
+    "access_hash": 3878567650023236130,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 170,
+    "username_normalized": "theypaywell",
+    "title": "Вакансии с ЗП выше 100 тысяч",
+    "telegram_id": 1357231748,
+    "access_hash": -2014810166416865392,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 22,
+    "username_normalized": "traffic_jobs",
+    "title": "Таргет | Арбитраж | Вакансии",
+    "telegram_id": 1588181790,
+    "access_hash": -1400922224456985025,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 50,
+    "username_normalized": "udafrii",
+    "title": "Удалённо - Работа и вакансии",
+    "telegram_id": 1476261781,
+    "access_hash": 841570656936260434,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 56,
+    "username_normalized": "uvetrovoi",
+    "title": "ФРИЛАНС",
+    "telegram_id": 1684134475,
+    "access_hash": 8060407459676532936,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 157,
+    "username_normalized": "vacanciesrus",
+    "title": "Digital вакансии в Telegram",
+    "telegram_id": 1005154620,
+    "access_hash": 8623800040312446688,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 59,
+    "username_normalized": "vacancysmm",
+    "title": "SMM работа, вакансии, фриланс",
+    "telegram_id": 1308418619,
+    "access_hash": -6160807064193697251,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 165,
+    "username_normalized": "vacantcist",
+    "title": "чатик вакансий",
+    "telegram_id": 1910685351,
+    "access_hash": -2387906654522076614,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 29,
+    "username_normalized": "vakansi_rus",
+    "title": "Creative Freelancer",
+    "telegram_id": 1548363362,
+    "access_hash": 368621281755013305,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 18,
+    "username_normalized": "vakansii_design",
+    "title": "🎨 Таверна Дизайна | РАБОТА | вакансии чат",
+    "telegram_id": 1973445337,
+    "access_hash": 7776091360778899890,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 142,
+    "username_normalized": "vueist",
+    "title": "Vueist",
+    "telegram_id": 1996418937,
+    "access_hash": 7681870836368801711,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 27,
+    "username_normalized": "workfordesigner",
+    "title": "Дизайнер? Есть работа!",
+    "telegram_id": 1938067478,
+    "access_hash": 215367801014702223,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 15,
+    "username_normalized": "workk_on",
+    "title": "WORK ON",
+    "telegram_id": 1303819569,
+    "access_hash": 6394760452145695592,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 179,
+    "username_normalized": "workk_onhr",
+    "title": "WORK ON | HR",
+    "telegram_id": 1798198950,
+    "access_hash": 1576751289076526184,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 178,
+    "username_normalized": "workk_onstream",
+    "title": "WORK ON | STREAM",
+    "telegram_id": 1175348966,
+    "access_hash": -3549637153330017028,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 94,
+    "username_normalized": "worksvsem",
+    "title": "Удалёнка для всех",
+    "telegram_id": 1551880614,
+    "access_hash": -8327378379225687498,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 77,
+    "username_normalized": "worldeventjob",
+    "title": "worldeventjob",
+    "telegram_id": 1422305543,
+    "access_hash": -3345625948295773072,
+    "source_type": "channel",
+    "status": "rejected",
+    "reason": "not_megagroup"
+  },
+  {
+    "id": 137,
+    "username_normalized": "digitaltalks",
+    "title": "DIGITAL Talks / Freelance",
+    "telegram_id": 1204160156,
+    "access_hash": -1175334339734049843,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 32,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 18,
+      "activity_active_day_count": 8,
+      "activity_distinct_author_count": 0,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 6,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": false,
+      "activity_days": false,
+      "activity_authors": false,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": []
+  },
+  {
+    "id": 68,
+    "username_normalized": "dmitriy_content",
+    "title": "Связь с администратором. Пишите по поводу рекламы и подомным предложениям",
+    "telegram_id": 1871985623,
+    "access_hash": -4458305230144084032,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 0,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 0,
+      "activity_active_day_count": 0,
+      "activity_distinct_author_count": 0,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 0,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": false,
+      "activity_days": false,
+      "activity_authors": false,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": []
+  },
+  {
+    "id": 23,
+    "username_normalized": "getfrilans",
+    "title": "GetFrilans | Чат фрилансеров",
+    "telegram_id": 1669984427,
+    "access_hash": 1479394461147775523,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 1500,
+    "stop_reason": "source_cap",
+    "counters": {
+      "activity_message_count": 999,
+      "activity_active_day_count": 15,
+      "activity_distinct_author_count": 104,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 127,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": true,
+      "activity_days": true,
+      "activity_authors": true,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": [
+      {
+        "date": "2026-09-06",
+        "link": "https://t.me/getfrilans/742080",
+        "category": "contractor_search",
+        "summary": "#помогу #техспец #технический_специалист Ищу проект/команду на позицию технического специалиста. Работаю с GetCourse, Tilda, amoCRM/Kommo, Telegram-ботами, рассылками, оплатами, ве"
+      },
+      {
+        "date": "2026-08-31",
+        "link": "https://t.me/getfrilans/739424",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. СЕЙЧАС ДЕЛАЮ СКИДКИ: Для н"
+      },
+      {
+        "date": "2026-08-31",
+        "link": "https://t.me/getfrilans/739309",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. СЕЙЧАС ДЕЛАЮ СКИДКИ: Для н"
+      },
+      {
+        "date": "2026-08-30",
+        "link": "https://t.me/getfrilans/739049",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. ЧТО МОГУ СДЕЛАТЬ: Telegram"
+      },
+      {
+        "date": "2026-08-29",
+        "link": "https://t.me/getfrilans/738424",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт #запуск Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понят"
+      },
+      {
+        "date": "2026-08-28",
+        "link": "https://t.me/getfrilans/737978",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. ЧТО МОГУ СДЕЛАТЬ: Telegram"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/getfrilans/737102",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. ЧТО МОГУ СДЕЛАТЬ: Telegram"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/getfrilans/737056",
+        "category": "contractor_search",
+        "summary": "Ребята, всем привет. Попал в жесткую финансовую яму, нужно закрыть срочные платежи. Поэтому ищу заказы здесь и сейчас. Работаю качественно, но из-за ситуации цены снижаю, главное —"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/getfrilans/736827",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт #запуск Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понят"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/getfrilans/736780",
+        "category": "direct_order",
+        "summary": "❤Меня зовут Рузанна, создаю сайты и презентации с нуля под ключ — от идеи и структуры до готового продающего дизайна, без посредников и лишних вопросов. Вам не нужно ничего продумы"
+      },
+      {
+        "date": "2026-08-24",
+        "link": "https://t.me/getfrilans/736727",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. ЧТО МОГУ СДЕЛАТЬ: Telegram"
+      },
+      {
+        "date": "2026-08-24",
+        "link": "https://t.me/getfrilans/736640",
+        "category": "direct_order",
+        "summary": "РАЗРАБАТЫВАЮ САЙТЫ И TELEGRAM-БОТОВ ДЛЯ БИЗНЕСА Я fullstack-разработчик из Минска. Работаю с магазинами одежды, услугами, мастерами и небольшим бизнесом. ЧТО МОГУ СДЕЛАТЬ: Telegram"
+      },
+      {
+        "date": "2026-08-24",
+        "link": "https://t.me/getfrilans/736441",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт #запуск Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понят"
+      },
+      {
+        "date": "2026-08-23",
+        "link": "https://t.me/getfrilans/736311",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт #запуск Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понят"
+      },
+      {
+        "date": "2026-08-21",
+        "link": "https://t.me/getfrilans/735514",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понятно донос"
+      },
+      {
+        "date": "2026-08-20",
+        "link": "https://t.me/getfrilans/735270",
+        "category": "direct_order",
+        "summary": "#digital #вебдизайнер #сайт Всем привет! Я Ксюша, веб-дизайнер 💻🌸 Создаю сайты, презентации и цифровые материалы, которые помогают бизнесу выглядеть профессионально и понятно донос"
+      },
+      {
+        "date": "2026-08-20",
+        "link": "https://t.me/getfrilans/735050",
+        "category": "direct_order",
+        "summary": "Люди, есть тут те, кому нужен Telegram-бот, мини-приложение или автоматизация для бизнеса? Знаю команду, которая занимается такими разработками под заказ. Могу познакомить, если ак"
+      }
+    ]
+  },
+  {
+    "id": 151,
+    "username_normalized": "hr_chat",
+    "title": "🏠 Digital HR chat",
+    "telegram_id": 1349851439,
+    "access_hash": -7659484384299694065,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 34,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 11,
+      "activity_active_day_count": 8,
+      "activity_distinct_author_count": 0,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 31,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": false,
+      "activity_days": false,
+      "activity_authors": false,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": []
+  },
+  {
+    "id": 182,
+    "username_normalized": "proffreelancee_chat",
+    "title": "НАСТОЯЩИЙ ФРИЛАНС ЧАТ №1",
+    "telegram_id": 1273061948,
+    "access_hash": 7445903646824200484,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 187,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 92,
+      "activity_active_day_count": 14,
+      "activity_distinct_author_count": 27,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 29,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": false,
+      "activity_days": true,
+      "activity_authors": true,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": [
+      {
+        "date": "2026-09-03",
+        "link": "https://t.me/proffreelancee_chat/2944289",
+        "category": "direct_order",
+        "summary": "#помогу #getcourse #геткурс #техспец #salebot Приветствую 👋 Меня зовут Станислав, я технический специалист онлайн-проектов. Настраиваю онлайн-школы, автоматизацию и чат-боты под кл"
+      }
+    ]
+  },
+  {
+    "id": 67,
+    "username_normalized": "rueventjob4at",
+    "title": "rueventjob4at",
+    "telegram_id": 1418651811,
+    "access_hash": 2755788921652980753,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 401,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 156,
+      "activity_active_day_count": 14,
+      "activity_distinct_author_count": 5,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 146,
+      "unknown_author_message_count": 131,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": true,
+      "activity_days": true,
+      "activity_authors": false,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": [
+      {
+        "date": "2026-09-06",
+        "link": "https://t.me/rueventjob4at/266483",
+        "category": "contractor_search",
+        "summary": "(#Удаленка) Требуется #тестировщик приложений / QA-инженер В команду стартапа ищем внимательного специалиста для проверки сайтов и мобильных приложений перед релизом. Отличный стар"
+      },
+      {
+        "date": "2026-09-05",
+        "link": "https://t.me/rueventjob4at/266439",
+        "category": "direct_order",
+        "summary": "✍️ (#Удаленка) Требуются пятичные творческие специалисты: 1. #Бренд_дизайнер Нужно по AI-макету отрисовать логотип в векторе с несколькими цветовыми и дизайнерскими решениями, а та"
+      },
+      {
+        "date": "2026-09-02",
+        "link": "https://t.me/rueventjob4at/265993",
+        "category": "direct_order",
+        "summary": "✍️ (#Удаленка) Требуются обязательные творческие специалисты: 1. #Монтажер_reels Нужно собрать с нуля Reels с анимационным монтажом. При отклике сразу присылайте примеры аналогичны"
+      },
+      {
+        "date": "2026-08-30",
+        "link": "https://t.me/rueventjob4at/265474",
+        "category": "direct_order",
+        "summary": "✍️ (#Удаленка) Требуются крепкие творческие специалисты: 1. #3D_визуализатор Нужен начинающий дизайнер интерьеров ищет 3D-визуализатора для сотрудничества. Важно уметь качественно "
+      },
+      {
+        "date": "2026-08-27",
+        "link": "https://t.me/rueventjob4at/264976",
+        "category": "contractor_search",
+        "summary": "✍️ (#Удаленка) Требуются активные творческие специалисты: 1. #Графдизайнер Ответственный дизайнер в команду. При отклике нужно сразу отправить портфолио. 📝@alinochkagru 2. #3d_диза"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/rueventjob4at/264666",
+        "category": "direct_order",
+        "summary": "✍️ (#Удаленка) Требуются мощные творческие специалисты: 1. #Графдизайнер со знаниями моушн-дизайна и UI/UX на постоянное сотрудничество. При отклике нужно сразу прислать информацию"
+      },
+      {
+        "date": "2026-08-22",
+        "link": "https://t.me/rueventjob4at/263944",
+        "category": "contractor_search",
+        "summary": "✍️ (#Удаленка) Требуются умные творческие специалисты: 1. #SMM для упаковки и последующего ведения Нельзяграм-аккаунта. При отклике необходимо сразу прислать примеры работ 📝 @redin"
+      },
+      {
+        "date": "2026-08-21",
+        "link": "https://t.me/rueventjob4at/263848",
+        "category": "direct_order",
+        "summary": "Требуется #дизайнер и #разработчик в образовательный проект. Нужно сделать дизайн нашего бренда + разработать сайт (на коде, Тильда не нужна) 📝 @annavarfolk"
+      },
+      {
+        "date": "2026-08-21",
+        "link": "https://t.me/rueventjob4at/263775",
+        "category": "direct_order",
+        "summary": "Требуется #webdeveloper / #webdesigner - с опытом сайтов для свадеб (нужно сделать систему project management пары, как темлейт мне, свадебному организатору, где можно менять блоки"
+      },
+      {
+        "date": "2026-08-19",
+        "link": "https://t.me/rueventjob4at/262944",
+        "category": "contractor_search",
+        "summary": "✍️ (#Удаленка) Требуются классные творческие специалисты: 1. #AI_креатор для создания качественных Reels с помощью нейросетей. При отклике необходимо прислать примеры AI-видео 📝 @a"
+      },
+      {
+        "date": "2026-08-16",
+        "link": "https://t.me/rueventjob4at/262343",
+        "category": "direct_order",
+        "summary": "Требуется #дизайнер- #верстальщик для создания сайта детского лагеря 🏕 Задача: собрать сайт по готовой структуре в конструкторе (Joomla/YOOtheme), используя уже готовые материалы —"
+      },
+      {
+        "date": "2026-08-13",
+        "link": "https://t.me/rueventjob4at/261653",
+        "category": "contractor_search",
+        "summary": "Ищем менеджера по партнерским интеграциям в маркетинговое агентство. Задачи: поиск и развитие партнерств, интеграция клиентов в мероприятия, запуск совместных проектов и развитие т"
+      },
+      {
+        "date": "2026-08-12",
+        "link": "https://t.me/rueventjob4at/261468",
+        "category": "contractor_search",
+        "summary": "(#Удаленка) Требуется #руководитель проектной группы Digital-маркетинг Haunds — агентство с 8-летним опытом, которое занимается платным трафиком преимущественно только для фитнес-к"
+      },
+      {
+        "date": "2026-08-12",
+        "link": "https://t.me/rueventjob4at/261442",
+        "category": "direct_order",
+        "summary": "✍️ (#Удаленка) Требуются активные творческие специалисты: 1. #Дизайнер одежды Бренду для работы над текущими и новыми проектами. Формат — гибкая проектная занятость. При отклике не"
+      },
+      {
+        "date": "2026-08-11",
+        "link": "https://t.me/rueventjob4at/261233",
+        "category": "contractor_search",
+        "summary": "#Удаленка #Копирайтер Ищем в команду человечка, который заберет тексты. Мы — молодая, дружная команда, работаем в проекте Лизы Дехнич (онлайн-школа графдизайна). Все на одной волне"
+      }
+    ]
+  },
+  {
+    "id": 138,
+    "username_normalized": "theremoterz",
+    "title": "Remoter @ удаленщики да фрилансёры",
+    "telegram_id": 1188809272,
+    "access_hash": 8324812770013835817,
+    "source_type": "megagroup",
+    "status": "partial",
+    "scanned": 73,
+    "stop_reason": "window_complete",
+    "counters": {
+      "activity_message_count": 39,
+      "activity_active_day_count": 14,
+      "activity_distinct_author_count": 1,
+      "client_request_count": 0,
+      "client_request_author_count": 0,
+      "hard_excluded_count": 40,
+      "unknown_author_message_count": 0,
+      "latest_client_request_at": null,
+      "profile_excluded_count": 0,
+      "matched_service_profiles": []
+    },
+    "thresholds": {
+      "activity_messages": false,
+      "activity_days": true,
+      "activity_authors": false,
+      "client_requests": false,
+      "client_authors": false,
+      "freshness": false
+    },
+    "evidence": [],
+    "rejected_candidates": [
+      {
+        "date": "2026-09-02",
+        "link": "https://t.me/theremoterz/9738",
+        "category": "direct_order",
+        "summary": "Ну как дела в школе? 😂 1. #Монтажер_reels Нужно собрать с нуля Reels с анимационным монтажом. При отклике сразу присылайте примеры аналогичных работ и стоимость за ролик 📝 @ritapro"
+      },
+      {
+        "date": "2026-08-30",
+        "link": "https://t.me/theremoterz/9695",
+        "category": "direct_order",
+        "summary": "Вы верите в светлое будущее? 😇 1. #3D_визуализатор Нужен начинающий дизайнер интерьеров ищет 3D-визуализатора для сотрудничества. Важно уметь качественно визуализировать интерьеры."
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/theremoterz/9647",
+        "category": "direct_order",
+        "summary": "Хотели бы уметь летать? 🐥 1. #Графдизайнер со знаниями моушн-🦜дизайна и UI/UX на постоянное сотрудничество. При отклике нужно сразу прислать информацию об опыте и релевантные кейсы"
+      },
+      {
+        "date": "2026-08-25",
+        "link": "https://t.me/theremoterz/9646",
+        "category": "contractor_search",
+        "summary": "#Удаленка #Редактор по информатике (ИТ) Рувики - новая интернет-энциклопедия. Наш продукт – Онлайн-энциклопедия, предоставляющая доступ к миллионам статей, изображений и видеоролик"
+      }
+    ]
+  }
+]

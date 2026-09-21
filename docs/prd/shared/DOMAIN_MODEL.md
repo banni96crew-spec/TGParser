@@ -52,6 +52,8 @@
 
 Reset to default записывает `reason=reset_to_default`.
 
+`telegram.proxy_mode` имеет закрытое значение `auto|direct`, default `auto`. Материал системного прокси (host, port, username, password) является только runtime-конфигурацией и не сохраняется в `OperatorSetting` или `SettingChange`.
+
 ### 3.2. Telegram account
 
 `TelegramAccount`

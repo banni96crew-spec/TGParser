@@ -52,6 +52,7 @@
 | SEC-016 | Scouting evidence MUST соблюдать D-056 с уточнением D-070/SEC-018: excerpt ≤240 code points; raw authors/media/full text запрещены; только pseudonymous `author_key` и closed `author_kind` разрешены в evidence persistence; logs, metrics, exports и UI не содержат excerpt или author fields. |
 | SEC-017 | Runtime MUST enforce Zero Stars (D-050): запрещены UI/settings controls для Stars и любая передача `allow_paid_stars`; security review/scan MUST fail при `allow_paid_stars != None`. |
 | SEC-018 | Scouting author data (D-070) MUST persist only `author_kind` and, for human users, source-scoped lowercase SHA-256 `author_key=SHA-256("active-chat-v1:"+source_telegram_id+":"+author_peer_id)`. Raw author ID/name/username is forbidden in all persistence. `author_key` is permitted only in evidence and cursor v2 for exact resume, and is forbidden in logs, metrics, exports and UI; raw ID exists in memory only until hashing. Key is pseudonymous, not claimed anonymous, is unlinkable across two source IDs and is purged with evidence/cursor/run after 90 days. HMAC is intentionally not introduced because the local single-operator threat model does not justify a new secret lifecycle. |
+| SEC-019 | Proxy host, port, username, password и raw WinINET value MUST существовать только в памяти процесса; persistence, logs, metrics, exports и UI запрещены. Redactor MUST закрывать proxy fields и URI credentials. |
 
 ## 5. Acceptance criteria
 
@@ -75,6 +76,7 @@
 | AT-SEC-016 | Evidence fixture с raw author/full text отклоняется или redacted; разрешены только утверждённые pseudonymous key/kind; outputs не содержат excerpt/authors. |
 | AT-SEC-017 | Static/runtime scan находит `allow_paid_stars is None` и отсутствие Stars UI controls. |
 | AT-SEC-018 | Same/different-source human plus non-human fixtures produce a stable 64-hex same-source key and different cross-source keys; key exists only in evidence/cursor and non-human does not count; raw identity is absent everywhere, key absent from log/metric/export/UI, and evidence/cursor/run purge removes it after 90 days. |
+| AT-SEC-019 | Proxy URI с credentials проходит через settings, logger и error paths | Ни host/port/username/password, ни raw URI не появляются в persistence или внешнем выводе; route/type/reason code остаются доступны |
 
 ## 6. Входные и выходные контракты
 
@@ -111,7 +113,7 @@ Secret presence: `missing ↔ configured`; значения никогда не 
 
 ## 10. Security requirements
 
-Требования SEC-001—SEC-018 обязательны для всех runtime-модулей. Любой новый adapter, export или log sink обязан использовать централизованные secret provider и redactor; собственное чтение secret files модулем запрещено.
+Требования SEC-001—SEC-019 обязательны для всех runtime-модулей. Любой новый adapter, export или log sink обязан использовать централизованные secret provider и redactor; собственное чтение secret files модулем запрещено.
 
 ## 11. Observability
 
@@ -142,7 +144,7 @@ Secret presence: `missing ↔ configured`; значения никогда не 
 
 - `SEC-BOUNDARY`: AT-SEC-001, AT-SEC-010, AT-SEC-011, AT-SEC-012.
 - `SEC-SECRETS`: AT-SEC-002, AT-SEC-003, AT-SEC-004, AT-SEC-005, AT-SEC-006, AT-SEC-007, AT-SEC-008, AT-SEC-017.
-- `SEC-OUTPUT`: AT-SEC-009, AT-SEC-013, AT-SEC-014, AT-SEC-016, AT-SEC-018.
+- `SEC-OUTPUT`: AT-SEC-009, AT-SEC-013, AT-SEC-014, AT-SEC-016, AT-SEC-018, AT-SEC-019.
 - `SEC-RESTORE`: AT-SEC-015.
 
 ## 15. Decision log references

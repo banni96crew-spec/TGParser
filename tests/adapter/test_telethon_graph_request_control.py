@@ -179,6 +179,28 @@ async def test_cancelled_shared_waiter_does_not_corrupt_request_lock() -> None:
 
 
 @pytest.mark.asyncio
+async def test_reentrant_shared_call_completes_while_writer_is_waiting() -> None:
+    lock = _AsyncReadWriteLock()
+    writer_entered = asyncio.Event()
+
+    async def writer() -> None:
+        async with lock.exclusive():
+            writer_entered.set()
+
+    async with lock.shared():
+        writer_task = asyncio.create_task(writer())
+        while lock._waiting_writers == 0:
+            await asyncio.sleep(0)
+        async with asyncio.timeout(0.2):
+            async with lock.shared():
+                assert lock._readers == 1
+
+    await asyncio.wait_for(writer_task, timeout=0.2)
+    assert writer_entered.is_set()
+    assert lock._readers == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "error_factory",
     [

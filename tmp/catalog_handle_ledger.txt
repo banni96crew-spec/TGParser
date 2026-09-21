@@ -1,0 +1,3 @@
+@theremoterz | not_qualified | activity_messages,activity_authors,client_requests,client_authors,freshness
+@onlayn_rabota | not_qualified | activity_messages,client_requests,client_authors,freshness
+@bizneschats | not_qualified | client_requests,client_authors,freshness

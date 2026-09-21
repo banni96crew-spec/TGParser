@@ -73,3 +73,11 @@ def test_redaction_masks_sensitive() -> None:
     assert "s3cret" not in text
     assert REDACTED in text
     assert redact_event({"bot_token": "123:ABC", "n": 1})["bot_token"] == REDACTED
+    redacted_proxy = redact_event(
+        {"proxy_server": "secret.proxy:1080", "username": "alice", "route": "system_proxy"}
+    )
+    assert redacted_proxy == {
+        "proxy_server": REDACTED,
+        "username": REDACTED,
+        "route": "system_proxy",
+    }

@@ -37,6 +37,9 @@ from telegram_lead_discovery.observability.health import (
     reset_health_registry,
 )
 from telegram_lead_discovery.observability.logging import StructuredLogger, configure_logging
+from telegram_lead_discovery.processing.history_scan import (
+    claim_and_process_history_scan_job,
+)
 from telegram_lead_discovery.processing.pipeline import (
     ProcessingClaimLoop,
     recover_stale_envelopes,
@@ -166,6 +169,7 @@ class RuntimeCoordinator:
     processing_loop: ProcessingClaimLoop | None = field(default=None, repr=False)
     notification_loop: NotificationOutboxLoop | None = field(default=None, repr=False)
     collector_job_loop: SupervisedLoop | None = field(default=None, repr=False)
+    history_scan_loop: SupervisedLoop | None = field(default=None, repr=False)
     live_updates_loop: SupervisedLoop | None = field(default=None, repr=False)
     reconciliation_loop: SupervisedLoop | None = field(default=None, repr=False)
     watchdog_loop: SupervisedLoop | None = field(default=None, repr=False)
@@ -198,6 +202,9 @@ class RuntimeCoordinator:
             ),
             "collector_jobs": bool(
                 self.collector_job_loop is not None and self.collector_job_loop.running
+            ),
+            "history_scan": bool(
+                self.history_scan_loop is not None and self.history_scan_loop.running
             ),
             "live_updates": bool(
                 self.live_updates_loop is not None and self.live_updates_loop.running
@@ -347,6 +354,13 @@ class RuntimeCoordinator:
             idle_seconds=self.idle_seconds,
         )
         self.collector_job_loop.start()
+
+        self.history_scan_loop = SupervisedLoop(
+            name="history-scan-loop",
+            factory=self._history_scan_body,
+            idle_seconds=self.idle_seconds,
+        )
+        self.history_scan_loop.start()
 
         self.live_updates_loop = SupervisedLoop(
             name="live-updates-loop",
@@ -500,6 +514,27 @@ class RuntimeCoordinator:
                 if stop.is_set():
                     break
                 if claimed:
+                    await asyncio.sleep(0)
+                    continue
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=self.idle_seconds)
+                    break
+                except TimeoutError:
+                    continue
+
+        return _body
+
+    def _history_scan_body(self) -> Callable[[asyncio.Event], Any]:
+        async def _body(stop: asyncio.Event) -> None:
+            gateway = self.gateway
+            if gateway is None:
+                return
+            while not stop.is_set():
+                outcome = await claim_and_process_history_scan_job(gateway)
+                self._beat("history_scan")
+                if stop.is_set():
+                    break
+                if outcome is not None:
                     await asyncio.sleep(0)
                     continue
                 try:
@@ -671,7 +706,12 @@ class RuntimeCoordinator:
                 self._set_health(
                     "notifications", HealthState.DEGRADED, reason_code="loop_restarted"
                 )
-        for attr in ("collector_job_loop", "live_updates_loop", "reconciliation_loop"):
+        for attr in (
+            "collector_job_loop",
+            "history_scan_loop",
+            "live_updates_loop",
+            "reconciliation_loop",
+        ):
             loop = getattr(self, attr)
             if loop is not None and loop.ensure_running():
                 restarted.append(loop.name)
@@ -744,6 +784,7 @@ class RuntimeCoordinator:
             self.watchdog_loop,
             self.reconciliation_loop,
             self.collector_job_loop,
+            self.history_scan_loop,
             self.live_updates_loop,
         ):
             if loop is not None:
@@ -773,6 +814,7 @@ class RuntimeCoordinator:
             self.discovery_loop,
             self.graph_loop,
             self.collector_job_loop,
+            self.history_scan_loop,
             self.live_updates_loop,
             self.processing_loop,
             self.notification_loop,
@@ -794,6 +836,7 @@ class RuntimeCoordinator:
         self.discovery_loop = None
         self.graph_loop = None
         self.collector_job_loop = None
+        self.history_scan_loop = None
         self.live_updates_loop = None
         self.processing_loop = None
         self.notification_loop = None

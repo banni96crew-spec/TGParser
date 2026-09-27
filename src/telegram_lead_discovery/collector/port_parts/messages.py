@@ -24,6 +24,7 @@ class HistoryRequest:
         "periodic_reconciliation",
         "continuation",
         "scouting_verification",
+        "history_scan",
     ] = "backfill"
     continuation_cursor: str | None = None
 

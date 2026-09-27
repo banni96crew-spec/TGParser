@@ -14,6 +14,7 @@ from telegram_lead_discovery.dashboard.routes.health import (
     create_health_api_router,
     create_health_page_router,
 )
+from telegram_lead_discovery.dashboard.routes.history_scans import create_history_scans_router
 from telegram_lead_discovery.dashboard.routes.leads import create_leads_router
 from telegram_lead_discovery.dashboard.routes.settings import create_settings_router
 from telegram_lead_discovery.dashboard.routes.sources import create_sources_router
@@ -31,6 +32,7 @@ def create_app(*, gateway=None) -> FastAPI:
     app.include_router(create_sources_router())
     app.include_router(create_health_page_router())
     app.include_router(create_settings_router())
+    app.include_router(create_history_scans_router())
     app.include_router(create_discovery_router(templates))
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     return app

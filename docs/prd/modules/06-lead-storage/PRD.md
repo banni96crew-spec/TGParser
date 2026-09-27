@@ -326,6 +326,7 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-023 | STO-023 | Upgrade 007→008, insert/replay graph response, fault before next call, 30/90-day purge, downgrade | Schema/integrity valid; one row per message; committed response survives restart; text then row purged at boundaries |
 | AT-STO-024 | STO-024 | Upgrade 008→009→010; backfill ≥138 legacy rows; quality vs non_quality match; 7→8 and wrong-version block; rollback while run active | Head 010; suppress_class populated; only quality matches; unique_sources not zeroed by legacy; v8 catalogs exact; active-run rollback blocked; integrity ok |
 | AT-STO-025 | STO-025 | In-flight `job_type=discovery` with expired lease recovered via watchdog-path `recover_stale_jobs`; then drop id | Stays `running` while in-flight; after drop, STO-018 queued |
+| AT-STO-026 | STO-026 | Upgrade до head и очистка scan results age 24ч | Таблицы `history_scan_*` созданы, дубликат `(target,message)` невозможен, результаты старше 24ч удалены |
 
 ## 18. DEFERRED
 

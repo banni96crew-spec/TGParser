@@ -133,6 +133,12 @@ def _validate(key: str, value: Any) -> None:
     if key == "collector.periodic_reconciliation_minutes":
         if not isinstance(value, int) or value < 1 or value > 1440:
             raise SettingsValidationError("invalid reconciliation interval")
+    if key == "history_scan.enabled" and not isinstance(value, bool):
+        raise SettingsValidationError("history_scan.enabled must be boolean")
+    if key == "history_scan.max_active_sessions" and value != 1:
+        raise SettingsValidationError("history_scan.max_active_sessions must be 1")
+    if key == "history_scan.max_sources_per_session" and value != 50:
+        raise SettingsValidationError("history_scan.max_sources_per_session must be 50")
 
 
 async def update_setting(

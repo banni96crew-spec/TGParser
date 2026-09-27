@@ -22,6 +22,8 @@ def active_nav(path: str) -> str:
         return "sources"
     if path.startswith("/discovery"):
         return "discovery"
+    if path.startswith("/history-scans"):
+        return "history_scans"
     if path == "/health":
         return "health"
     if path.startswith("/settings"):

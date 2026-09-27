@@ -17,6 +17,7 @@ from telegram_lead_discovery.storage.models import (
     SourceDiscoveryEvent,
     SourceDiscoveryEvidence,
     SourceOpportunitySnapshot,
+    HistoryScanResult,
 )
 
 EXPORTS_TMP_MAX_AGE = timedelta(hours=1)
@@ -29,6 +30,7 @@ EVIDENCE_ROW_RETENTION = timedelta(days=90)
 UNPROMOTED_SNAPSHOT_RETENTION = timedelta(days=90)
 KEYWORD_QUERY_RETENTION = timedelta(days=90)
 TERMINAL_KEYWORD_RUN_RETENTION = timedelta(days=90)
+HISTORY_SCAN_RESULT_RETENTION = timedelta(hours=24)
 
 KEYWORD_SCOUTING_RUN_TYPE = "keyword_scouting"
 TERMINAL_KEYWORD_RUN_STATES = frozenset({"succeeded", "partial", "failed", "cancelled"})
@@ -50,6 +52,7 @@ class RetentionPurgeResult:
     terminal_outcomes_deleted: int
     keyword_queries_deleted: int
     terminal_keyword_runs_deleted: int
+    history_scan_results_deleted: int
     duration_ms: int
 
 
@@ -148,6 +151,11 @@ async def run_retention_purge(
     outcomes_deleted = await purge_terminal_discovery_outcomes(session, now=clock)
     queries_deleted = await purge_keyword_discovery_queries(session, now=clock)
     runs_deleted = await purge_terminal_keyword_runs(session, now=clock)
+    history_scan_results = await session.execute(
+        delete(HistoryScanResult).where(
+            HistoryScanResult.created_at < clock - HISTORY_SCAN_RESULT_RETENTION
+        )
+    )
     duration_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
     return RetentionPurgeResult(
         exports_tmp_deleted=files_deleted,
@@ -161,5 +169,6 @@ async def run_retention_purge(
         terminal_outcomes_deleted=outcomes_deleted,
         keyword_queries_deleted=queries_deleted,
         terminal_keyword_runs_deleted=runs_deleted,
+        history_scan_results_deleted=int(history_scan_results.rowcount or 0),
         duration_ms=duration_ms,
     )

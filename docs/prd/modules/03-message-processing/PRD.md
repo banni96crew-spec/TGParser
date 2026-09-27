@@ -214,7 +214,11 @@ Structured log: `event_id`, `job_id`, `source_id`, `message_id`, `revision_id`, 
 
 ## 12. MVP и исключённые функции
 
-MVP включает PROC-001—PROC-019. Исключены fuzzy/semantic similarity, media/OCR, language translation, distributed workers и reprocessing всех исторических versions по расписанию.
+MVP включает PROC-001—PROC-020. Исключены fuzzy/semantic similarity, media/OCR, language translation, distributed workers и reprocessing всех исторических versions по расписанию.
+
+### PROC-020 — Ручной скан истории
+
+Оператор запускает отдельный persisted job для `1..50` источников со state `monitoring` и окна `1..48` часов. Скан постранично читает историю через `TelegramGateway`, применяет pinned Detection и Scoring, но не создаёт `TelegramMessage`, `Lead`, outbox или checkpoint. В результаты попадают `direct_order`, `contractor_search`, `recommendation_request` и `vacancy`; вакансия сохраняет normal hard-exclusion score `0/irrelevant`. Текст и matched excerpts не сохраняются: только permalink, категория, score и rule IDs. Один scan в состояниях `queued|running|retry_wait`; отмена проверяется между страницами. FloodWait сохраняет job в `retry_wait` до точного `until`; transient retry = `1,5,30,120,600` секунд.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -239,6 +243,7 @@ MVP включает PROC-001—PROC-019. Исключены fuzzy/semantic simi
 | `AT-PROC-017` | PROC-017 | Crash после commit до job ack | Replay создаёт ноль дубликатов |
 | `AT-PROC-018` | PROC-018 | Manual replay failed job | Один новый result, revision не меняется |
 | `AT-PROC-019` | PROC-019 | Job with mismatched checksum / missing version | Permanent `RULE_SET_INVALID`; no SEED_RULES fallback; no rewritten history |
+| `AT-PROC-020` | PROC-020 | Скан содержит заявку и вакансию | Оба результата сохранены без lead/outbox/checkpoint; окно >48ч отклонено |
 
 ## 14. Принятые записи decision log
 

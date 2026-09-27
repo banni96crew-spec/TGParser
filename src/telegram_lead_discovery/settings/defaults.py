@@ -12,6 +12,7 @@ RECONCILIATION_INTERVAL_MAX = 1440
 SETTING_GROUPS = (
     "telegram",
     "discovery",
+    "history_scan",
     "collector",
     "rules",
     "scoring",
@@ -27,6 +28,9 @@ DEFAULT_SETTINGS: dict[str, tuple[str, Any]] = {
     "telegram.proxy_mode": ("string", "auto"),
     "discovery.max_depth": ("integer", 2),
     "discovery.expansion_cap": ("integer", 25),
+    "history_scan.enabled": ("boolean", True),
+    "history_scan.max_active_sessions": ("integer", 1),
+    "history_scan.max_sources_per_session": ("integer", 50),
     "collector.reconciliation_interval_minutes": ("integer", 30),
     "collector.backfill_batch_size": ("integer", 100),
     "rules.active_profile": ("string", "default"),

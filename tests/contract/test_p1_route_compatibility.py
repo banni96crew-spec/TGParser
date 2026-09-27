@@ -155,6 +155,22 @@ EXPECTED_ROUTES = (
     ("APIRoute", "/health", ("GET",), "health_page", "HTMLResponse"),
     ("APIRoute", "/settings", ("GET",), "settings_page", "HTMLResponse"),
     ("APIRoute", "/settings", ("POST",), "settings_update", ""),
+    ("APIRoute", "/history-scans", ("GET",), "history_scans_index", "HTMLResponse"),
+    ("APIRoute", "/history-scans", ("POST",), "history_scans_start", ""),
+    (
+        "APIRoute",
+        "/history-scans/{scan_id}",
+        ("GET",),
+        "history_scan_detail",
+        "HTMLResponse",
+    ),
+    (
+        "APIRoute",
+        "/history-scans/{scan_id}/cancel",
+        ("POST",),
+        "history_scan_cancel",
+        "",
+    ),
     ("APIRoute", "/discovery", ("GET",), "discovery_index", "HTMLResponse"),
     (
         "APIRoute",

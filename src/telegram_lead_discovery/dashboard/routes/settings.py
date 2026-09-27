@@ -57,7 +57,9 @@ def create_settings_router() -> APIRouter:
         if rejected is not None:
             return rejected
         parsed: object
-        if value in {"shadow", "live"}:
+        if value in {"true", "false"}:
+            parsed = value == "true"
+        elif value in {"shadow", "live"}:
             parsed = value
         elif value.isdigit():
             parsed = int(value)

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Скан истории</h1>
+<p>Ищет заявки клиентов и вакансии за период до 48 часов. Лиды и уведомления не создаются.</p>
+{% if message %}<p class="flash flash-error">{{ message }}</p>{% endif %}
+{% if enabled %}
+<form method="post" action="/history-scans">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+  <label>Период, часов <input type="number" name="period_hours" min="1" max="48" value="24" required /></label>
+  <fieldset>
+    <legend>Источники мониторинга</legend>
+    {% for source in sources %}
+      <label><input type="checkbox" name="source_ids" value="{{ source.id }}" /> {{ source.title }}</label><br />
+    {% else %}<p>Нет источников в мониторинге.</p>{% endfor %}
+  </fieldset>
+  <button type="submit">Запустить</button>
+</form>
+{% else %}<p>Сканирование выключено в настройках.</p>{% endif %}
+<h2>Последние сканы</h2>
+<ul>{% for scan in scans %}<li><a href="/history-scans/{{ scan.id }}">{{ scan.created_at }} — {{ scan.state }}</a></li>{% else %}<li>Пока нет.</li>{% endfor %}</ul>
+{% endblock %}

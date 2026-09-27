@@ -191,3 +191,9 @@ Release evidence включает:
 - `auto` reads only enabled static HKCU WinINET proxy; `direct` never reads it; PAC/WPAD is deferred.
 - Invalid enabled static configuration fails closed. Proxy endpoint and credentials remain memory-only.
 - Startup failure keeps local UI/non-Telegram loops alive and one recovery loop starts Telegram work exactly once after connection succeeds.
+
+## 15. Ручной скан истории (D-079)
+
+- Coverage: `PROC-020`, `STO-026`, `UI-030` ↔ `AT-PROC-020`, `AT-STO-026`, `AT-UI-030`.
+- Скан читает только monitoring sources и не создаёт monitoring data, lead или notification.
+- Ограничение окна — 48 часов; результаты без текста очищаются через 24 часа.

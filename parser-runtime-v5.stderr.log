@@ -1,0 +1,57 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [uvicorn.error] Started server process [11664]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO  [uvicorn.access] 127.0.0.1:53778 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:53823 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:53824 - "POST /history-scans HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:53864 - "GET /history-scans/465d0d40-f260-4dcf-970e-65dc08f16636 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:53886 - "GET /history-scans/465d0d40-f260-4dcf-970e-65dc08f16636 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54790 - "POST /history-scans HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:54790 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54905 - "GET /history-scans/465d0d40-f260-4dcf-970e-65dc08f16636 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:54855 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55083 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55086 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55110 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55312 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55312 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55381 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55392 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55392 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55718 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55797 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55804 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22?category=&score_band=hot HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55804 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22?category=&score_band=warm HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55804 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22?category=&score_band=cold HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55988 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:55988 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:56249 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58331 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58358 - "GET /sources HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58364 - "GET /discovery HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58370 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58376 - "GET /health HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58455 - "GET /settings HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58495 - "GET /leads/4 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58579 - "GET /history-scans/0fc91834-c76d-4829-af11-99d1d77a3c22 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58608 - "GET /discovery/runs/42 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58608 - "GET /discovery/runs/42/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58608 - "GET /discovery/runs/42/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58649 - "GET /discovery/runs/42/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58655 - "GET /discovery/runs/42/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58655 - "GET /discovery/runs/42/results-fragment HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58655 - "GET /discovery/results/172 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58702 - "GET /discovery/profiles/1 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58748 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:58748 - "POST /exports/leads/preview HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59121 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:59135 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:61679 - "GET /leads/999999999 HTTP/1.1" 404

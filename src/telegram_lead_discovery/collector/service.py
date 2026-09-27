@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.collector.ports import (
     GatewayFloodWait,
+    GatewayRateLimited,
     GatewayTransientError,
     HistoryRequest,
     TelegramGateway,
@@ -343,7 +344,7 @@ async def execute_backfill_job(
 
     try:
         raw_page = await fetch_history_page(gateway, request)
-    except GatewayFloodWait as flood_exc:
+    except (GatewayFloodWait, GatewayRateLimited) as flood_exc:
         until = flood_exc.until
         return await write_fn(
             lambda s: _mark_flood_wait(s, prep.job_id, until, persisted=0)

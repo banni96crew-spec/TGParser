@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -8,7 +9,11 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from telegram_lead_discovery.collector.fake import FakeTelegramGateway, make_source
-from telegram_lead_discovery.collector.ports import GatewaySourceInaccessible, TelegramMessageDTO
+from telegram_lead_discovery.collector.ports import (
+    GatewaySourceInaccessible,
+    GatewayTransientError,
+    TelegramMessageDTO,
+)
 from telegram_lead_discovery.dashboard.app import create_app
 from telegram_lead_discovery.detection.seed import seed_active_ruleset
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
@@ -31,6 +36,12 @@ from telegram_lead_discovery.storage.models import (
 )
 from telegram_lead_discovery.storage.retention import run_retention_purge
 from telegram_lead_discovery.storage.session import configure_session_factory, run_write
+
+
+def _csrf(html: str) -> str:
+    match = re.search(r'name="csrf_token"\s+value="([^"]+)"', html)
+    assert match, "csrf_token missing in HTML"
+    return match.group(1)
 
 
 @pytest.fixture
@@ -193,6 +204,61 @@ async def test_manual_ref_rejects_invalid_and_duplicate_username(db_env) -> None
         "duplicate_target",
         "manual_source_not_supported",
     ]
+
+
+@pytest.mark.asyncio
+async def test_manual_resolution_unavailable_keeps_csrf_and_monitoring_scan(db_env) -> None:
+    """AT-UI-031: a transient manual resolve failure never blocks selected sources."""
+
+    class UnavailableGateway(FakeTelegramGateway):
+        async def resolve_public_source(self, ref):
+            raise GatewayTransientError("telegram_connect_failed")
+
+    async def add_source(session):
+        source = TelegramSource(
+            telegram_id=987,
+            username_normalized="monitoring_source",
+            title="Monitoring source",
+            source_type="megagroup",
+            lifecycle_state="monitoring",
+        )
+        session.add(source)
+        await session.flush()
+        return source.id
+
+    source_id = await run_write(add_source)
+    with TestClient(create_app(gateway=UnavailableGateway())) as client:
+        form = client.get("/history-scans")
+        token = _csrf(form.text)
+
+        no_targets = client.post(
+            "/history-scans",
+            data={
+                "period_hours": "24",
+                "manual_refs": "@temporary_source",
+                "csrf_token": token,
+            },
+        )
+        assert no_targets.status_code == 400
+        assert "manual_source_resolution_unavailable" in no_targets.text
+        assert _csrf(no_targets.text) == token
+
+        # Another dashboard page must not invalidate an open History Scan form.
+        assert client.get("/sources").status_code == 200
+        accepted = client.post(
+            "/history-scans",
+            data={
+                "period_hours": "24",
+                "source_ids": str(source_id),
+                "manual_refs": "@temporary_source",
+                "csrf_token": token,
+            },
+            follow_redirects=False,
+        )
+        assert accepted.status_code == 303
+        detail = client.get(accepted.headers["location"])
+        assert detail.status_code == 200
+        assert "manual_source_resolution_unavailable" in detail.text
 
 
 @pytest.mark.asyncio

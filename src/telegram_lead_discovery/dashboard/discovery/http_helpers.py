@@ -21,6 +21,9 @@ def _csrf_or_403(request: Request, csrf_token: str) -> HTMLResponse | None:
 
 
 def _issue_csrf(request: Request) -> str:
+    token = request.session.get("csrf_token")
+    if isinstance(token, str) and token:
+        return token
     token = generate_csrf_token()
     request.session["csrf_token"] = token
     return token

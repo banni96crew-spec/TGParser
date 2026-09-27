@@ -121,6 +121,18 @@ class TelethonTelegramGateway(
                 connected=True,
             )
         except Exception as exc:  # noqa: BLE001
+            # A failed connect can leave Telethon's update sender and SQLite
+            # session open. Recovery must release that partial client before
+            # constructing the next one, otherwise the next attempt races on
+            # telegram.session and fails with "database is locked".
+            client = self._client
+            self._client = None
+            self._connected = False
+            if client is not None:
+                try:
+                    await client.disconnect()
+                except Exception:  # noqa: BLE001 - preserve original failure
+                    pass
             mapped = _map_telethon_error(exc)
             if mapped is not None:
                 raise mapped from exc

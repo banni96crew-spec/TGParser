@@ -7,7 +7,10 @@ import pytest
 from telegram_lead_discovery.collector.adapter.telethon_gateway import (
     TelethonTelegramGateway,
 )
-from telegram_lead_discovery.collector.ports import GatewayPermanentError
+from telegram_lead_discovery.collector.ports import (
+    GatewayPermanentError,
+    GatewayTransientError,
+)
 from telegram_lead_discovery.infrastructure.windows_proxy import (
     TelegramConnectionConfig,
     TelegramProxyConfig,
@@ -68,3 +71,30 @@ async def test_proxy_dependency_failure_has_safe_reason(monkeypatch: pytest.Monk
             GatewayPermanentError, match="telegram_proxy_dependency_missing"
         ):
             await TelethonTelegramGateway(connection_config=config).connect()
+
+
+@pytest.mark.asyncio
+async def test_failed_connect_releases_partial_telethon_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TG_API_ID", "123")
+    monkeypatch.setenv("TG_API_HASH", "hash")
+    client = AsyncMock()
+    client.connect.side_effect = PermissionError("blocked")
+    gateway = TelethonTelegramGateway()
+
+    with (
+        patch(
+            "telegram_lead_discovery.collector.adapter.telethon_gateway.load_secret_presence"
+        ) as presence,
+        patch(
+            "telegram_lead_discovery.collector.adapter.controlled_client.ControlledTelegramClient",
+            return_value=client,
+        ),
+    ):
+        presence.return_value.telegram_ready = True
+        with pytest.raises(GatewayTransientError, match="telegram_connect_failed"):
+            await gateway.connect()
+
+    client.disconnect.assert_awaited_once()
+    assert gateway._client is None

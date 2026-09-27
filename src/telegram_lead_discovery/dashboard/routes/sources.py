@@ -9,8 +9,7 @@ from telegram_lead_discovery.dashboard.monitoring_queries import (
     MONITORING_COVERAGE_LIMIT,
     _monitoring_coverage_rows,
 )
-from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _template
-from telegram_lead_discovery.security.csrf import generate_csrf_token
+from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _issue_csrf, _template
 from telegram_lead_discovery.source_discovery.service import (
     REJECT_REASON_CODES,
     SourceLifecycleError,
@@ -30,8 +29,7 @@ def create_sources_router() -> APIRouter:
 
     @router.get("/sources", response_class=HTMLResponse)
     async def sources_page(request: Request) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             sources = await list_sources(session)
             coverage = await _monitoring_coverage_rows(session)
@@ -51,8 +49,7 @@ def create_sources_router() -> APIRouter:
 
     @router.get("/sources/monitoring", response_class=HTMLResponse)
     async def sources_monitoring_page(request: Request) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             coverage = await _monitoring_coverage_rows(session)
         return _template(

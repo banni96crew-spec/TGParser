@@ -295,6 +295,7 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-029 | Graph run detail and cancel on existing discovery URLs (D-077) | MUST | Dispatcher inside existing `GET/POST /discovery/runs/{id}` and cancel path by `run_type`; no second FastAPI handler on the same path. Graph GET: state, phase, counters, error, CSRF cancel form (UI-018). Graph page MUST NOT include keyword HTMX `status-fragment`/`results-fragment`; refresh is full GET. POST cancel without CSRF does not change state; CSRF+version → `303` and `cancelling` if a worker may still run, `cancelled` only when no live worker (`queued`/`retry_wait`). Keyword GET/cancel unchanged |
 | UI-032 | History Scan category filter | MUST | `GET /history-scans/{scan_id}?category=` filters only results of that scan by `direct_order`, `contractor_search`, `recommendation_request` or `vacancy`; invalid/empty means all; the filter never writes data or starts work |
 | UI-033 | History Scan score-band filter | MUST | `GET /history-scans/{scan_id}?score_band=` filters only results of that scan by `hot`, `warm`, `cold` or `irrelevant`; it intersects with `category`; invalid/empty means all; the filter never writes data or starts work |
+| UI-034 | History Scan author-role display (D-082) | MUST | Result row shows saved author role with a Russian label; legacy results are marked as unavailable rather than inferred |
 
 ## 15. Observability
 
@@ -354,6 +355,7 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-031 | Скан истории с `manual_refs` | Поле принимает `@username`/`t.me`, показывает пропуски, не создаёт source registry row и сохраняет порядок целей |
 | AT-UI-032 | Фильтр статуса результатов History Scan | Четыре категории, пустой/invalid параметр, выбранный status, пустая валидная выборка и изоляция scan проверены |
 | AT-UI-033 | Фильтр оценки результатов History Scan | Четыре оценки, пустой/invalid параметр, пересечение со статусом, сохранение двух выбранных значений, пустая выборка и изоляция scan проверены |
+| AT-UI-034 | Результат History Scan v7 и legacy результат | Отображается русская метка роли; `legacy` не выдаётся за новую классификацию |
 
 ## 18. DEFERRED
 

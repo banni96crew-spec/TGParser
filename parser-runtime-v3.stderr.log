@@ -1,0 +1,668 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [uvicorn.error] Started server process [31572]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotostate] Server resent the older message 7690321440209736705, ignoring
+INFO  [uvicorn.access] 127.0.0.1:64721 - "GET /health HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64786 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64787 - "POST /history-scans HTTP/1.1" 400
+INFO  [uvicorn.access] 127.0.0.1:64788 - "GET /sources HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64789 - "POST /history-scans HTTP/1.1" 400
+INFO  [uvicorn.access] 127.0.0.1:64790 - "GET /health HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T20:58:01.137634+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T20:58:01.137634+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T20:58:01.137634+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T20:58:01.137634+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T20:58:01.137634+00:00
+INFO  [uvicorn.access] 127.0.0.1:64980 - "GET /health HTTP/1.1" 200
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 118, in iter_history
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 83, in iter_history
+    async for message in client.iter_messages(
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\requestiter.py", line 74, in __anext__
+    if await self._load_next_chunk():
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\messages.py", line 185, in _load_next_chunk
+    r = await self.client(self.request)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return await execute_backfill_job(job_id=job_id, gateway=gateway, write=write_fn)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    raw_page = await fetch_history_page(gateway, request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    async for dto in gateway.iter_history(request):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:03:01.772954+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return None
+       ^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    try:
+         
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    items: list[TelegramMessageDTO] = []
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:08:01.924313+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return None
+       ^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    try:
+         
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    items: list[TelegramMessageDTO] = []
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:08:01.924313+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return None
+       ^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    try:
+         
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    items: list[TelegramMessageDTO] = []
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:08:01.924313+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return None
+       ^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    try:
+         
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    items: list[TelegramMessageDTO] = []
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:08:01.924313+00:00
+ERROR [tld.runtime] collector job loop failed
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\infrastructure\runtime.py", line 496, in _body
+    outcome = await claim_and_process_collector_job(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 813, in claim_and_process_collector_job
+    return None
+       ^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 345, in execute_backfill_job
+    try:
+         
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\service.py", line 289, in fetch_history_page
+    items: list[TelegramMessageDTO] = []
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 74, in iter_history
+    entity = await self._resolve_peer_entity(request.peer)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 202, in _resolve_peer_entity
+    raise _raise_mapped(exc) from exc
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\telethon_parts\message_mixin.py", line 200, in _resolve_peer_entity
+    return await client.get_entity(peer.username_normalized)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 343, in get_entity
+    result.append(await self._get_entity_from_string(x))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 562, in _get_entity_from_string
+    result = await self(
+             ^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\telethon\client\users.py", line 30, in __call__
+    return await self._call(self._sender, request, ordered=ordered)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\controlled_client.py", line 152, in _call
+    async with account_pacer.rpc("collector"):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 51, in rpc
+    await self._reserve_locked(purpose)
+  File "C:\Users\Николай\Desktop\Telegram Parser\src\telegram_lead_discovery\collector\adapter\account_pacer.py", line 94, in _reserve_locked
+    raise GatewayRateLimited(until)
+telegram_lead_discovery.collector.port_parts.errors.GatewayRateLimited: gateway_rate_limited_until=2026-09-27T21:08:01.924313+00:00

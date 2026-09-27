@@ -1,0 +1,58 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [uvicorn.error] Started server process [22780]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO  [uvicorn.access] 127.0.0.1:62535 - "GET /health HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotostate] Server resent the older message 7690317260560759809, ignoring
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+INFO  [uvicorn.access] 127.0.0.1:62626 - "GET /health HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+INFO  [uvicorn.access] 127.0.0.1:62804 - "GET /health HTTP/1.1" 200
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+Exception ignored in: <coroutine object Connection._recv_loop at 0x0000020793269EE0>
+Traceback (most recent call last):
+  File "C:\Users\Николай\Desktop\Telegram Parser\.venv\Lib\site-packages\sqlalchemy\orm\loading.py", line 812, in _instance_processor
+    def _instance_processor(
+    
+RuntimeError: coroutine ignored GeneratorExit
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotostate] Server resent the older message 7690318269065515009, ignoring
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.client.updates] Error executing high-level request after reconnect: <class 'sqlite3.OperationalError'>: database is locked

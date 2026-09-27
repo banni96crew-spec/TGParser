@@ -11,8 +11,7 @@ from telegram_lead_discovery.dashboard.export_csv import (
     count_export_rows,
     write_export_file,
 )
-from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _template
-from telegram_lead_discovery.security.csrf import generate_csrf_token
+from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _issue_csrf, _template
 from telegram_lead_discovery.storage.db import session_scope
 
 
@@ -57,8 +56,7 @@ def create_exports_router() -> APIRouter:
             ),
             band_filter=band,
         )
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         request.session["export_preview_count"] = preview.row_count
         request.session["export_preview_band"] = band
         return _template(

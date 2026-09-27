@@ -171,6 +171,10 @@ Active catalog MUST advance to immutable `ru-mvp-4` = `ru-mvp-3` plus narrowly s
 
 Active catalog MUST advance to immutable `ru-mvp-5` = `ru-mvp-4` plus exactly one hard-exclusion `NEG-ADV-020` (id `139`, reason `advertising_first_person_practice`). Exact pattern and frozen corpus are in DET-A A.8. `ru-mvp-1..4` MUST NOT be mutated. `seed_active_ruleset`, catalog persistence and startup active MUST point only to `ru-mvp-5`. Bare `\bпод ключ\b` MUST NOT be added. AT-DET-020 MUST classify NEG-R18-A, NEG-R18-B and NEG-C17 as `category=advertising` with `hard_exclusion=true`; POS-1..3 MUST remain buyer `direct_order` or `contractor_search`, not advertising. Combined NFR-QLT-007 ≥`0.80`/`0.80` with separate C*/R14/T*/new-fixture reports.
 
+### DET-022 — Role-first catalog `ru-mvp-7` (D-082)
+
+Active catalog MUST advance to immutable `ru-mvp-7` = `ru-mvp-6` plus author-role rules. Engine determines one role by precedence `provider_offer > job_seeker > vacancy > client_request > neutral`. `provider_offer` and `job_seeker` force `category=advertising`, `hard_exclusion=true`, `is_lead=false` even when a generic positive rule and service words match. `vacancy` remains eligible when positive intent and a supported service are present and MUST be categorised `vacancy`. The result stores role and matching role-rule IDs; v1–v6 stay unchanged. AT-DET-022 includes the provider message with «Моя задача — сделать… я возьму на себя…», a client order and a technical vacancy.
+
 ## 7. Data ownership и contracts
 
 Модуль владеет `RuleSetVersion`, `ServiceProfile`, `KeywordGroup`, `MonitoringRule`, `DetectionResult`, `MatchedRule`. Message Processing владеет message revision; Lead Scoring потребляет immutable DetectionResult; Source Discovery потребляет pure detect для scouting text.
@@ -235,7 +239,7 @@ Structured log содержит result/revision/version IDs, category, matched r
 
 ## 12. MVP и исключённые функции
 
-MVP включает DET-001—DET-020 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
+MVP включает DET-001—DET-022 и приложение DET-A. Исключены AI/LLM, embeddings, automatic learning, fuzzy rules, multilingual rules и автоматическая activation.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -261,6 +265,7 @@ MVP включает DET-001—DET-020 и приложение DET-A. Исклю
 | `AT-DET-018` | DET-018 | Run14 sanitized FP regression + keep automation ask; C/T unchanged ≥80/80 | `ru-mvp-3`; FPs hard-excluded; KEEP retained; separate C* / R14 / T* / combined metrics; provenance `operator_run_14_sanitized_excerpt` |
 | `AT-DET-019` | DET-019 | Paired buyer/provider/vacancy/marketplace-ops fixtures for every service family | `ru-mvp-4`; explicit buyers retain direct/contractor/recommendation; provider and operational chatter excluded; bare marketplace tokens do not establish service; separate reports and combined ≥80/80 |
 | `AT-DET-020` | DET-020 | Frozen NEG-R18-A, NEG-R18-B, NEG-C17 and POS-1..3; C*/R14/T* unchanged ≥80/80 | `ru-mvp-5`; NEG texts → `advertising` + `hard_exclusion=true`; POS-1..3 → `direct_order` or `contractor_search`, not advertising; combined ≥80/80 with separate reports |
+| `AT-DET-022` | DET-022 | Provider offer with «Моя задача — сделать… я возьму на себя…»; direct client order; technical vacancy | Provider → `advertising` with `author_role=provider_offer`; client order remains lead; vacancy remains lead with category `vacancy` |
 
 Golden classification fixtures:
 
@@ -294,7 +299,7 @@ Golden classification fixtures:
 
 # Приложение DET-A — нормативный RU catalog
 
-`ru-mvp-1` / `ru-mvp-2` / `ru-mvp-3` / `ru-mvp-4` remain immutable historical seeds. Active catalog after D-075 is `ru-mvp-5` = `ru-mvp-4` plus the exact DET-020 addition listed after the v4 block. Tables below list the full `ru-mvp-2` normative set; v3, v4 and v5 additions are listed after.
+`ru-mvp-1` / `ru-mvp-2` / `ru-mvp-3` / `ru-mvp-4` / `ru-mvp-5` / `ru-mvp-6` remain immutable historical seeds. Active catalog after D-082 is `ru-mvp-7` = `ru-mvp-6` plus the exact role rules listed in A.9. Tables below list the full `ru-mvp-2` normative set; later additions are listed after.
 
 ## A.1 Общие правила исполнения
 
@@ -453,3 +458,17 @@ POS-3: `Нужен сайт под ключ`
 ## A.9 Seed integrity
 
 Data migration MUST сериализовать catalog в canonical JSON: UTF-8, keys sorted, separators `,` и `:`, без ASCII escaping. SHA-256 сохраняется в `RuleSetVersion.checksum`. Startup пересчитывает checksum и блокирует Detection при несовпадении.
+
+## A.10 `ru-mvp-7` author-role additions
+
+`ru-mvp-7` копирует `ru-mvp-6` и добавляет только следующие immutable rules:
+
+| Rule ID | Priority | Target | Dimension | Weight | Explanation code |
+|---|---:|---|---|---:|---|
+| `ROLE-PRO-001` | 146 | `provider_offer` | `author_role` | 0 | `author_role_provider_offer` |
+| `ROLE-PRO-002` | 147 | `provider_offer` | `author_role` | 0 | `author_role_provider_intro` |
+| `ROLE-JOB-001` | 148 | `job_seeker` | `author_role` | 0 | `author_role_job_seeker` |
+| `ROLE-VAC-001` | 149 | `vacancy` | `author_role` | 0 | `author_role_vacancy` |
+| `ROLE-CLI-001` | 150 | `client_request` | `author_role` | 0 | `author_role_client_request` |
+
+Role rules are diagnostic and do not add score. `provider_offer` and `job_seeker` override generic positive intent to `advertising`; `vacancy` overrides contractor-search precedence only when a supported service is present and remains an eligible lead. The exact regex catalog is defined in `detection/catalog_versions.py` and is checksum-bound.

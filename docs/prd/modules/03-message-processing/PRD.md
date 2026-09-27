@@ -224,6 +224,10 @@ MVP включает PROC-001—PROC-021. Исключены fuzzy/semantic simi
 
 Скан принимает resolved manual target без `TelegramSource`; он передаёт `source_id=0` только как техническое поле в `HistoryRequest` и использует `TelegramPeerRef`. Цели обрабатываются строго по `ordinal`; permanent error завершает только текущую цель, а scan получает `partial`, если успешно завершилась хотя бы одна цель.
 
+### PROC-022 — Сохранение роли автора (D-082)
+
+Обычный pipeline, re-score и History Scan сохраняют из pinned DetectionResult `author_role` и отсортированный список role-rule IDs вместе с result. Исторические результаты v1–v6 не пересчитываются и имеют `author_role=legacy`.
+
 ## 13. Acceptance criteria и test catalogue
 
 | ID | Requirement | Сценарий | Ожидаемый результат |
@@ -249,6 +253,7 @@ MVP включает PROC-001—PROC-021. Исключены fuzzy/semantic simi
 | `AT-PROC-019` | PROC-019 | Job with mismatched checksum / missing version | Permanent `RULE_SET_INVALID`; no SEED_RULES fallback; no rewritten history |
 | `AT-PROC-020` | PROC-020 | Скан содержит заявку и вакансию | Оба результата сохранены без lead/outbox/checkpoint; окно >48ч отклонено |
 | `AT-PROC-021` | PROC-021 | Manual target, inaccessible target между двумя доступными | Нет TelegramMessage/Lead/outbox/checkpoint; порядок сохранён, итог `partial` |
+| `AT-PROC-022` | PROC-022 | Обработать provider offer и History Scan через `ru-mvp-7` | В обоих результатах сохранены `provider_offer` и `ROLE-PRO-001`; Lead не создан |
 
 ## 14. Принятые записи decision log
 

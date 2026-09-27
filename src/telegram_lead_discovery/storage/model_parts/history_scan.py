@@ -84,5 +84,7 @@ class HistoryScanResult(Base):
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     score_total: Mapped[int] = mapped_column(Integer, nullable=False)
     score_band: Mapped[str] = mapped_column(String(32), nullable=False)
+    author_role: Mapped[str] = mapped_column(String(32), nullable=False, default="legacy")
+    author_role_rule_ids_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     explanation_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

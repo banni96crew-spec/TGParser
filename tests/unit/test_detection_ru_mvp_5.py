@@ -11,6 +11,7 @@ from telegram_lead_discovery.detection.catalog import (
     ACTIVE_SEED_RULES,
     SEED_RULES_RU_MVP_4,
     SEED_RULES_RU_MVP_5,
+    SEED_RULES_RU_MVP_7,
 )
 from telegram_lead_discovery.detection.engine import seed_catalog_detect
 
@@ -36,7 +37,7 @@ POS_TEXTS = _AT_DET_020.POS_TEXTS
 def test_v5_copies_v4_and_adds_only_neg_adv_020() -> None:
     v4_ids = tuple(rule.stable_rule_id for rule in SEED_RULES_RU_MVP_4)
     v5_ids = tuple(rule.stable_rule_id for rule in SEED_RULES_RU_MVP_5)
-    assert ACTIVE_SEED_RULES is SEED_RULES_RU_MVP_5
+    assert ACTIVE_SEED_RULES is SEED_RULES_RU_MVP_7
     assert SEED_RULES_RU_MVP_5[:-1] == SEED_RULES_RU_MVP_4
     assert v5_ids == v4_ids + ("NEG-ADV-020",)
     added = SEED_RULES_RU_MVP_5[-1]

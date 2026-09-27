@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
+from telegram_lead_discovery.collector.adapter import account_pacer as account_pacer_module
+from telegram_lead_discovery.collector.adapter.account_pacer import TelegramAccountPacer
 from telegram_lead_discovery.collector.fake import FakeTelegramGateway, make_source
 from telegram_lead_discovery.collector.ports import (
+    GatewayRateLimited,
     HistoryRequest,
     TelegramMessageDTO,
     TelegramPeerRef,
@@ -407,3 +411,67 @@ async def test_flood_wait_sets_retry_without_attempt_burn(db_env) -> None:
     # SQLite may drop tzinfo; compare naive UTC instants.
     avail = available.replace(tzinfo=UTC) if available.tzinfo is None else available
     assert abs((avail - until).total_seconds()) < 1
+
+
+@pytest.mark.asyncio
+async def test_local_rate_limit_sets_retry_without_attempt_burn(db_env) -> None:
+    source_id, _peer_id, gateway = await _seed_monitoring(
+        db_env, telegram_id=9007, username="wave05_local_rate_limit"
+    )
+    until = datetime.now(UTC) + timedelta(seconds=90)
+
+    async def _rate_limited(_: HistoryRequest):
+        raise GatewayRateLimited(until)
+        yield  # pragma: no cover - makes this an async iterator for the port.
+
+    gateway.iter_history = _rate_limited  # type: ignore[method-assign]
+
+    async def _prep(session):
+        result = await session.execute(
+            select(Job).where(Job.dedupe_key == f"initial_backfill:{source_id}")
+        )
+        job = result.scalar_one()
+        job.attempt = 1
+        job.state = "running"
+        await session.flush()
+        return job.id, job.attempt
+
+    job_id, attempt_before = await run_write(_prep)
+    outcome = await execute_backfill_job(job_id=job_id, gateway=gateway)
+    assert outcome["outcome"] == "flood_wait"
+
+    async def _job(session):
+        job = await session.get(Job, job_id)
+        assert job is not None
+        return job.state, job.attempt, job.available_at
+
+    state, attempt, available = await run_write(_job)
+    assert state == "retry_wait"
+    assert attempt == attempt_before - 1
+    assert available is not None
+    avail = available.replace(tzinfo=UTC) if available.tzinfo is None else available
+    assert abs((avail - until).total_seconds()) < 1
+
+
+@pytest.mark.asyncio
+async def test_account_pacer_waits_for_normal_spacing_instead_of_rejecting(
+    db_env, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    spacing = timedelta(milliseconds=40)
+    monkeypatch.setattr(account_pacer_module, "_START_INTERVAL", spacing)
+
+    async def _reset_gate(session):
+        await session.execute(text("DELETE FROM telegram_account_request_reservations"))
+        await session.execute(
+            text("UPDATE telegram_account_request_gate "
+                 "SET next_allowed_at=NULL, flood_wait_until=NULL, "
+                 "last_observed_at=:now WHERE id=1"),
+            {"now": datetime.now(UTC)},
+        )
+
+    await run_write(_reset_gate)
+    pacer = TelegramAccountPacer()
+    await pacer.reserve("collector")
+    started = time.perf_counter()
+    await pacer.reserve("collector")
+    assert time.perf_counter() - started >= spacing.total_seconds() * 0.75

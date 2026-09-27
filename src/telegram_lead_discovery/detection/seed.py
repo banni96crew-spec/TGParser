@@ -12,6 +12,7 @@ SEED_RULES_RU_MVP_3 = _catalog.SEED_RULES_RU_MVP_3
 SEED_RULES_RU_MVP_4 = _catalog.SEED_RULES_RU_MVP_4
 SEED_RULES_RU_MVP_5 = _catalog.SEED_RULES_RU_MVP_5
 SEED_RULES_RU_MVP_6 = _catalog.SEED_RULES_RU_MVP_6
+SEED_RULES_RU_MVP_7 = _catalog.SEED_RULES_RU_MVP_7
 SeedRule = _catalog.SeedRule
 
 catalog_canonical_json = _codec.catalog_canonical_json
@@ -24,5 +25,6 @@ seed_ruleset_ru_mvp_3 = _persistence.seed_ruleset_ru_mvp_3
 seed_ruleset_ru_mvp_4 = _persistence.seed_ruleset_ru_mvp_4
 seed_ruleset_ru_mvp_5 = _persistence.seed_ruleset_ru_mvp_5
 seed_ruleset_ru_mvp_6 = _persistence.seed_ruleset_ru_mvp_6
+seed_ruleset_ru_mvp_7 = _persistence.seed_ruleset_ru_mvp_7
 get_active_ruleset = _persistence.get_active_ruleset
 seed_active_ruleset = _persistence.seed_active_ruleset

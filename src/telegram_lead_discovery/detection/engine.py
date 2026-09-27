@@ -62,6 +62,10 @@ class DetectionResult:
     explanation_codes: tuple[str, ...]
     duration_ms: int
     rule_set_checksum: str
+    # Defaults preserve compatibility with callers that construct detection
+    # results directly (for example, source-discovery tests and adapters).
+    author_role: str = "neutral"
+    author_role_rule_ids: tuple[str, ...] = ()
 
 
 def clear_compile_cache() -> None:
@@ -92,6 +96,14 @@ def _cap_analysis_text(analysis_text: str) -> str:
     if len(analysis_text) <= ANALYSIS_TEXT_CAP:
         return analysis_text
     return analysis_text[:ANALYSIS_TEXT_CAP]
+
+
+def _role_analysis_text(analysis_text: str) -> str:
+    """Ignore explicit quote lines when inferring the current author's role."""
+    return "\n".join(
+        "" if line.lstrip().startswith((">", "↪")) else line
+        for line in analysis_text.splitlines()
+    )
 
 
 def _search(
@@ -142,6 +154,7 @@ def detect(
         raise RuleSetInvalidError("checksum_mismatch")
 
     text = _cap_analysis_text(analysis_text)
+    role_text = _role_analysis_text(text)
     started = perf_counter()
     compiled = _compiled_for(rule_set_checksum, rules)
     ordered = sorted(rules, key=lambda r: (r.priority, r.stable_rule_id))
@@ -152,9 +165,10 @@ def detect(
     intent_hits: list[MatchedRule] = []
     service_hits: list[MatchedRule] = []
     signal_hits: list[MatchedRule] = []
+    role_hits: list[MatchedRule] = []
 
     for rule in ordered:
-        hit, timed = _search(rule, text, compiled)
+        hit, timed = _search(rule, role_text if rule.kind == "author_role" else text, compiled)
         if timed:
             timed_out.append(rule.stable_rule_id)
             continue
@@ -167,6 +181,8 @@ def detect(
             intent_hits.append(hit)
         elif rule.kind == "service":
             service_hits.append(hit)
+        elif rule.kind == "author_role":
+            role_hits.append(hit)
         else:
             signal_hits.append(hit)
 
@@ -174,6 +190,23 @@ def detect(
     category = "irrelevant"
     is_lead = False
     hard_exclusion = False
+    author_role = "neutral"
+    author_role_rule_ids: tuple[str, ...] = ()
+
+    role_by_target: dict[str, list[MatchedRule]] = {}
+    for hit in role_hits:
+        role_by_target.setdefault(hit.target, []).append(hit)
+    if "provider_offer" in role_by_target:
+        author_role = "provider_offer"
+    elif "job_seeker" in role_by_target:
+        author_role = "job_seeker"
+    elif "vacancy" in role_by_target:
+        author_role = "vacancy"
+    elif "client_request" in role_by_target:
+        author_role = "client_request"
+    author_role_rule_ids = tuple(
+        sorted(hit.stable_rule_id for hit in role_by_target.get(author_role, []))
+    )
 
     if hard_hits:
         hard_exclusion = True
@@ -184,6 +217,19 @@ def detect(
                 hard_exclusion_rule_id = by_target[target].stable_rule_id
                 break
         is_lead = False
+    elif author_role in {"provider_offer", "job_seeker"}:
+        # A self-description of services is not a client request even if it
+        # contains generic wording such as "моя задача — сделать".
+        category = "advertising"
+        hard_exclusion = True
+        hard_exclusion_rule_id = author_role_rule_ids[0]
+        is_lead = False
+    elif author_role == "vacancy" and intent_hits:
+        # Keep every explicit vacancy visible. Only a vacancy that also names
+        # a supported service is an eligible lead (D-081); unsupported hiring
+        # remains a non-lead vacancy instead of becoming irrelevant.
+        category = "vacancy"
+        is_lead = bool(service_hits)
     elif intent_hits and service_hits:
         by_target = {h.target: h for h in intent_hits}
         for target in POSITIVE_PRECEDENCE:
@@ -212,6 +258,8 @@ def detect(
         timed_out_rule_ids=tuple(timed_out),
         signals=signals,
         explanation_codes=tuple(m.explanation_code for m in matched),
+        author_role=author_role,
+        author_role_rule_ids=author_role_rule_ids,
         duration_ms=duration_ms,
         rule_set_checksum=rule_set_checksum,
     )
@@ -240,6 +288,8 @@ def stable_detection_payload(result: DetectionResult) -> dict[str, object]:
         "timed_out_rule_ids": list(result.timed_out_rule_ids),
         "signals": dict(sorted(result.signals.items())),
         "explanation_codes": list(result.explanation_codes),
+        "author_role": result.author_role,
+        "author_role_rule_ids": list(result.author_role_rule_ids),
         "rule_set_checksum": result.rule_set_checksum,
     }
 

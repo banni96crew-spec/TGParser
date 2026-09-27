@@ -5,8 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse
 
-from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _template
-from telegram_lead_discovery.security.csrf import generate_csrf_token
+from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _issue_csrf, _template
 from telegram_lead_discovery.security.secrets import read_secret_presence
 from telegram_lead_discovery.settings.service import (
     SettingsValidationError,
@@ -22,8 +21,7 @@ def create_settings_router() -> APIRouter:
 
     @router.get("/settings", response_class=HTMLResponse)
     async def settings_page(request: Request) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             snap = await snapshot(session)
         presence = read_secret_presence()

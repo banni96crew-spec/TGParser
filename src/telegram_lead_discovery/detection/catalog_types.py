@@ -26,6 +26,8 @@ def _kind_for(dimension: str) -> str:
         return "service"
     if dimension == "intent":
         return "positive_intent"
+    if dimension == "author_role":
+        return "author_role"
     return "signal"
 
 

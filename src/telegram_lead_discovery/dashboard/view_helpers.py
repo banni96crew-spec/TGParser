@@ -8,7 +8,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from telegram_lead_discovery.security.csrf import validate_csrf_token
+from telegram_lead_discovery.security.csrf import generate_csrf_token, validate_csrf_token
 from telegram_lead_discovery.storage.models import Lead
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
@@ -72,6 +72,20 @@ def _csrf_or_403(request: Request, csrf_token: str) -> HTMLResponse | None:
     if not validate_csrf_token(expected, csrf_token):
         return HTMLResponse("CSRF отклонён", status_code=403)
     return None
+
+
+def _issue_csrf(request: Request) -> str:
+    """Return one durable CSRF token for the current signed session.
+
+    Reissuing a token on every GET or validation error invalidates forms in a
+    second tab and turns a recoverable form error into a misleading 403.
+    """
+    token = request.session.get("csrf_token")
+    if isinstance(token, str) and token:
+        return token
+    token = generate_csrf_token()
+    request.session["csrf_token"] = token
+    return token
 
 
 def _rule_pin_dict(pin) -> dict[str, object]:

@@ -218,7 +218,38 @@ _VACANCY_POSITIVE_V6: tuple[SeedRule, ...] = (
 SEED_RULES_RU_MVP_6: tuple[SeedRule, ...] = tuple(
     rule for rule in SEED_RULES_RU_MVP_5 if rule.stable_rule_id not in _VACANCY_IDS
 ) + _VACANCY_POSITIVE_V6
-ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_6
+
+# D-082 / DET-022.  Role markers are intentionally separate from service and
+# intent markers: they decide who is speaking, not which technical terms occur.
+_AUTHOR_ROLE_RULES_V7: tuple[SeedRule, ...] = (
+    _r(
+        "ROLE-PRO-001", 146, "provider_offer", "author_role", 0,
+        r"(?s)\b(?:моя задача|я (?:возьму|беру) на себя|помогаю клиентам|оказываю услуги)\b.{0,180}\b(?:техническ(?:ую|ого)?|настройк|сопровождени|разработк|автоматизац|интеграц|вебинар|платформ)\b",
+        "author_role_provider_offer",
+    ),
+    _r(
+        "ROLE-PRO-002", 147, "provider_offer", "author_role", 0,
+        r"(?s)\b(?:меня зовут|я\s+[а-яё-]+)\b.{0,220}\b(?:предлагаю|оказываю|выполняю|провожу|настраиваю)\b.{0,180}\b(?:сайт|лендинг|бот|интеграц|автоматизац|парсер|вебинар|платформ)\b",
+        "author_role_provider_intro",
+    ),
+    _r(
+        "ROLE-JOB-001", 148, "job_seeker", "author_role", 0,
+        r"(?s)\b(?:ищу работу|ищу проекты|рассматриваю предложения|готов к сотрудничеству)\b.{0,160}\b(?:разработчик|программист|специалист|фрилансер)\b",
+        "author_role_job_seeker",
+    ),
+    _r(
+        "ROLE-VAC-001", 149, "vacancy", "author_role", 0,
+        r"\b(?:вакансия|открыта позиция|ищем сотрудника|в штат|трудоустройство)\b",
+        "author_role_vacancy",
+    ),
+    _r(
+        "ROLE-CLI-001", 150, "client_request", "author_role", 0,
+        r"\b(?:нужен|нужна|нужны|ищу|ищем|посоветуйте|порекомендуйте|заказать|готов оплатить)\b",
+        "author_role_client_request",
+    ),
+)
+SEED_RULES_RU_MVP_7: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_6 + _AUTHOR_ROLE_RULES_V7
+ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_7
 
 
 __all__ = [
@@ -229,5 +260,6 @@ __all__ = [
     "SEED_RULES_RU_MVP_4",
     "SEED_RULES_RU_MVP_5",
     "SEED_RULES_RU_MVP_6",
+    "SEED_RULES_RU_MVP_7",
     "SeedRule",
 ]

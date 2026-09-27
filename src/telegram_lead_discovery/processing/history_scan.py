@@ -68,6 +68,8 @@ class ScanAnalysis:
     category: str
     score_total: int
     score_band: str
+    author_role: str
+    author_role_rule_ids_json: str
     explanation_json: str
 
 
@@ -86,7 +88,7 @@ class ManualHistoryRejection:
 
 
 async def prepare_manual_history_targets(
-    gateway: TelegramGateway, manual_refs: str
+    gateway: TelegramGateway | None, manual_refs: str
 ) -> tuple[list[ManualHistoryTarget], list[ManualHistoryRejection]]:
     """Resolve public manual refs before a scan is persisted.
 
@@ -111,6 +113,13 @@ async def prepare_manual_history_targets(
             rejections.append(ManualHistoryRejection(line_no, reference, "duplicate_target"))
             continue
         seen_usernames.add(username)
+        if gateway is None:
+            rejections.append(
+                ManualHistoryRejection(
+                    line_no, reference, "manual_source_resolution_unavailable"
+                )
+            )
+            continue
         try:
             snapshot = await gateway.resolve_public_source(
                 PublicSourceRef(schema_version=1, username_or_url=username)
@@ -120,16 +129,28 @@ async def prepare_manual_history_targets(
                 ManualHistoryRejection(line_no, reference, "manual_source_not_supported")
             )
             continue
-        except GatewayFloodWait as exc:
-            raise HistoryScanError(f"manual_source_retry_after={exc.until.isoformat()}") from exc
-        except GatewayRateLimited as exc:
-            raise HistoryScanError(
-                f"manual_source_rate_limited={exc.until.isoformat()}"
-            ) from exc
+        except GatewayFloodWait:
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "manual_source_retry_after")
+            )
+            continue
+        except GatewayRateLimited:
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "manual_source_rate_limited")
+            )
+            continue
         except (GatewayUnauthorized, GatewayFrozen):
-            raise HistoryScanError("telegram_account_unavailable") from None
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "telegram_account_unavailable")
+            )
+            continue
         except (GatewayTransientError, GatewayTimeout):
-            raise HistoryScanError("manual_source_resolution_unavailable") from None
+            rejections.append(
+                ManualHistoryRejection(
+                    line_no, reference, "manual_source_resolution_unavailable"
+                )
+            )
+            continue
         if snapshot.source_type not in SUPPORTED_MANUAL_SOURCE_TYPES:
             rejections.append(
                 ManualHistoryRejection(line_no, reference, "manual_source_not_supported")
@@ -182,6 +203,8 @@ def analyze_message(
         "category": detection.category,
         "matched_rule_ids": [match.stable_rule_id for match in detection.matched_rules],
         "service_profiles": list(detection.service_profiles),
+        "author_role": detection.author_role,
+        "author_role_rule_ids": list(detection.author_role_rule_ids),
         "rule_set_version_id": rule_set_version_id,
         "rule_set_checksum": checksum,
     }
@@ -189,6 +212,8 @@ def analyze_message(
         category=detection.category,
         score_total=score.total,
         score_band=score.band,
+        author_role=detection.author_role,
+        author_role_rule_ids_json=json.dumps(list(detection.author_role_rule_ids)),
         explanation_json=json.dumps(explanation, ensure_ascii=False, sort_keys=True),
     )
 
@@ -358,7 +383,7 @@ async def claim_and_process_history_scan_job(gateway: TelegramGateway) -> str | 
         job_id = job.id
     try:
         await _process_one_target(gateway, session_id)
-    except GatewayFloodWait as exc:
+    except (GatewayFloodWait, GatewayRateLimited) as exc:
         await _retry_job(job_id, available_at=exc.until, flood=True)
         return "retry_wait"
     except GatewayTransientError:
@@ -571,6 +596,8 @@ async def _process_one_target(gateway: TelegramGateway, session_id: str) -> None
                     category=analysis.category,
                     score_total=analysis.score_total,
                     score_band=analysis.score_band,
+                    author_role=analysis.author_role,
+                    author_role_rule_ids_json=analysis.author_role_rule_ids_json,
                     explanation_json=analysis.explanation_json,
                     created_at=clock,
                 )

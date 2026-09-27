@@ -12,11 +12,11 @@
 |---|---|---|---|---|
 | Source Discovery | `SRC-001..057` | `AT-SRC-001..057` | [PRD](modules/01-source-discovery/PRD.md) | Collector принимает только monitoring sources; scouting isolated; provisional identity + suppress reconsider; durable graph cursor/results; groups SEARCH + operator_seed; graph timeout skip and cancel |
 | Telegram Collector | `COL-001..031` | `AT-COL-001..031` | [PRD](modules/02-telegram-collector/PRD.md) | Processing получает versioned envelopes; search ports Zero Stars; peer ref and sender kind for Telegram I/O; complete graph history response; graph call deadline; system proxy transport |
-| Message Processing | `PROC-001..019` | `AT-PROC-001..019` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum |
-| Lead Detection | `DET-001..020` | `AT-DET-001..020` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
+| Message Processing | `PROC-001..022` | `AT-PROC-001..022` | [PRD](modules/03-message-processing/PRD.md) | Detection получает pinned version+checksum и роль автора |
+| Lead Detection | `DET-001..022` | `AT-DET-001..022` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES; v7 role-first exclusion |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
-| Lead Storage | `STO-001..025` | `AT-STO-001..025` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence, suppress_class and profile v8 migrations, in-flight discovery reclaim exception |
-| Lead Dashboard | `UI-001..029`, `UI-032..033` | `AT-UI-001..029`, `AT-UI-032..033` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs`, graph run cancel и History Scan filters |
+| Lead Storage | `STO-001..029` | `AT-STO-001..029` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence, suppress_class and profile v8 migrations, in-flight discovery reclaim exception, role-result migration |
+| Lead Dashboard | `UI-001..029`, `UI-032..034` | `AT-UI-001..029`, `AT-UI-032..034` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs`, graph run cancel, History Scan filters и роль автора |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..016` | `AT-SET-001..016` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation, proxy mode и local-access suite |
 | Administration & Observability | `OBS-001..023` | `AT-OBS-001..023` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity, durable terminal and safe connection metrics |
@@ -208,3 +208,10 @@ Release evidence включает:
 
 - `UI-032` ↔ `AT-UI-032`: `dashboard/routes/history_scans.py`, `dashboard/templates/history_scan_detail.html`, `tests/integration/test_history_scan_v1.py`.
 - `UI-033` ↔ `AT-UI-033`: те же route/template/test; `category` и `score_band` применяются как пересечение.
+
+## 18. Role-first фильтрация рекламы (D-082)
+
+- `DET-022` ↔ `AT-DET-022`: `detection/catalog_versions.py`, `detection/engine.py`, `tests/unit/test_detection_ru_mvp_7.py`.
+- `PROC-022` ↔ `AT-PROC-022`: `processing/pipeline.py`, `processing/history_scan.py`, `tests/unit/test_detection_ru_mvp_7.py`.
+- `STO-029` ↔ `AT-STO-029`: `storage/model_parts/processing.py`, `storage/model_parts/history_scan.py`, `storage/alembic/versions/014_detection_author_role.py`.
+- `UI-034` ↔ `AT-UI-034`: `dashboard/routes/history_scans.py`, `dashboard/templates/history_scan_detail.html`.

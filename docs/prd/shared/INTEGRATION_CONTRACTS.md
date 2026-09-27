@@ -246,6 +246,8 @@ Producer: `DET`, consumer: `SCR`.
 - `matched_rules[]` с `stable_rule_id`, `rule_type`, `dimension`, `weight`, `matched_excerpt` (максимум `120` Unicode code points);
 - `service_profiles[]`;
 - `explanation_items_ru[]`.
+- `author_role: provider_offer|job_seeker|vacancy|client_request|neutral`;
+- `author_role_rule_ids[]`.
 
 `matched_excerpt` — UTF-8 substring `analysis_text`, покрывающий regex match; при zero-width — пустая строка. В structured logs excerpt не записывается.
 
@@ -277,6 +279,7 @@ Producer: `PROC`, owner: `STO`.
 
 - message/revision data;
 - detection result;
+- `author_role` и `author_role_rule_ids[]` из pinned detection result;
 - score result;
 - canonical/duplicate decision;
 - notification eligibility;

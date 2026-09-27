@@ -14,11 +14,11 @@ from telegram_lead_discovery.dashboard.leads import (
 )
 from telegram_lead_discovery.dashboard.view_helpers import (
     _csrf_or_403,
+    _issue_csrf,
     _lead_rows,
     _rule_pin_dict,
     _template,
 )
-from telegram_lead_discovery.security.csrf import generate_csrf_token
 from telegram_lead_discovery.storage.db import session_scope
 from telegram_lead_discovery.storage.models import (
     Lead,
@@ -40,8 +40,7 @@ def create_leads_router() -> APIRouter:
         cursor: str | None,
         limit: int | None,
     ) -> dict:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             page = await list_inbox_leads(
                 session, band=band, cursor=cursor, limit=limit
@@ -80,8 +79,7 @@ def create_leads_router() -> APIRouter:
 
     @router.get("/leads/{lead_id}", response_class=HTMLResponse)
     async def lead_detail(request: Request, lead_id: int) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             lead = await session.get(Lead, lead_id)
             if lead is None:

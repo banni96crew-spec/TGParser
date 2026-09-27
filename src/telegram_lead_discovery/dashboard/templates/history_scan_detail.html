@@ -22,7 +22,7 @@
 </select>
 <button type="submit">Фильтровать</button>
 </form>
-<table><thead><tr><th>Источник</th><th>Дата</th><th>Категория</th><th>Оценка</th><th>Ссылка</th></tr></thead><tbody>
-{% for result, title in results %}<tr><td>{{ title }}</td><td>{{ result.published_at }}</td><td>{{ category_labels.get(result.category, result.category) }}</td><td>{{ result.score_total }} ({{ score_band_labels.get(result.score_band, result.score_band) }})</td><td>{% if result.permalink %}<a href="{{ result.permalink }}" target="_blank" rel="noopener">Открыть</a>{% endif %}</td></tr>{% else %}<tr><td colspan="5">{% if selected_category or selected_score_band %}По выбранным фильтрам результатов нет.{% else %}Пока нет результатов.{% endif %}</td></tr>{% endfor %}
+<table><thead><tr><th>Источник</th><th>Дата</th><th>Категория</th><th>Роль автора</th><th>Оценка</th><th>Ссылка</th></tr></thead><tbody>
+{% for result, title in results %}<tr><td>{{ title }}</td><td>{{ result.published_at }}</td><td>{{ category_labels.get(result.category, result.category) }}</td><td>{{ author_role_labels.get(result.author_role, result.author_role) }}</td><td>{{ result.score_total }} ({{ score_band_labels.get(result.score_band, result.score_band) }})</td><td>{% if result.permalink %}<a href="{{ result.permalink }}" target="_blank" rel="noopener">Открыть</a>{% endif %}</td></tr>{% else %}<tr><td colspan="6">{% if selected_category or selected_score_band %}По выбранным фильтрам результатов нет.{% else %}Пока нет результатов.{% endif %}</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}

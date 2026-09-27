@@ -8,14 +8,13 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
 
-from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _template
+from telegram_lead_discovery.dashboard.view_helpers import _csrf_or_403, _issue_csrf, _template
 from telegram_lead_discovery.processing.history_scan import (
     HistoryScanError,
     cancel_history_scan,
     create_history_scan,
     prepare_manual_history_targets,
 )
-from telegram_lead_discovery.security.csrf import generate_csrf_token
 from telegram_lead_discovery.settings.service import get_setting
 from telegram_lead_discovery.storage.db import session_scope
 from telegram_lead_discovery.storage.models import (
@@ -37,6 +36,14 @@ HISTORY_SCAN_SCORE_BAND_LABELS = {
     "cold": "Холодная",
     "irrelevant": "Нерелевантная",
 }
+HISTORY_SCAN_AUTHOR_ROLE_LABELS = {
+    "provider_offer": "Предложение услуг",
+    "job_seeker": "Соискатель",
+    "vacancy": "Работодатель",
+    "client_request": "Заказчик",
+    "neutral": "Не определена",
+    "legacy": "Нет данных (старая версия)",
+}
 
 
 def create_history_scans_router() -> APIRouter:
@@ -45,8 +52,7 @@ def create_history_scans_router() -> APIRouter:
     async def page(
         request: Request, *, message: str | None = None, status: int = 200
     ) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         async with session_scope() as session:
             enabled = bool(await get_setting(session, "history_scan.enabled"))
             sources = list(
@@ -98,13 +104,19 @@ def create_history_scans_router() -> APIRouter:
             form_data = await request.form()
             source_ids = [int(value) for value in form_data.getlist("source_ids")]
             gateway = getattr(request.app.state, "gateway", None)
-            if manual_refs.strip() and gateway is None:
-                return await page(request, message="Gateway не настроен", status=503)
             manual_targets, input_rejections = (
                 await prepare_manual_history_targets(gateway, manual_refs)
                 if manual_refs.strip()
                 else ([], [])
             )
+            if not source_ids and not manual_targets and input_rejections:
+                return await page(
+                    request,
+                    message=", ".join(
+                        sorted({rejection.code for rejection in input_rejections})
+                    ),
+                    status=400,
+                )
             async with session_scope() as session:
                 if not bool(await get_setting(session, "history_scan.enabled")):
                     return await page(request, message="Сканирование выключено", status=403)
@@ -126,8 +138,7 @@ def create_history_scans_router() -> APIRouter:
 
     @router.get("/history-scans/{scan_id}", response_class=HTMLResponse)
     async def history_scan_detail(request: Request, scan_id: str) -> HTMLResponse:
-        token = generate_csrf_token()
-        request.session["csrf_token"] = token
+        token = _issue_csrf(request)
         requested_category = request.query_params.get("category")
         selected_category = (
             requested_category
@@ -189,6 +200,7 @@ def create_history_scans_router() -> APIRouter:
                 "category_labels": HISTORY_SCAN_CATEGORY_LABELS,
                 "selected_score_band": selected_score_band,
                 "score_band_labels": HISTORY_SCAN_SCORE_BAND_LABELS,
+                "author_role_labels": HISTORY_SCAN_AUTHOR_ROLE_LABELS,
                 "input_rejections": json.loads(scan.input_rejections_json or "[]"),
             },
         )

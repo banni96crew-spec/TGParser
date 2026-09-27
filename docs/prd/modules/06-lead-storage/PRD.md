@@ -271,6 +271,7 @@ Historical backfill invariant (Wave 02 migration semantics; code not in Wave 01)
 | STO-023 | Durable graph response storage (D-072) | MUST | Migration `008` creates `graph_discovery_posts` with unique run/source/message identity, source/provenance/request fields, full text/link and pseudonymous author constraints; stage receipt and rows commit before next Telegram request; text/rows purge at 30/90 days |
 | STO-024 | Presented suppress class + profile v8 pointer (D-076 / D-074) | MUST | Linear Alembic `008→009→010`. Migration `009` adds `presented_keyword_sources.suppress_class` enum `quality\|non_quality\|legacy_unspecified`; backfill from live snapshots else `legacy_unspecified`; match/index for suppress uses only `quality`; ledger still never purged by SRC-030/STO-016 (STO-020). Migration `010` upgrades observed `current_version==7` → `8` with SRC-049 v8 catalogs; other current_version blocks; rollback `8→7` refused while a keyword run is `queued\|running\|retry_wait_flood\|cancelling`. `query_kind=operator_seed` is an allowed `DiscoveryRunQuery` string (no extra revision if CHECK absent) |
 | STO-025 | In-flight graph discovery jobs skip lease reclaim (D-077) | MUST | Exception to STO-018 only for `job_type=discovery`: `recover_stale_jobs` (watchdog and any `claim_job`) MUST NOT move a job to `queued` while its id is in the process-wide in-flight set. Id is added before any Telegram/`before_request` and removed in `finally`. After process crash the set is empty and STO-018 reclaim applies |
+| STO-029 | Author-role result fields (D-082) | MUST | Migration `014` adds non-null `author_role` and `author_role_rule_ids_json` to `processing_results` and `history_scan_results`; existing rows are `legacy`/`[]`; upgrade and downgrade keep both tables valid |
 
 ## 15. Observability
 
@@ -328,6 +329,7 @@ Logs содержат только internal IDs, operation, duration, row count 
 | AT-STO-025 | STO-025 | In-flight `job_type=discovery` with expired lease recovered via watchdog-path `recover_stale_jobs`; then drop id | Stays `running` while in-flight; after drop, STO-018 queued |
 | AT-STO-026 | STO-026 | Upgrade до head и очистка scan results age 24ч | Таблицы `history_scan_*` созданы, дубликат `(target,message)` невозможен, результаты старше 24ч удалены |
 | AT-STO-027 | STO-027 | Upgrade 011→012, manual target, retention terminal scan | Nullable source FK только у manual target/result; ordinal уникален; через 24ч удаляются results, targets и session |
+| AT-STO-029 | STO-029 | Upgrade 013→014 and downgrade on a populated temporary database | Both result tables contain role fields; existing rows read `legacy`/`[]`; downgrade removes only these fields |
 
 ## 18. DEFERRED
 

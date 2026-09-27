@@ -15,14 +15,26 @@ class ProcessLock:
 
     def acquire(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        if self.path.exists():
+        # O_EXCL is an atomic create on Windows and removes the former
+        # check-then-write race between two startup processes.
+        try:
+            descriptor = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
             try:
                 old_pid = int(self.path.read_text(encoding="utf-8").strip() or "0")
             except ValueError:
                 old_pid = 0
             if old_pid and _pid_alive(old_pid):
-                raise AlreadyRunningError("already_running")
-        self.path.write_text(str(os.getpid()), encoding="utf-8")
+                raise AlreadyRunningError("already_running") from None
+            try:
+                self.path.unlink()
+            except FileNotFoundError:
+                pass
+            return self.acquire()
+        try:
+            os.write(descriptor, str(os.getpid()).encode("utf-8"))
+        finally:
+            os.close(descriptor)
         self._held = True
 
     def release(self) -> None:

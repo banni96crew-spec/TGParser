@@ -197,3 +197,9 @@ Release evidence включает:
 - Coverage: `PROC-020`, `STO-026`, `UI-030` ↔ `AT-PROC-020`, `AT-STO-026`, `AT-UI-030`.
 - Скан читает только monitoring sources и не создаёт monitoring data, lead или notification.
 - Ограничение окна — 48 часов; результаты без текста очищаются через 24 часа.
+
+## 16. Временные цели ручного скана (D-080)
+
+- Coverage: `COL-032`, `PROC-021`, `STO-027`, `UI-031` ↔ `AT-COL-032`, `AT-PROC-021`, `AT-STO-027`, `AT-UI-031`.
+- Implementation: `collector/ports.py`, `processing/history_scan.py`, `storage/model_parts/history_scan.py`, `dashboard/routes/history_scans.py`.
+- Временная цель не создаёт `TelegramSource`, Lead, Notification или Collector checkpoint; обработка выполняется строго по `HistoryScanTarget.ordinal`.

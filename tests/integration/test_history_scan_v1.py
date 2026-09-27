@@ -6,14 +6,15 @@ from pathlib import Path
 import pytest
 from sqlalchemy import select
 
-from telegram_lead_discovery.collector.fake import FakeTelegramGateway
-from telegram_lead_discovery.collector.ports import TelegramMessageDTO
+from telegram_lead_discovery.collector.fake import FakeTelegramGateway, make_source
+from telegram_lead_discovery.collector.ports import GatewaySourceInaccessible, TelegramMessageDTO
 from telegram_lead_discovery.detection.seed import seed_active_ruleset
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
 from telegram_lead_discovery.processing.history_scan import (
     HistoryScanError,
     claim_and_process_history_scan_job,
     create_history_scan,
+    prepare_manual_history_targets,
 )
 from telegram_lead_discovery.settings.service import seed_defaults
 from telegram_lead_discovery.storage.db import dispose_engine, init_engine
@@ -21,6 +22,7 @@ from telegram_lead_discovery.storage.migrate import upgrade_head
 from telegram_lead_discovery.storage.models import (
     HistoryScanResult,
     HistoryScanSession,
+    HistoryScanTarget,
     Lead,
     TelegramSource,
 )
@@ -121,6 +123,148 @@ async def test_scan_rejects_period_over_48_hours(db_env) -> None:
 
 
 @pytest.mark.asyncio
+async def test_manual_target_is_not_registry_source_and_uses_peer_history(db_env) -> None:
+    now = datetime.now(UTC)
+    gateway = FakeTelegramGateway()
+    gateway.register_source(
+        "manual_history",
+        make_source(telegram_id=880, username="manual_history", source_type="channel"),
+    )
+    gateway.register_messages_for_peer(
+        880,
+        [
+            TelegramMessageDTO(
+                schema_version=2,
+                source_id=0,
+                telegram_message_id=1,
+                published_at=now - timedelta(minutes=5),
+                text="Нужен сайт для магазина, ищу исполнителя",
+                telegram_peer_id=880,
+                permalink="https://t.me/manual_history/1",
+            )
+        ],
+    )
+    targets, rejections = await prepare_manual_history_targets(gateway, "@manual_history")
+    assert rejections == []
+    scan = await run_write(
+        lambda session: create_history_scan(
+            session,
+            source_ids=[],
+            manual_targets=targets,
+            period_hours=24,
+            now=now,
+        )
+    )
+    assert await claim_and_process_history_scan_job(gateway) == "processed"
+
+    async def rows(session):
+        target = (
+            await session.execute(
+                select(HistoryScanResult, HistoryScanSession)
+                .join(HistoryScanSession, HistoryScanSession.id == HistoryScanResult.session_id)
+                .where(HistoryScanResult.session_id == scan.id)
+            )
+        ).first()
+        source_count = len(list((await session.execute(select(TelegramSource))).scalars()))
+        return target, source_count
+
+    result, source_count = await run_write(rows)
+    assert result is not None
+    assert result[0].source_id is None
+    assert source_count == 0
+
+
+@pytest.mark.asyncio
+async def test_manual_ref_rejects_invalid_and_duplicate_username(db_env) -> None:
+    gateway = FakeTelegramGateway()
+    gateway.register_source(
+        "manual_duplicate",
+        make_source(telegram_id=881, username="manual_duplicate", source_type="group"),
+    )
+    targets, rejections = await prepare_manual_history_targets(
+        gateway,
+        "@manual_duplicate\nhttps://t.me/manual_duplicate\n@bad",
+    )
+    assert [target.snapshot.telegram_id for target in targets] == [881]
+    assert [rejection.code for rejection in rejections] == [
+        "duplicate_target",
+        "manual_source_not_supported",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_mixed_scan_keeps_ordinal_order_and_becomes_partial(db_env) -> None:
+    class OneInaccessibleGateway(FakeTelegramGateway):
+        async def iter_history(self, request):
+            if request.peer.telegram_peer_id == 902:
+                raise GatewaySourceInaccessible("source_inaccessible")
+            async for message in super().iter_history(request):
+                yield message
+
+    async def add_sources(session):
+        first = TelegramSource(
+            telegram_id=901,
+            username_normalized="ordered_first",
+            title="Первый",
+            source_type="megagroup",
+            lifecycle_state="monitoring",
+        )
+        second = TelegramSource(
+            telegram_id=902,
+            username_normalized="ordered_second",
+            title="Второй",
+            source_type="megagroup",
+            lifecycle_state="monitoring",
+        )
+        session.add_all([first, second])
+        await session.flush()
+        return first.id, second.id
+
+    first_id, second_id = await run_write(add_sources)
+    gateway = OneInaccessibleGateway()
+    gateway.register_source(
+        "ordered_manual",
+        make_source(telegram_id=903, username="ordered_manual", source_type="channel"),
+    )
+    manual_targets, _ = await prepare_manual_history_targets(gateway, "@ordered_manual")
+    scan = await run_write(
+        lambda session: create_history_scan(
+            session,
+            source_ids=[first_id, second_id],
+            manual_targets=manual_targets,
+            period_hours=1,
+        )
+    )
+    assert await claim_and_process_history_scan_job(gateway) == "processed"
+    assert await claim_and_process_history_scan_job(gateway) == "processed"
+    assert await claim_and_process_history_scan_job(gateway) == "processed"
+    # The inaccessible peer fails before the fake gateway records a history call;
+    # the persisted target order below proves it was handled between the two calls.
+    assert [call.source_id for call in gateway.history_calls] == [first_id, 0]
+
+    async def scan_and_targets(session):
+        row = await session.get(HistoryScanSession, scan.id)
+        targets = list(
+            (
+                await session.execute(
+                    select(HistoryScanTarget)
+                    .where(HistoryScanTarget.session_id == scan.id)
+                    .order_by(HistoryScanTarget.ordinal)
+                )
+            ).scalars()
+        )
+        return row, targets
+
+    row, targets = await run_write(scan_and_targets)
+    assert row is not None and row.state == "partial"
+    assert [(target.ordinal, target.origin, target.state) for target in targets] == [
+        (1, "monitoring", "succeeded"),
+        (2, "monitoring", "skipped"),
+        (3, "manual", "succeeded"),
+    ]
+
+
+@pytest.mark.asyncio
 async def test_retention_removes_scan_results_after_24_hours(db_env) -> None:
     now = datetime.now(UTC)
 
@@ -160,4 +304,5 @@ async def test_retention_removes_scan_results_after_24_hours(db_env) -> None:
 
     result = await run_write(purge)
     assert result.history_scan_results_deleted == 1
+    assert result.history_scan_sessions_deleted == 1
     assert scan.id

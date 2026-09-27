@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from sqlalchemy import select
@@ -11,6 +13,7 @@ from telegram_lead_discovery.processing.history_scan import (
     HistoryScanError,
     cancel_history_scan,
     create_history_scan,
+    prepare_manual_history_targets,
 )
 from telegram_lead_discovery.security.csrf import generate_csrf_token
 from telegram_lead_discovery.settings.service import get_setting
@@ -49,7 +52,7 @@ def create_history_scans_router() -> APIRouter:
                     )
                 ).scalars()
             )
-        return _template(
+        response = _template(
             request,
             "history_scans.html",
             {
@@ -61,6 +64,8 @@ def create_history_scans_router() -> APIRouter:
                 "message": message,
             },
         )
+        response.status_code = status
+        return response
 
     @router.get("/history-scans", response_class=HTMLResponse)
     async def history_scans_index(request: Request) -> HTMLResponse:
@@ -69,22 +74,41 @@ def create_history_scans_router() -> APIRouter:
     @router.post("/history-scans")
     async def history_scans_start(
         request: Request,
-        source_ids: list[int] = Form(...),  # noqa: B008
         period_hours: int = Form(...),
+        manual_refs: str = Form(""),
         csrf_token: str = Form(...),
     ) -> HTMLResponse:
         rejected = _csrf_or_403(request, csrf_token)
         if rejected is not None:
             return rejected
         try:
+            form_data = await request.form()
+            source_ids = [int(value) for value in form_data.getlist("source_ids")]
+            gateway = getattr(request.app.state, "gateway", None)
+            if manual_refs.strip() and gateway is None:
+                return await page(request, message="Gateway не настроен", status=503)
+            manual_targets, input_rejections = (
+                await prepare_manual_history_targets(gateway, manual_refs)
+                if manual_refs.strip()
+                else ([], [])
+            )
             async with session_scope() as session:
                 if not bool(await get_setting(session, "history_scan.enabled")):
                     return await page(request, message="Сканирование выключено", status=403)
                 scan = await create_history_scan(
-                    session, source_ids=source_ids, period_hours=period_hours
+                    session,
+                    source_ids=source_ids,
+                    period_hours=period_hours,
+                    manual_targets=manual_targets,
+                    input_rejections=input_rejections,
                 )
         except HistoryScanError as exc:
-            return await page(request, message=str(exc), status=400)
+            code = str(exc)
+            return await page(
+                request,
+                message=code,
+                status=429 if code.startswith("manual_source_rate_limited=") else 400,
+            )
         return RedirectResponse(f"/history-scans/{scan.id}", status_code=303)
 
     @router.get("/history-scans/{scan_id}", response_class=HTMLResponse)
@@ -100,7 +124,7 @@ def create_history_scans_router() -> APIRouter:
                     await session.execute(
                         select(HistoryScanTarget)
                         .where(HistoryScanTarget.session_id == scan_id)
-                        .order_by(HistoryScanTarget.source_title.asc())
+                        .order_by(HistoryScanTarget.ordinal.asc())
                     )
                 ).scalars()
             )
@@ -126,6 +150,7 @@ def create_history_scans_router() -> APIRouter:
                 "scan": scan,
                 "targets": targets,
                 "results": results,
+                "input_rejections": json.loads(scan.input_rejections_json or "[]"),
             },
         )
 

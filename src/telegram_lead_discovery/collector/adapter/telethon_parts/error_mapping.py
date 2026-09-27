@@ -8,6 +8,7 @@ from telegram_lead_discovery.collector.ports import (
     GatewayInvalidSearchQuery,
     GatewayPermanentError,
     GatewayPremiumRequired,
+    GatewayRateLimited,
     GatewaySearchQuotaExhausted,
     GatewaySearchUnavailable,
     GatewaySourceInaccessible,
@@ -23,6 +24,7 @@ def _raise_mapped(exc: BaseException) -> BaseException:
         exc,
         RequestControlError
         | GatewayFloodWait
+        | GatewayRateLimited
         | GatewayFrozen
         | GatewayInvalidSearchQuery
         | GatewayPermanentError

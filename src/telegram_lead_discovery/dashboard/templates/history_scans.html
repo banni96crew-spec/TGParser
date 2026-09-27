@@ -14,6 +14,11 @@
     {% else %}<p>Нет источников в мониторинге.</p>{% endfor %}
   </fieldset>
   <button type="submit">Запустить</button>
+  <p>
+    <label for="manual_refs">Временные источники для этого скана</label><br />
+    <textarea id="manual_refs" name="manual_refs" rows="5" cols="48"
+      placeholder="@chat или https://t.me/chat — по одной ссылке на строку"></textarea>
+  </p>
 </form>
 {% else %}<p>Сканирование выключено в настройках.</p>{% endif %}
 <h2>Последние сканы</h2>

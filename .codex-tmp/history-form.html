@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Скан истории — Telegram Lead Discovery</title>
+  <link rel="stylesheet" href="/static/css/app.css" />
+  <script src="/static/vendor/htmx-2.0.10.min.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Навигация">
+      <a class="brand" href="/">TLD</a>
+      <ul class="nav-list">
+        <li>
+          <a class="nav-link" href="/">Inbox</a>
+        </li>
+        <li>
+          <a class="nav-link" href="/sources">Источники</a>
+        </li>
+        <li>
+          <a class="nav-link" href="/discovery">Разведка источников</a>
+        </li>
+        <li>
+          <a class="nav-link is-active" href="/history-scans">Скан истории</a>
+        </li>
+        <li>
+          <a class="nav-link" href="/health">Состояние</a>
+        </li>
+        <li>
+          <a class="nav-link" href="/settings">Настройки</a>
+        </li>
+      </ul>
+    </aside>
+    <main class="main">
+      
+<h1>Скан истории</h1>
+<p>Ищет заявки клиентов и вакансии за период до 48 часов. Лиды и уведомления не создаются.</p>
+
+
+<form method="post" action="/history-scans">
+  <input type="hidden" name="csrf_token" value="8Xg-hN968-KCvQzcCr5niABYGI2GZANMRXpVj-LwApc" />
+  <label>Период, часов <input type="number" name="period_hours" min="1" max="48" value="24" required /></label>
+  <fieldset>
+    <legend>Источники мониторинга</legend>
+    <p>Нет источников в мониторинге.</p>
+  </fieldset>
+  <button type="submit">Запустить</button>
+  <p>
+    <label for="manual_refs">Временные источники для этого скана</label><br />
+    <textarea id="manual_refs" name="manual_refs" rows="5" cols="48"
+      placeholder="@chat или https://t.me/chat — по одной ссылке на строку"></textarea>
+  </p>
+</form>
+
+<h2>Последние сканы</h2>
+<ul><li>Пока нет.</li></ul>
+
+    </main>
+  </div>
+</body>
+</html>

@@ -281,6 +281,8 @@ Band mapping for ActiveClientChat v1 (D-070/SRC-025): `quality` with score `≥6
 
 Truth status (D-070): `quality` только при всех SRC-024 thresholds; `near` = completed 30d/exhausted + ≥1 countable request, но threshold failure; `inconclusive` = terminal incomplete scan; `rejected` = completed 30d/exhausted + 0 countable requests. Resumable FloodWait/crash не создают terminal truth.
 
+`HistoryScanSession` (PROC-021): один ручной scan с pinned rule-set, интервалом 1..48 часов, terminal state `succeeded|partial|failed|cancelled` и журналом отклонённых ручных строк. `HistoryScanTarget` (STO-027): цель скана с `ordinal`, `origin=monitoring|manual`, nullable `source_id` только для `manual`, peer reference и состоянием. `HistoryScanResult`: результат без текста; `source_id` nullable для ручной цели. Все три сущности удаляются через 24 часа после terminal scan.
+
 Keyword run counters (D-070 / SRC-047): `quality_sources`, `near_sources`, `inconclusive_sources`, `rejected_sources`, `countable_client_requests`, `distinct_client_authors`, `history_scanned_total`, `gate_status` (`pass|fail|inconclusive`). `pass` = ≥1 quality source; run-cap-before-pool-exhaustion without quality = `inconclusive`; exhausted without quality = `fail`.
 
 Eligibility reason codes (SRC opportunity, not SCR): `directory_only_no_evidence`, `needs_verification` — directory-only / unverified linked discussion MUST NOT receive `review` or `promising` without deep verification evidence.

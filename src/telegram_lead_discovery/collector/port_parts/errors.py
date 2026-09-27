@@ -9,6 +9,14 @@ class GatewayFloodWait(Exception):
         super().__init__(f"flood_wait_until={until.isoformat()}")
 
 
+class GatewayRateLimited(Exception):
+    """Local account-wide start gate deferred this Telegram RPC."""
+
+    def __init__(self, until: datetime) -> None:
+        self.until = until
+        super().__init__(f"gateway_rate_limited_until={until.isoformat()}")
+
+
 class GatewayUnauthorized(Exception):
     pass
 

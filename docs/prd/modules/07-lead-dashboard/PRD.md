@@ -349,6 +349,7 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-028 | POST `/discovery/runs` with 0, 1, 25, 26 seed lines; missing CSRF; stale version | 0..25 accepted; 26 and invalid SRC-001 rejected without run; CSRF/stale version reject without write; graph not started |
 | AT-UI-029 | GET `/discovery/runs/{id}` for graph on the existing path; CSRF cancel; HTMX fragments; POST without/with CSRF | Not 404; one handler; CSRF form present; HTML has no `hx-get` to `status-fragment` or `results-fragment`; POST without CSRF leaves state; CSRF+version → `303` `cancelling` if worker may run, `cancelled` if queued/retry_wait; keyword GET/cancel unchanged |
 | AT-UI-030 | Скан истории: POST без/с CSRF, 48/49 часов, результат | Без CSRF нет записи; 49 отклонено; доступны выбранные monitoring sources, статусы, permalink и отмена |
+| AT-UI-031 | Скан истории с `manual_refs` | Поле принимает `@username`/`t.me`, показывает пропуски, не создаёт source registry row и сохраняет порядок целей |
 
 ## 18. DEFERRED
 

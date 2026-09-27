@@ -12,10 +12,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from telegram_lead_discovery.collector.ports import (
     GatewayFloodWait,
+    GatewayFrozen,
     GatewayPermanentError,
+    GatewayRateLimited,
     GatewaySourceInaccessible,
+    GatewayTimeout,
     GatewayTransientError,
+    GatewayUnauthorized,
     HistoryRequest,
+    PublicSourceRef,
+    SourceSnapshot,
     TelegramGateway,
     TelegramMessageDTO,
     TelegramPeerRef,
@@ -26,6 +32,10 @@ from telegram_lead_discovery.detection.loader import get_default_loader
 from telegram_lead_discovery.detection.seed import get_active_ruleset
 from telegram_lead_discovery.processing.normalization import normalize_message_text
 from telegram_lead_discovery.scoring.engine import score_detection
+from telegram_lead_discovery.source_discovery.normalization import (
+    InvalidUsernameError,
+    normalize_username,
+)
 from telegram_lead_discovery.storage.db import session_scope
 from telegram_lead_discovery.storage.jobs import claim_job, enqueue_job
 from telegram_lead_discovery.storage.models import (
@@ -40,6 +50,8 @@ HISTORY_SCAN_JOB_TYPE = "history_scan"
 PAGE_SIZE = 100
 MAX_PERIOD = timedelta(hours=48)
 MAX_SOURCES = 50
+MANUAL_SOURCE_QUALITY_SCORE = 2
+SUPPORTED_MANUAL_SOURCE_TYPES = frozenset({"channel", "megagroup", "group"})
 MATCHED_CATEGORIES = frozenset(
     {"direct_order", "contractor_search", "recommendation_request", "vacancy"}
 )
@@ -57,6 +69,78 @@ class ScanAnalysis:
     score_total: int
     score_band: str
     explanation_json: str
+
+
+@dataclass(frozen=True, slots=True)
+class ManualHistoryTarget:
+    line_no: int
+    reference: str
+    snapshot: SourceSnapshot
+
+
+@dataclass(frozen=True, slots=True)
+class ManualHistoryRejection:
+    line_no: int
+    reference: str
+    code: str
+
+
+async def prepare_manual_history_targets(
+    gateway: TelegramGateway, manual_refs: str
+) -> tuple[list[ManualHistoryTarget], list[ManualHistoryRejection]]:
+    """Resolve public manual refs before a scan is persisted.
+
+    Rejected input deliberately never becomes a registry source or scan target.
+    """
+    targets: list[ManualHistoryTarget] = []
+    rejections: list[ManualHistoryRejection] = []
+    seen_usernames: set[str] = set()
+    seen_peers: set[int] = set()
+    for line_no, raw in enumerate(manual_refs.splitlines(), start=1):
+        reference = raw.strip()
+        if not reference:
+            continue
+        try:
+            username = normalize_username(reference)
+        except InvalidUsernameError:
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "manual_source_not_supported")
+            )
+            continue
+        if username in seen_usernames:
+            rejections.append(ManualHistoryRejection(line_no, reference, "duplicate_target"))
+            continue
+        seen_usernames.add(username)
+        try:
+            snapshot = await gateway.resolve_public_source(
+                PublicSourceRef(schema_version=1, username_or_url=username)
+            )
+        except (GatewaySourceInaccessible, GatewayPermanentError):
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "manual_source_not_supported")
+            )
+            continue
+        except GatewayFloodWait as exc:
+            raise HistoryScanError(f"manual_source_retry_after={exc.until.isoformat()}") from exc
+        except GatewayRateLimited as exc:
+            raise HistoryScanError(
+                f"manual_source_rate_limited={exc.until.isoformat()}"
+            ) from exc
+        except (GatewayUnauthorized, GatewayFrozen):
+            raise HistoryScanError("telegram_account_unavailable") from None
+        except (GatewayTransientError, GatewayTimeout):
+            raise HistoryScanError("manual_source_resolution_unavailable") from None
+        if snapshot.source_type not in SUPPORTED_MANUAL_SOURCE_TYPES:
+            rejections.append(
+                ManualHistoryRejection(line_no, reference, "manual_source_not_supported")
+            )
+            continue
+        if snapshot.telegram_id in seen_peers:
+            rejections.append(ManualHistoryRejection(line_no, reference, "duplicate_target"))
+            continue
+        seen_peers.add(snapshot.telegram_id)
+        targets.append(ManualHistoryTarget(line_no=line_no, reference=reference, snapshot=snapshot))
+    return targets, rejections
 
 
 def _utc(value: datetime) -> datetime:
@@ -114,13 +198,17 @@ async def create_history_scan(
     *,
     source_ids: list[int],
     period_hours: int,
+    manual_targets: list[ManualHistoryTarget] | None = None,
+    input_rejections: list[ManualHistoryRejection] | None = None,
     now: datetime | None = None,
 ) -> HistoryScanSession:
     clock = _utc(now or datetime.now(UTC))
     if not 1 <= period_hours <= int(MAX_PERIOD.total_seconds() // 3600):
         raise HistoryScanError("period_hours_must_be_1_to_48")
     ids = list(dict.fromkeys(int(source_id) for source_id in source_ids))
-    if not ids or len(ids) > MAX_SOURCES:
+    manual_targets = manual_targets or []
+    input_rejections = input_rejections or []
+    if len(ids) + len(manual_targets) > MAX_SOURCES:
         raise HistoryScanError("source_count_must_be_1_to_50")
     active = await session.execute(
         select(HistoryScanSession.id).where(HistoryScanSession.state.in_(ACTIVE_STATES)).limit(1)
@@ -139,6 +227,20 @@ async def create_history_scan(
     )
     if len(sources) != len(ids):
         raise HistoryScanError("only_monitoring_sources_allowed")
+    by_id = {source.id: source for source in sources}
+    sources = [by_id[source_id] for source_id in ids]
+    seen_peers = {source.telegram_id for source in sources if source.telegram_id is not None}
+    accepted_manual: list[ManualHistoryTarget] = []
+    for manual in manual_targets:
+        if manual.snapshot.telegram_id in seen_peers:
+            input_rejections.append(
+                ManualHistoryRejection(manual.line_no, manual.reference, "duplicate_target")
+            )
+            continue
+        seen_peers.add(manual.snapshot.telegram_id)
+        accepted_manual.append(manual)
+    if not sources and not accepted_manual:
+        raise HistoryScanError("source_count_must_be_1_to_50")
     ruleset = await get_active_ruleset(session)
     if ruleset is None:
         raise HistoryScanError("missing_rule_set_version")
@@ -158,11 +260,20 @@ async def create_history_scan(
             },
             sort_keys=True,
         ),
+        input_rejections_json=json.dumps(
+            [
+                {"line_no": item.line_no, "reference": item.reference, "code": item.code}
+                for item in input_rejections
+            ],
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
         created_at=clock,
         updated_at=clock,
     )
     session.add(scan)
     await session.flush()
+    ordinal = 1
     for source in sources:
         if source.telegram_id is None and not source.username_normalized:
             raise HistoryScanError("source_peer_ref_missing")
@@ -170,6 +281,8 @@ async def create_history_scan(
             HistoryScanTarget(
                 session_id=scan.id,
                 source_id=source.id,
+                ordinal=ordinal,
+                origin="monitoring",
                 telegram_peer_id=source.telegram_id,
                 access_hash=source.access_hash,
                 username_normalized=source.username_normalized,
@@ -180,6 +293,27 @@ async def create_history_scan(
                 updated_at=clock,
             )
         )
+        ordinal += 1
+    for manual in accepted_manual:
+        snapshot = manual.snapshot
+        session.add(
+            HistoryScanTarget(
+                session_id=scan.id,
+                source_id=None,
+                ordinal=ordinal,
+                origin="manual",
+                manual_reference=manual.reference,
+                telegram_peer_id=snapshot.telegram_id,
+                access_hash=snapshot.access_hash,
+                username_normalized=snapshot.username.lower(),
+                source_title=snapshot.title,
+                source_quality_score=MANUAL_SOURCE_QUALITY_SCORE,
+                state="queued",
+                created_at=clock,
+                updated_at=clock,
+            )
+        )
+        ordinal += 1
     await enqueue_job(
         session,
         job_type=HISTORY_SCAN_JOB_TYPE,
@@ -257,9 +391,33 @@ async def claim_and_process_history_scan_job(gateway: TelegramGateway) -> str | 
                     ).limit(1)
                 )
                 if pending.scalar_one_or_none() is None:
-                    scan.state = "succeeded"
+                    succeeded = await session.execute(
+                        select(HistoryScanTarget.id)
+                        .where(
+                            HistoryScanTarget.session_id == session_id,
+                            HistoryScanTarget.state == "succeeded",
+                        )
+                        .limit(1)
+                    )
+                    failed = await session.execute(
+                        select(HistoryScanTarget.id)
+                        .where(
+                            HistoryScanTarget.session_id == session_id,
+                            HistoryScanTarget.state.in_(("skipped", "failed")),
+                        )
+                        .limit(1)
+                    )
+                    has_succeeded = succeeded.scalar_one_or_none() is not None
+                    has_failed = failed.scalar_one_or_none() is not None
+                    scan.state = (
+                        "partial"
+                        if has_succeeded and has_failed
+                        else "succeeded"
+                        if has_succeeded
+                        else "failed"
+                    )
                     scan.finished_at = datetime.now(UTC)
-                    job.state = "succeeded"
+                    job.state = "failed" if scan.state == "failed" else "succeeded"
                 else:
                     job.state = "queued"
                     job.available_at = datetime.now(UTC)
@@ -267,6 +425,26 @@ async def claim_and_process_history_scan_job(gateway: TelegramGateway) -> str | 
             job.updated_at = datetime.now(UTC)
         await session.flush()
     return "processed"
+
+
+async def _finish_target_error(
+    session_id: str, target_id: int, *, state: str, code: str
+) -> None:
+    """Finish one target without aborting the remaining scan targets."""
+    async with session_scope() as session:
+        scan = await session.get(HistoryScanSession, session_id)
+        target = await session.get(HistoryScanTarget, target_id)
+        if scan is None or target is None:
+            return
+        clock = datetime.now(UTC)
+        target.state = state
+        target.last_error_code = code
+        target.finished_at = clock
+        target.updated_at = clock
+        scan.state = "running"
+        scan.started_at = scan.started_at or clock
+        scan.updated_at = clock
+        await session.flush()
 
 
 async def _process_one_target(gateway: TelegramGateway, session_id: str) -> None:
@@ -283,7 +461,7 @@ async def _process_one_target(gateway: TelegramGateway, session_id: str) -> None
                     HistoryScanTarget.session_id == session_id,
                     HistoryScanTarget.state.in_(("queued", "running")),
                 )
-                .order_by(HistoryScanTarget.id.asc())
+                .order_by(HistoryScanTarget.ordinal.asc())
                 .limit(1)
             )
         ).scalar_one_or_none()
@@ -298,7 +476,7 @@ async def _process_one_target(gateway: TelegramGateway, session_id: str) -> None
         )
         request = HistoryRequest(
             schema_version=1,
-            source_id=target.source_id,
+            source_id=target.source_id or 0,
             peer=peer,
             limit=PAGE_SIZE,
             purpose="history_scan",
@@ -315,8 +493,19 @@ async def _process_one_target(gateway: TelegramGateway, session_id: str) -> None
         quality = target.source_quality_score
 
     page: list[TelegramMessageDTO] = []
-    async for message in gateway.iter_history(request):
-        page.append(message)
+    try:
+        async for message in gateway.iter_history(request):
+            page.append(message)
+    except GatewaySourceInaccessible:
+        await _finish_target_error(
+            session_id, target_id, state="skipped", code="source_inaccessible"
+        )
+        return
+    except GatewayPermanentError:
+        await _finish_target_error(
+            session_id, target_id, state="failed", code="gateway_permanent_error"
+        )
+        return
     analyses: list[tuple[TelegramMessageDTO, ScanAnalysis]] = []
     exhausted = len(page) < PAGE_SIZE
     oldest_id: int | None = None

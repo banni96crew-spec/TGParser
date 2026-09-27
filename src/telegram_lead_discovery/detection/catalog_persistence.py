@@ -17,6 +17,7 @@ from telegram_lead_discovery.detection.catalog import (
     SEED_RULES_RU_MVP_3,
     SEED_RULES_RU_MVP_4,
     SEED_RULES_RU_MVP_5,
+    SEED_RULES_RU_MVP_6,
     SeedRule,
 )
 from telegram_lead_discovery.detection.catalog_codec import catalog_checksum
@@ -96,7 +97,7 @@ async def seed_ruleset_ru_mvp_1(session: AsyncSession) -> RuleSetVersion:
     """Bootstrap historical ru-mvp-1 without forcing it active after newer catalogs exist."""
     newer = await session.execute(
         select(RuleSetVersion).where(
-            RuleSetVersion.slug.in_(("ru-mvp-2", "ru-mvp-3", "ru-mvp-4", "ru-mvp-5"))
+            RuleSetVersion.slug.in_(("ru-mvp-2", "ru-mvp-3", "ru-mvp-4", "ru-mvp-5", "ru-mvp-6"))
         )
     )
     activate = newer.scalars().first() is None
@@ -114,7 +115,7 @@ async def seed_ruleset_ru_mvp_2(session: AsyncSession) -> RuleSetVersion:
     await seed_ruleset_ru_mvp_1(session)
     existing_v3 = await session.execute(
         select(RuleSetVersion).where(
-            RuleSetVersion.slug.in_(("ru-mvp-3", "ru-mvp-4", "ru-mvp-5"))
+            RuleSetVersion.slug.in_(("ru-mvp-3", "ru-mvp-4", "ru-mvp-5", "ru-mvp-6"))
         )
     )
     activate = existing_v3.scalars().first() is None
@@ -130,7 +131,7 @@ async def seed_ruleset_ru_mvp_2(session: AsyncSession) -> RuleSetVersion:
 async def seed_ruleset_ru_mvp_3(session: AsyncSession) -> RuleSetVersion:
     await seed_ruleset_ru_mvp_2(session)
     existing_newer = await session.execute(
-        select(RuleSetVersion).where(RuleSetVersion.slug.in_(("ru-mvp-4", "ru-mvp-5")))
+        select(RuleSetVersion).where(RuleSetVersion.slug.in_(("ru-mvp-4", "ru-mvp-5", "ru-mvp-6")))
     )
     return await _insert_ruleset(
         session,
@@ -157,11 +158,25 @@ async def seed_ruleset_ru_mvp_4(session: AsyncSession) -> RuleSetVersion:
 
 async def seed_ruleset_ru_mvp_5(session: AsyncSession) -> RuleSetVersion:
     await seed_ruleset_ru_mvp_4(session)
+    v6_exists = await session.execute(
+        select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-6")
+    )
     return await _insert_ruleset(
         session,
         version=5,
         slug="ru-mvp-5",
         rules=SEED_RULES_RU_MVP_5,
+        activate=v6_exists.scalar_one_or_none() is None,
+    )
+
+
+async def seed_ruleset_ru_mvp_6(session: AsyncSession) -> RuleSetVersion:
+    await seed_ruleset_ru_mvp_5(session)
+    return await _insert_ruleset(
+        session,
+        version=6,
+        slug="ru-mvp-6",
+        rules=SEED_RULES_RU_MVP_6,
         activate=True,
     )
 
@@ -174,5 +189,5 @@ async def get_active_ruleset(session: AsyncSession) -> RuleSetVersion | None:
 
 
 async def seed_active_ruleset(session: AsyncSession) -> RuleSetVersion:
-    """Ensure active immutable catalog ru-mvp-5 (DET-020 / D-075)."""
-    return await seed_ruleset_ru_mvp_5(session)
+    """Ensure active immutable catalog ru-mvp-6 (DET-021 / D-081)."""
+    return await seed_ruleset_ru_mvp_6(session)

@@ -45,6 +45,7 @@ from telegram_lead_discovery.collector.ports import (
     PublicSourceRef,
     SourceSnapshot,
 )
+from telegram_lead_discovery.collector.adapter.account_pacer import account_pacer
 from telegram_lead_discovery.infrastructure.windows_proxy import TelegramConnectionConfig
 from telegram_lead_discovery.security.secrets import load_secret_presence
 from telegram_lead_discovery.security.session_paths import session_path
@@ -104,8 +105,13 @@ class TelethonTelegramGateway(
                 api_id,
                 api_hash,
                 proxy=None if proxy is None else proxy.as_telethon_proxy(),
+                request_retries=0,
+                flood_sleep_threshold=0,
+                retry_delay=0,
             )
-            await self._client.connect()
+            # connect itself is a transport operation; get_me below is paced by _call.
+            async with account_pacer.rpc("session_start"):
+                await self._client.connect()
             self._connected = True
             me = await self._client.get_me()
             return AccountSnapshot(

@@ -14,6 +14,7 @@ from telegram_lead_discovery.collector.adapter.request_lock import (
     AsyncReadWriteLock,
     _await_cancelled,
 )
+from telegram_lead_discovery.collector.adapter.account_pacer import account_pacer
 from telegram_lead_discovery.collector.ports import (
     GRAPH_CALL_DEADLINE_SECONDS,
     GatewayTimeout,
@@ -136,7 +137,9 @@ class ControlledTelegramClient(TelegramClient):
     ) -> Any:
         controller = current_request_controller.get()
         if controller is None:
-            async with self._request_access.shared():
+            # Every ordinary Telethon RPC is serialized by the durable account gate.
+            # A batch never reaches Telethon before this single reservation exists.
+            async with account_pacer.rpc("collector"):
                 return await super()._call(
                     sender,
                     request,
@@ -150,9 +153,11 @@ class ControlledTelegramClient(TelegramClient):
 
         await controller.before_request(request)
         try:
-            return await self._graph_call(
-                controller, sender, request, ordered=ordered
-            )
+            # Graph keeps its own deadline/exclusive semantics inside the account gate.
+            async with account_pacer.rpc("graph"):
+                return await self._graph_call(
+                    controller, sender, request, ordered=ordered
+                )
         finally:
             await controller.after_request()
 

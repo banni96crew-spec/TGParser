@@ -940,6 +940,7 @@ async def run_command(
 
         preflight = run_security_preflight(bind=bind)
         if preflight.status == "blocked" and any("bind" in e for e in preflight.safe_errors):
+            lock.release()
             return "startup_failed"
 
         if preflight.status == "blocked":
@@ -961,6 +962,7 @@ async def run_command(
             from telegram_lead_discovery.observability.health import ReadinessState
 
             registry.readiness = ReadinessState.NOT_READY
+            lock.release()
             return "migration_failed"
 
         pragmas = await pragma_probe()
@@ -972,6 +974,7 @@ async def run_command(
 
             registry.readiness = ReadinessState.NOT_READY
             logger.emit(level="critical", event_code="integrity_check_failed")
+            lock.release()
             return "integrity_failed"
 
         registry.integrity_ok = True

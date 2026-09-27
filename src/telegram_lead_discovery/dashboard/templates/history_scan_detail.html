@@ -6,7 +6,8 @@
 <form method="post" action="/history-scans/{{ scan.id }}/cancel"><input type="hidden" name="csrf_token" value="{{ csrf_token }}" /><button type="submit">Отменить</button></form>
 {% endif %}
 <h2>Источники</h2>
-<ul>{% for target in targets %}<li>{{ target.source_title }}: {{ target.state }}, сообщений {{ target.messages_scanned }}, результатов {{ target.results_found }}</li>{% endfor %}</ul>
+<ul>{% for target in targets %}<li>{{ target.ordinal }}. {{ target.source_title }} ({{ target.origin }}): {{ target.state }}, сообщений {{ target.messages_scanned }}, результатов {{ target.results_found }}{% if target.last_error_code %}, причина {{ target.last_error_code }}{% endif %}</li>{% endfor %}</ul>
+{% if input_rejections %}<h2>Пропущенные строки</h2><ul>{% for item in input_rejections %}<li>{{ item.reference }}: {{ item.code }}</li>{% endfor %}</ul>{% endif %}
 <h2>Заявки и вакансии</h2>
 <table><thead><tr><th>Источник</th><th>Дата</th><th>Категория</th><th>Оценка</th><th>Ссылка</th></tr></thead><tbody>
 {% for result, title in results %}<tr><td>{{ title }}</td><td>{{ result.published_at }}</td><td>{{ result.category }}</td><td>{{ result.score_total }} ({{ result.score_band }})</td><td>{% if result.permalink %}<a href="{{ result.permalink }}" target="_blank" rel="noopener">Открыть</a>{% endif %}</td></tr>{% else %}<tr><td colspan="5">Пока нет результатов.</td></tr>{% endfor %}

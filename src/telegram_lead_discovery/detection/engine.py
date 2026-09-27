@@ -16,11 +16,12 @@ MATCHED_EXCERPT_MAX = 120
 ANALYSIS_TEXT_CAP = 4096
 REGEX_FLAGS = regex.IGNORECASE | regex.FULLCASE | regex.VERSION1
 
-HARD_EXCLUSION_PRECEDENCE = ("spam", "advertising", "vacancy")
+HARD_EXCLUSION_PRECEDENCE = ("spam", "advertising")
 POSITIVE_PRECEDENCE = (
     "direct_order",
     "contractor_search",
     "recommendation_request",
+    "vacancy",
     "potential_need",
 )
 

@@ -1,4 +1,4 @@
-"""Startup must activate ru-mvp-5 via the real runtime seed boundary."""
+"""Startup must activate ru-mvp-6 via the real runtime seed boundary."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from telegram_lead_discovery.detection.seed import (
     SEED_RULES_RU_MVP_3,
     SEED_RULES_RU_MVP_4,
     SEED_RULES_RU_MVP_5,
+    SEED_RULES_RU_MVP_6,
     catalog_checksum,
     seed_ruleset_ru_mvp_1,
 )
@@ -39,7 +40,7 @@ async def db_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.asyncio
-async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None:
+async def test_startup_catalog_activates_ru_mvp_6_from_active_v1(db_env) -> None:
     """DB with only active ru-mvp-1 becomes exactly one active ru-mvp-5."""
     async with session_scope() as session:
         v1 = await seed_ruleset_ru_mvp_1(session)
@@ -71,11 +72,12 @@ async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None
             "ru-mvp-3",
             "ru-mvp-4",
             "ru-mvp-5",
+            "ru-mvp-6",
         }
         active = [v for v in versions if v.state == "active"]
         assert len(active) == 1
-        assert active[0].slug == "ru-mvp-5"
-        assert active[0].checksum == catalog_checksum(SEED_RULES_RU_MVP_5)
+        assert active[0].slug == "ru-mvp-6"
+        assert active[0].checksum == catalog_checksum(SEED_RULES_RU_MVP_6)
 
         assert by_slug["ru-mvp-1"].state == "retired"
         assert by_slug["ru-mvp-1"].id == v1_id
@@ -92,7 +94,7 @@ async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None
                 )
             ).scalar_one()
         )
-        assert v5_rules == len(SEED_RULES_RU_MVP_5)
+        assert v5_rules == len(SEED_RULES_RU_MVP_6)
 
     # Repeated startup is idempotent: no duplicate RuleSetVersion / MonitoringRule rows.
     async with session_scope() as session:
@@ -100,9 +102,9 @@ async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None
 
     async with session_scope() as session:
         versions = list((await session.execute(select(RuleSetVersion))).scalars().all())
-        assert len(versions) == 5
+        assert len(versions) == 6
         active = [v for v in versions if v.state == "active"]
-        assert len(active) == 1 and active[0].slug == "ru-mvp-5"
+        assert len(active) == 1 and active[0].slug == "ru-mvp-6"
         total_rules = int(
             (await session.execute(select(func.count()).select_from(MonitoringRule))).scalar_one()
         )
@@ -112,6 +114,7 @@ async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None
             + len(SEED_RULES_RU_MVP_3)
             + len(SEED_RULES_RU_MVP_4)
             + len(SEED_RULES_RU_MVP_5)
+            + len(SEED_RULES_RU_MVP_6)
         )
         assert total_rules == expected_rules
 
@@ -125,7 +128,7 @@ async def test_startup_catalog_activates_ru_mvp_5_from_active_v1(db_env) -> None
         started = await start_keyword_discovery_run(session, profile_id=profile.profile.id)
         assert started.run.rule_set_version_id == active[0].id
         assert started.run.rule_set_checksum == active[0].checksum
-        assert started.run.rule_set_checksum == catalog_checksum(SEED_RULES_RU_MVP_5)
+        assert started.run.rule_set_checksum == catalog_checksum(SEED_RULES_RU_MVP_6)
 
 
 @pytest.mark.asyncio
@@ -134,12 +137,12 @@ async def test_startup_catalog_checksum_mismatch_fails_loudly(db_env) -> None:
         await seed_startup_catalog(session)
         v5 = (
             await session.execute(
-                select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-5")
+                select(RuleSetVersion).where(RuleSetVersion.slug == "ru-mvp-6")
             )
         ).scalar_one()
         v5.checksum = "0" * 64
         await session.flush()
 
     async with session_scope() as session:
-        with pytest.raises(RuntimeError, match=r"ruleset_checksum_mismatch:ru-mvp-5"):
+        with pytest.raises(RuntimeError, match=r"ruleset_checksum_mismatch:ru-mvp-6"):
             await seed_startup_catalog(session)

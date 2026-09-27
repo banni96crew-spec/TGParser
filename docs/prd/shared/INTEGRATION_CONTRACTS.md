@@ -84,12 +84,12 @@ Graph DTO (schema_version=`1`, D-071/D-072):
 
 `HistoryRequest`
 
-- `source_id` — DB FK for jobs/checkpoints only; MUST NEVER be passed as Telethon entity (D-064 / COL-023);
+- `source_id` — DB FK for jobs/checkpoints only; MUST NEVER be passed as Telethon entity (D-064 / COL-023). Для manual `history_scan` допускается техническое значение `0` (D-080);
 - `peer: TelegramPeerRef` — mandatory for Gateway Telegram I/O;
 - `after_message_id` и/или `after_published_at`;
 - `before_published_at`;
 - `limit`;
-- `purpose: backfill | startup_reconciliation | periodic_reconciliation | continuation | scouting_verification`;
+- `purpose: backfill | startup_reconciliation | periodic_reconciliation | continuation | scouting_verification | history_scan`;
 - `continuation_cursor: opaque | null` — for multi-page backfill beyond a single page.
 
 Gateway MUST use `peer`, never raw DB `source_id`, as the Telethon entity. Persist batch size ≤ `50` envelopes per SQLite write TX; network I/O MUST remain outside long write transactions (COL-025).

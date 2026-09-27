@@ -22,6 +22,7 @@ class HistoryScanSession(Base):
     )
     rule_set_checksum: Mapped[str] = mapped_column(String(128), nullable=False)
     analysis_context_json: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
+    input_rejections_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -33,14 +34,17 @@ class HistoryScanSession(Base):
 class HistoryScanTarget(Base):
     __tablename__ = "history_scan_targets"
     __table_args__ = (
-        UniqueConstraint("session_id", "source_id", name="uq_history_scan_target_source"),
+        UniqueConstraint("session_id", "ordinal", name="uq_history_scan_target_ordinal"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(
         ForeignKey("history_scan_sessions.id"), nullable=False
     )
-    source_id: Mapped[int] = mapped_column(ForeignKey("telegram_sources.id"), nullable=False)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("telegram_sources.id"))
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    origin: Mapped[str] = mapped_column(String(16), nullable=False, default="monitoring")
+    manual_reference: Mapped[str | None] = mapped_column(String(512))
     telegram_peer_id: Mapped[int | None] = mapped_column(Integer)
     access_hash: Mapped[int | None] = mapped_column(Integer)
     username_normalized: Mapped[str | None] = mapped_column(String(64))
@@ -73,7 +77,7 @@ class HistoryScanResult(Base):
     target_id: Mapped[int] = mapped_column(
         ForeignKey("history_scan_targets.id"), nullable=False
     )
-    source_id: Mapped[int] = mapped_column(ForeignKey("telegram_sources.id"), nullable=False)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("telegram_sources.id"))
     telegram_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
     published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     permalink: Mapped[str | None] = mapped_column(String(512))

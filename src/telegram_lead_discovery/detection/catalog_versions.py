@@ -201,7 +201,24 @@ _NEG_ADV_020 = _r(
     "advertising_first_person_practice",
 )
 SEED_RULES_RU_MVP_5: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_4 + (_NEG_ADV_020,)
-ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_5
+
+# D-081: v6 is an immutable copy of v5 which deliberately stops treating a
+# technical employer vacancy as an exclusion. Provider ads and spam stay hard.
+_VACANCY_IDS = frozenset({
+    "NEG-VAC-001", "NEG-VAC-002", "NEG-VAC-003", "NEG-VAC-004", "NEG-VAC-005", "NEG-VAC-006",
+})
+_VACANCY_POSITIVE_V6: tuple[SeedRule, ...] = (
+    _r("POS-VAC-001", 350, "vacancy", "positive_intent", 14, r"\b(?:вакансия|открыта позиция|открыта вакансия|ищем сотрудника)\b", "vacancy_marker"),
+    _r("POS-VAC-002", 351, "vacancy", "positive_intent", 14, r"\b(?:в штат|полная занятость|частичная занятость|оформление по тк|трудоустройство)\b", "vacancy_employment"),
+    _r("POS-VAC-003", 352, "vacancy", "positive_intent", 14, r"\b(?:зарплата|оклад)\b\s*(?:от\s*)?\d[\d\s]{2,}", "vacancy_salary"),
+    _r("POS-VAC-004", 353, "vacancy", "positive_intent", 14, r"(?:https?://)?(?:www\.)?(?:hh\.ru|career\.habr\.com)/\S+", "vacancy_link"),
+    _r("POS-VAC-005", 354, "vacancy", "positive_intent", 14, r"\b(?:присылайте резюме|отправляйте резюме|откликнуться на вакансию|испытательный срок)\b", "vacancy_application"),
+    _r("POS-VAC-006", 355, "vacancy", "positive_intent", 14, r"(?:\b(?:удалёнка|удаленка)\b.{0,40}\b(?:support|поддержк))|(?:\bищем\b.{0,40}\b(?:специалист(?:ов)?|сотрудник(?:ов)?|менеджер(?:ов)?)\b)", "vacancy_support_hiring"),
+)
+SEED_RULES_RU_MVP_6: tuple[SeedRule, ...] = tuple(
+    rule for rule in SEED_RULES_RU_MVP_5 if rule.stable_rule_id not in _VACANCY_IDS
+) + _VACANCY_POSITIVE_V6
+ACTIVE_SEED_RULES: tuple[SeedRule, ...] = SEED_RULES_RU_MVP_6
 
 
 __all__ = [
@@ -211,5 +228,6 @@ __all__ = [
     "SEED_RULES_RU_MVP_3",
     "SEED_RULES_RU_MVP_4",
     "SEED_RULES_RU_MVP_5",
+    "SEED_RULES_RU_MVP_6",
     "SeedRule",
 ]

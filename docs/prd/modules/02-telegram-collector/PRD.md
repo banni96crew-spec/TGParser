@@ -268,7 +268,11 @@ Health states: `starting`, `healthy`, `degraded`, `blocked`, `stopped`. `blocked
 
 ## 12. MVP и исключённые функции
 
-MVP включает COL-001—COL-031. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+MVP включает COL-001—COL-032. Исключены multiple sessions, account rotation, distributed collectors, media download, reactions, comments outside separately approved sources, automatic join и paid Stars search.
+
+### COL-032 — Manual history peer (D-080)
+
+Для `purpose=history_scan` Gateway принимает `source_id=0` только как compatibility field и выполняет Telegram I/O исключительно по обязательному `TelegramPeerRef`; типы `HistoryRequest.source_id` и `TelegramMessageDTO.source_id` не меняются.
 
 ## 13. Acceptance criteria и test catalogue
 
@@ -305,6 +309,7 @@ MVP включает COL-001—COL-031. Исключены multiple sessions, ac
 | `AT-COL-029` | COL-029 | Raw history fixture with human/bot/channel/anonymous authors and 100 posts | One sender call; edges and all message fields returned; no author lookup; raw author identity not persisted by COL |
 | `AT-COL-030` | COL-030 | Infinite shared reader; swallow-cancel RPC after exclusive; Event during exclusive wait | `GatewayTimeout` within test deadline 0.2 s wall ≤1 s, `_writer is False`, `_waiting_writers == 0`, later ordinary `shared()` `_call` completes, settings restored; waiter `GatewayTimeout` without awaiting orphan; `GraphCallCancelled` ≤1 s not `GatewayTimeout` |
 | `AT-COL-031` | COL-031 | Inject direct, HTTP, SOCKS5 and missing dependency configs into adapter | Telethon receives exact safe proxy dict only for proxy routes; dependency failure is closed and contains no proxy material |
+| `AT-COL-032` | COL-032 | Manual history request с `source_id=0` и peer | Telethon получает peer, а 0 не используется как Telegram entity |
 
 ## 14. Принятые записи decision log
 

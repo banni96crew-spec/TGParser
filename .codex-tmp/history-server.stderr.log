@@ -1,0 +1,38 @@
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+WARNI [telethon.network.connection.connection] Server closed the connection: 0 bytes read on a total of 8 expected bytes
+WARNI [telethon.network.mtprotostate] Server resent the older message 7690213261461434369, ignoring
+INFO  [uvicorn.error] Started server process [23544]
+INFO  [uvicorn.error] Waiting for application startup.
+INFO  [uvicorn.error] Application startup complete.
+INFO  [uvicorn.error] Uvicorn running on http://127.0.0.1:8765 (Press CTRL+C to quit)
+INFO  [uvicorn.access] 127.0.0.1:65520 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65532 - "GET /favicon.ico HTTP/1.1" 404
+INFO  [uvicorn.access] 127.0.0.1:49157 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49173 - "POST /history-scans HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:49173 - "GET /history-scans/616d0821-f18f-40ad-8b40-b010a9377ff4 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50514 - "GET /history-scans/616d0821-f18f-40ad-8b40-b010a9377ff4 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63644 - "GET /history-scans/616d0821-f18f-40ad-8b40-b010a9377ff4 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63644 - "GET /health HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63644 - "GET /history-scans HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63664 - "POST /history-scans HTTP/1.1" 303
+INFO  [uvicorn.access] 127.0.0.1:63664 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:63815 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64083 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64539 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:64896 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65120 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65262 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65385 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:65522 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49828 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49896 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49896 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49896 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49896 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49928 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49928 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49928 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:49928 - "GET /history-scans/b0b51adc-9528-437a-9d42-bdfb52ac3463 HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50353 - "GET / HTTP/1.1" 200
+INFO  [uvicorn.access] 127.0.0.1:50353 - "GET /favicon.ico HTTP/1.1" 404

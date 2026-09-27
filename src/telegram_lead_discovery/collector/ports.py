@@ -6,6 +6,7 @@ from telegram_lead_discovery.collector.port_parts.errors import (
     GatewayInvalidSearchQuery,
     GatewayPermanentError,
     GatewayPremiumRequired,
+    GatewayRateLimited,
     GatewaySearchQuotaExhausted,
     GatewaySearchUnavailable,
     GatewaySourceInaccessible,
@@ -53,3 +54,4 @@ from telegram_lead_discovery.collector.port_parts.sources import (
     SourceSnapshot,
     TelegramPeerRef,
 )
+

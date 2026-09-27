@@ -4,10 +4,12 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from telegram_lead_discovery.collector.fake import FakeTelegramGateway, make_source
 from telegram_lead_discovery.collector.ports import GatewaySourceInaccessible, TelegramMessageDTO
+from telegram_lead_discovery.dashboard.app import create_app
 from telegram_lead_discovery.detection.seed import seed_active_ruleset
 from telegram_lead_discovery.infrastructure.paths import ensure_app_directories, resolve_app_paths
 from telegram_lead_discovery.processing.history_scan import (
@@ -24,6 +26,7 @@ from telegram_lead_discovery.storage.models import (
     HistoryScanSession,
     HistoryScanTarget,
     Lead,
+    RuleSetVersion,
     TelegramSource,
 )
 from telegram_lead_discovery.storage.retention import run_retention_purge
@@ -74,7 +77,7 @@ async def test_scan_keeps_vacancy_and_client_request_without_creating_lead(db_en
                 source_id=source_id,
                 telegram_message_id=2,
                 published_at=now - timedelta(hours=1),
-                text="Вакансия: Python-разработчик в штат, зарплата 200000.",
+                text="Вакансия: разработка сайта в штат, зарплата 200000.",
                 telegram_peer_id=701,
                 permalink="https://t.me/history_scan_source/2",
             ),
@@ -292,7 +295,7 @@ async def test_retention_removes_scan_results_after_24_hours(db_env) -> None:
                 source_id=source_id,
                 telegram_message_id=1,
                 published_at=now - timedelta(minutes=10),
-                text="Вакансия: Python-разработчик в штат, зарплата 200000.",
+                text="Вакансия: разработка сайта в штат, зарплата 200000.",
                 telegram_peer_id=702,
             )
         ],
@@ -306,3 +309,136 @@ async def test_retention_removes_scan_results_after_24_hours(db_env) -> None:
     assert result.history_scan_results_deleted == 1
     assert result.history_scan_sessions_deleted == 1
     assert scan.id
+
+
+@pytest.mark.asyncio
+async def test_at_ui_032_033_filters_history_scan_results(db_env) -> None:
+    now = datetime.now(UTC)
+
+    async def seed_results(session):
+        rule_set = (
+            await session.execute(select(RuleSetVersion).where(RuleSetVersion.state == "active"))
+        ).scalar_one()
+
+        def add_scan(scan_id: str) -> HistoryScanSession:
+            scan = HistoryScanSession(
+                id=scan_id,
+                state="succeeded",
+                from_datetime=now - timedelta(hours=1),
+                to_datetime=now,
+                rule_set_version_id=rule_set.id,
+                rule_set_checksum=rule_set.checksum,
+                finished_at=now,
+            )
+            session.add(scan)
+            return scan
+
+        primary = add_scan("ui-032-primary")
+        sparse = add_scan("ui-032-sparse")
+        other = add_scan("ui-032-other")
+        await session.flush()
+
+        async def add_result(
+            scan: HistoryScanSession,
+            category: str,
+            score_band: str,
+            message_id: int,
+        ) -> None:
+            target = HistoryScanTarget(
+                session_id=scan.id,
+                ordinal=message_id,
+                origin="manual",
+                telegram_peer_id=message_id,
+                source_title=f"Source {message_id}",
+                state="succeeded",
+            )
+            session.add(target)
+            await session.flush()
+            session.add(
+                HistoryScanResult(
+                    session_id=scan.id,
+                    target_id=target.id,
+                    telegram_message_id=message_id,
+                    published_at=now - timedelta(minutes=message_id),
+                    category=category,
+                    score_total=50,
+                    score_band=score_band,
+                    permalink=f"https://t.me/source/{message_id}",
+                    explanation_json="{}",
+                )
+            )
+
+        for message_id, (category, score_band) in enumerate(
+            (
+                ("direct_order", "hot"),
+                ("contractor_search", "warm"),
+                ("recommendation_request", "cold"),
+                ("vacancy", "irrelevant"),
+            ),
+            start=1,
+        ):
+            await add_result(primary, category, score_band, message_id)
+        await add_result(sparse, "direct_order", "hot", 10)
+        await add_result(other, "vacancy", "irrelevant", 20)
+
+    await run_write(seed_results)
+    with TestClient(create_app()) as client:
+        all_results = client.get("/history-scans/ui-032-primary")
+        assert all_results.status_code == 200
+        assert all_results.text.count("Открыть") == 4
+        assert "Все статусы" in all_results.text
+        assert "Все оценки" in all_results.text
+        assert "Вакансия" in all_results.text
+
+        category_labels = {
+            "direct_order": "Прямой заказ",
+            "contractor_search": "Поиск исполнителя",
+            "recommendation_request": "Запрос рекомендации",
+            "vacancy": "Вакансия",
+        }
+        for category, label in category_labels.items():
+            filtered = client.get(f"/history-scans/ui-032-primary?category={category}")
+            assert filtered.status_code == 200
+            assert filtered.text.count("Открыть") == 1
+            assert f'value="{category}" selected' in filtered.text
+            assert label in filtered.text
+            assert "Source 20" not in filtered.text
+
+        invalid = client.get("/history-scans/ui-032-primary?category=unknown")
+        assert invalid.status_code == 200
+        assert invalid.text.count("Открыть") == 4
+        assert 'value="" selected' in invalid.text
+
+        score_band_labels = {
+            "hot": "Высокая",
+            "warm": "Тёплая",
+            "cold": "Холодная",
+            "irrelevant": "Нерелевантная",
+        }
+        for score_band, label in score_band_labels.items():
+            filtered = client.get(
+                f"/history-scans/ui-032-primary?score_band={score_band}"
+            )
+            assert filtered.status_code == 200
+            assert filtered.text.count("Открыть") == 1
+            assert f'value="{score_band}" selected' in filtered.text
+            assert label in filtered.text
+            assert "Source 20" not in filtered.text
+
+        invalid_band = client.get("/history-scans/ui-032-primary?score_band=unknown")
+        assert invalid_band.status_code == 200
+        assert invalid_band.text.count("Открыть") == 4
+        assert 'value="" selected' in invalid_band.text
+
+        intersection = client.get(
+            "/history-scans/ui-032-primary?category=contractor_search&score_band=warm"
+        )
+        assert intersection.status_code == 200
+        assert intersection.text.count("Открыть") == 1
+        assert 'value="contractor_search" selected' in intersection.text
+        assert 'value="warm" selected' in intersection.text
+
+        empty = client.get("/history-scans/ui-032-sparse?category=vacancy")
+        assert empty.status_code == 200
+        assert "По выбранным фильтрам результатов нет." in empty.text
+        assert "Пока нет результатов." not in empty.text

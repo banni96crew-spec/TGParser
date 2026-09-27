@@ -1610,3 +1610,75 @@
 {"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1787306889646}
 {"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1787306889647}
 {"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1787306889647}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": null, "cancel_set": false}, "timestamp": 1790525050357}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050391}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050391}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050392}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050392}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050393}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050393}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050393}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050394}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "RuntimeError", "cancel_set": false}, "timestamp": 1790525050416}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050419}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050420}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050421}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050421}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050421}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050422}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050422}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050422}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "NestedTelegramRequest", "cancel_set": false}, "timestamp": 1790525050428}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050428}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050428}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050429}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050429}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050429}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050430}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050430}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050430}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "FloodWaitError", "cancel_set": false}, "timestamp": 1790525050447}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050448}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050448}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050448}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050449}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050449}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050449}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050449}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050451}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "FloodPremiumWaitError", "cancel_set": false}, "timestamp": 1790525050459}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050459}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050460}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050460}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050460}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050461}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050461}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050461}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050462}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "FloodTestPhoneWaitError", "cancel_set": false}, "timestamp": 1790525050628}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050629}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050629}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050630}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050630}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050630}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050630}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050631}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050631}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "SlowModeWaitError", "cancel_set": false}, "timestamp": 1790525050643}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050644}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050644}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050645}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050645}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050645}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050646}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050646}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050646}
+{"sessionId": "1c5371", "hypothesisId": "H1", "location": "controlled_client.py:_wait_graph_rpc", "message": "rpc_done", "data": {"cancelled": false, "exc": "PeerFloodError", "cancel_set": false}, "timestamp": 1790525050657}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": false, "task_cancelled": false}, "timestamp": 1790525050658}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050658}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050659}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050659}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050659}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050660}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_start", "data": {"task_done": true, "task_cancelled": true}, "timestamp": 1790525050660}
+{"sessionId": "1c5371", "hypothesisId": "H2", "location": "request_lock.py:_await_cancelled", "message": "await_pulse_end", "data": {"task_done": true}, "timestamp": 1790525050661}

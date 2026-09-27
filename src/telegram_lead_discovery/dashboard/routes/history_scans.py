@@ -25,6 +25,19 @@ from telegram_lead_discovery.storage.models import (
     TelegramSource,
 )
 
+HISTORY_SCAN_CATEGORY_LABELS = {
+    "direct_order": "Прямой заказ",
+    "contractor_search": "Поиск исполнителя",
+    "recommendation_request": "Запрос рекомендации",
+    "vacancy": "Вакансия",
+}
+HISTORY_SCAN_SCORE_BAND_LABELS = {
+    "hot": "Высокая",
+    "warm": "Тёплая",
+    "cold": "Холодная",
+    "irrelevant": "Нерелевантная",
+}
+
 
 def create_history_scans_router() -> APIRouter:
     router = APIRouter()
@@ -115,6 +128,18 @@ def create_history_scans_router() -> APIRouter:
     async def history_scan_detail(request: Request, scan_id: str) -> HTMLResponse:
         token = generate_csrf_token()
         request.session["csrf_token"] = token
+        requested_category = request.query_params.get("category")
+        selected_category = (
+            requested_category
+            if requested_category in HISTORY_SCAN_CATEGORY_LABELS
+            else None
+        )
+        requested_score_band = request.query_params.get("score_band")
+        selected_score_band = (
+            requested_score_band
+            if requested_score_band in HISTORY_SCAN_SCORE_BAND_LABELS
+            else None
+        )
         async with session_scope() as session:
             scan = await session.get(HistoryScanSession, scan_id)
             if scan is None:
@@ -128,16 +153,26 @@ def create_history_scans_router() -> APIRouter:
                     )
                 ).scalars()
             )
+            results_query = (
+                select(HistoryScanResult, HistoryScanTarget.source_title)
+                .join(
+                    HistoryScanTarget,
+                    HistoryScanTarget.id == HistoryScanResult.target_id,
+                )
+                .where(HistoryScanResult.session_id == scan_id)
+            )
+            if selected_category is not None:
+                results_query = results_query.where(
+                    HistoryScanResult.category == selected_category
+                )
+            if selected_score_band is not None:
+                results_query = results_query.where(
+                    HistoryScanResult.score_band == selected_score_band
+                )
             results = list(
                 (
                     await session.execute(
-                        select(HistoryScanResult, HistoryScanTarget.source_title)
-                        .join(
-                            HistoryScanTarget,
-                            HistoryScanTarget.id == HistoryScanResult.target_id,
-                        )
-                        .where(HistoryScanResult.session_id == scan_id)
-                        .order_by(HistoryScanResult.published_at.desc())
+                        results_query.order_by(HistoryScanResult.published_at.desc())
                     )
                 ).all()
             )
@@ -150,6 +185,10 @@ def create_history_scans_router() -> APIRouter:
                 "scan": scan,
                 "targets": targets,
                 "results": results,
+                "selected_category": selected_category,
+                "category_labels": HISTORY_SCAN_CATEGORY_LABELS,
+                "selected_score_band": selected_score_band,
+                "score_band_labels": HISTORY_SCAN_SCORE_BAND_LABELS,
                 "input_rejections": json.loads(scan.input_rejections_json or "[]"),
             },
         )

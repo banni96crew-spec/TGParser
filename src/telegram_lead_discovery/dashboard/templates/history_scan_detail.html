@@ -9,7 +9,20 @@
 <ul>{% for target in targets %}<li>{{ target.ordinal }}. {{ target.source_title }} ({{ target.origin }}): {{ target.state }}, сообщений {{ target.messages_scanned }}, результатов {{ target.results_found }}{% if target.last_error_code %}, причина {{ target.last_error_code }}{% endif %}</li>{% endfor %}</ul>
 {% if input_rejections %}<h2>Пропущенные строки</h2><ul>{% for item in input_rejections %}<li>{{ item.reference }}: {{ item.code }}</li>{% endfor %}</ul>{% endif %}
 <h2>Заявки и вакансии</h2>
+<form method="get" action="/history-scans/{{ scan.id }}">
+<label for="category">Статус</label>
+<select id="category" name="category">
+<option value=""{% if not selected_category %} selected{% endif %}>Все статусы</option>
+{% for value, label in category_labels.items() %}<option value="{{ value }}"{% if selected_category == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+</select>
+<label for="score_band">Оценка</label>
+<select id="score_band" name="score_band">
+<option value=""{% if not selected_score_band %} selected{% endif %}>Все оценки</option>
+{% for value, label in score_band_labels.items() %}<option value="{{ value }}"{% if selected_score_band == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+</select>
+<button type="submit">Фильтровать</button>
+</form>
 <table><thead><tr><th>Источник</th><th>Дата</th><th>Категория</th><th>Оценка</th><th>Ссылка</th></tr></thead><tbody>
-{% for result, title in results %}<tr><td>{{ title }}</td><td>{{ result.published_at }}</td><td>{{ result.category }}</td><td>{{ result.score_total }} ({{ result.score_band }})</td><td>{% if result.permalink %}<a href="{{ result.permalink }}" target="_blank" rel="noopener">Открыть</a>{% endif %}</td></tr>{% else %}<tr><td colspan="5">Пока нет результатов.</td></tr>{% endfor %}
+{% for result, title in results %}<tr><td>{{ title }}</td><td>{{ result.published_at }}</td><td>{{ category_labels.get(result.category, result.category) }}</td><td>{{ result.score_total }} ({{ score_band_labels.get(result.score_band, result.score_band) }})</td><td>{% if result.permalink %}<a href="{{ result.permalink }}" target="_blank" rel="noopener">Открыть</a>{% endif %}</td></tr>{% else %}<tr><td colspan="5">{% if selected_category or selected_score_band %}По выбранным фильтрам результатов нет.{% else %}Пока нет результатов.{% endif %}</td></tr>{% endfor %}
 </tbody></table>
 {% endblock %}

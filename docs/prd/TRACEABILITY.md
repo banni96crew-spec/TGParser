@@ -16,7 +16,7 @@
 | Lead Detection | `DET-001..020` | `AT-DET-001..020` | [PRD](modules/04-lead-detection/PRD.md) | Scoring получает category/signals/rule IDs; SRC reuses pure detect; no silent SEED_RULES |
 | Lead Scoring | `SCR-001..016` | `AT-SCR-001..016` | [PRD](modules/05-lead-scoring/PRD.md) | Storage/UI/Notifications получают immutable score |
 | Lead Storage | `STO-001..025` | `AT-STO-001..025` | [PRD](modules/06-lead-storage/PRD.md) | Repositories, outbox, ActiveClientChat schema, suppress retention immunity, graph request-control and result persistence, suppress_class and profile v8 migrations, in-flight discovery reclaim exception |
-| Lead Dashboard | `UI-001..029` | `AT-UI-001..029` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs` и graph run cancel |
+| Lead Dashboard | `UI-001..029`, `UI-032..033` | `AT-UI-001..029`, `AT-UI-032..033` | [PRD](modules/07-lead-dashboard/PRD.md) | End-to-end operator journeys включая `/discovery` defaults, `seed_refs`, graph run cancel и History Scan filters |
 | Notifications | `NOT-001..015` | `AT-NOT-001..015` | [PRD](modules/08-notifications/PRD.md) | Bot API adapter и outbox fault-injection suite |
 | Operator Settings | `SET-001..016` | `AT-SET-001..016` | [PRD](modules/09-operator-settings/PRD.md) | Settings validation, proxy mode и local-access suite |
 | Administration & Observability | `OBS-001..023` | `AT-OBS-001..023` | [PRD](modules/10-administration-observability/PRD.md) | Health, metrics, discovery novelty/loop health, capacity, durable terminal and safe connection metrics |
@@ -203,3 +203,8 @@ Release evidence включает:
 - Coverage: `COL-032`, `PROC-021`, `STO-027`, `UI-031` ↔ `AT-COL-032`, `AT-PROC-021`, `AT-STO-027`, `AT-UI-031`.
 - Implementation: `collector/ports.py`, `processing/history_scan.py`, `storage/model_parts/history_scan.py`, `dashboard/routes/history_scans.py`.
 - Временная цель не создаёт `TelegramSource`, Lead, Notification или Collector checkpoint; обработка выполняется строго по `HistoryScanTarget.ordinal`.
+
+## 17. Фильтр результатов History Scan
+
+- `UI-032` ↔ `AT-UI-032`: `dashboard/routes/history_scans.py`, `dashboard/templates/history_scan_detail.html`, `tests/integration/test_history_scan_v1.py`.
+- `UI-033` ↔ `AT-UI-033`: те же route/template/test; `category` и `score_band` применяются как пересечение.

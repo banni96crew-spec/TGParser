@@ -14,7 +14,10 @@ from telegram_lead_discovery.collector.adapter.request_lock import (
     AsyncReadWriteLock,
     _await_cancelled,
 )
-from telegram_lead_discovery.collector.adapter.account_pacer import account_pacer
+from telegram_lead_discovery.collector.adapter.account_pacer import (
+    account_pacer,
+    transport_pacer_context,
+)
 from telegram_lead_discovery.collector.ports import (
     GRAPH_CALL_DEADLINE_SECONDS,
     GatewayTimeout,
@@ -135,6 +138,13 @@ class ControlledTelegramClient(TelegramClient):
         ordered: bool = False,
         flood_sleep_threshold: int | None = None,
     ) -> Any:
+        if transport_pacer_context.get():
+            return await super()._call(
+                sender,
+                request,
+                ordered=ordered,
+                flood_sleep_threshold=flood_sleep_threshold,
+            )
         controller = current_request_controller.get()
         if controller is None:
             # Every ordinary Telethon RPC is serialized by the durable account gate.

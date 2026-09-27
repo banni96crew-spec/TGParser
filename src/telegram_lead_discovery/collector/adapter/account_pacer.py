@@ -5,16 +5,24 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import text
 
 from telegram_lead_discovery.collector.port_parts.errors import GatewayRateLimited
-from telegram_lead_discovery.storage.db import session_scope
+from telegram_lead_discovery.storage.db import get_session_factory, session_scope
 
 _START_INTERVAL = timedelta(seconds=6)
 _ROLLING_WINDOW = timedelta(seconds=60)
 _MAX_PER_WINDOW = 10
+
+# Telethon may perform an internal _call while client.connect() is running.
+# That call must use the transport reservation already held by connect instead
+# of trying to acquire the non-reentrant account lock a second time.
+transport_pacer_context: ContextVar[bool] = ContextVar(
+    "transport_pacer_context", default=False
+)
 
 
 class TelegramAccountPacer:
@@ -30,9 +38,22 @@ class TelegramAccountPacer:
     @asynccontextmanager
     async def rpc(self, purpose: str) -> AsyncIterator[None]:
         """Keep the account lock until the raw Telethon call returns or fails."""
+        try:
+            get_session_factory()
+        except RuntimeError as exc:
+            if str(exc) != "database session factory is not initialized":
+                raise
+            # Isolated adapter tests construct a Telethon client without a
+            # runtime or storage. Product calls always initialize SQLite first.
+            yield
+            return
         async with self._account_lock:
             await self._reserve_locked(purpose)
-            yield
+            token = transport_pacer_context.set(True)
+            try:
+                yield
+            finally:
+                transport_pacer_context.reset(token)
 
     async def _reserve_locked(self, purpose: str) -> None:
         wall_now = datetime.now(UTC)

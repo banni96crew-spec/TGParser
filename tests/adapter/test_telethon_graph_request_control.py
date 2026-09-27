@@ -9,6 +9,9 @@ from telethon.client.users import UserMethods
 from telethon.tl.functions.messages import GetHistoryRequest
 from telethon.tl.types import InputPeerChannel, InputPeerEmpty
 
+from telegram_lead_discovery.collector.adapter.account_pacer import (
+    transport_pacer_context,
+)
 from telegram_lead_discovery.collector.adapter.controlled_client import (
     ControlledTelegramClient,
     _AsyncReadWriteLock,
@@ -111,6 +114,24 @@ async def test_non_graph_call_keeps_existing_retry_settings(
     client = _client()
     assert await client._call(object(), _history()) == "ordinary"
     assert seen == [(5, 60)]
+
+
+@pytest.mark.asyncio
+async def test_transport_reservation_reuses_internal_connect_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Telethon connect() may call _call while the transport slot is held."""
+
+    async def base_call(*args, **kwargs):
+        return "transport"
+
+    monkeypatch.setattr(UserMethods, "_call", base_call)
+    client = _client()
+    token = transport_pacer_context.set(True)
+    try:
+        assert await client._call(object(), _history()) == "transport"
+    finally:
+        transport_pacer_context.reset(token)
 
 
 @pytest.mark.asyncio

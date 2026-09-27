@@ -293,6 +293,8 @@ State-changing request принимает CSRF token и entity `version`. Stale 
 | UI-027 | ActiveClientChat v1 evidence and explanation (D-070) | MUST | Result card/detail show six frozen counters, latest client request, qualification version, ordered reasons, truth/score/band and Telegram links; historical rows show `legacy`; raw/pseudonymous author identity is never rendered |
 | UI-028 | Keyword start `seed_refs` (D-074 / SRC-055) | MUST | Форма старта keyword: поле `seed_refs` 0..25 строк, нормализация SRC-001, CSRF, optimistic version; `StartKeywordDiscoveryRun` передаёт `profile_id` + `seed_refs`; пустое поле допустимо; graph не вызывается |
 | UI-029 | Graph run detail and cancel on existing discovery URLs (D-077) | MUST | Dispatcher inside existing `GET/POST /discovery/runs/{id}` and cancel path by `run_type`; no second FastAPI handler on the same path. Graph GET: state, phase, counters, error, CSRF cancel form (UI-018). Graph page MUST NOT include keyword HTMX `status-fragment`/`results-fragment`; refresh is full GET. POST cancel without CSRF does not change state; CSRF+version → `303` and `cancelling` if a worker may still run, `cancelled` only when no live worker (`queued`/`retry_wait`). Keyword GET/cancel unchanged |
+| UI-032 | History Scan category filter | MUST | `GET /history-scans/{scan_id}?category=` filters only results of that scan by `direct_order`, `contractor_search`, `recommendation_request` or `vacancy`; invalid/empty means all; the filter never writes data or starts work |
+| UI-033 | History Scan score-band filter | MUST | `GET /history-scans/{scan_id}?score_band=` filters only results of that scan by `hot`, `warm`, `cold` or `irrelevant`; it intersects with `category`; invalid/empty means all; the filter never writes data or starts work |
 
 ## 15. Observability
 
@@ -350,6 +352,8 @@ Logs содержат route template, method, status, duration, correlation ID �
 | AT-UI-029 | GET `/discovery/runs/{id}` for graph on the existing path; CSRF cancel; HTMX fragments; POST without/with CSRF | Not 404; one handler; CSRF form present; HTML has no `hx-get` to `status-fragment` or `results-fragment`; POST without CSRF leaves state; CSRF+version → `303` `cancelling` if worker may run, `cancelled` if queued/retry_wait; keyword GET/cancel unchanged |
 | AT-UI-030 | Скан истории: POST без/с CSRF, 48/49 часов, результат | Без CSRF нет записи; 49 отклонено; доступны выбранные monitoring sources, статусы, permalink и отмена |
 | AT-UI-031 | Скан истории с `manual_refs` | Поле принимает `@username`/`t.me`, показывает пропуски, не создаёт source registry row и сохраняет порядок целей |
+| AT-UI-032 | Фильтр статуса результатов History Scan | Четыре категории, пустой/invalid параметр, выбранный status, пустая валидная выборка и изоляция scan проверены |
+| AT-UI-033 | Фильтр оценки результатов History Scan | Четыре оценки, пустой/invalid параметр, пересечение со статусом, сохранение двух выбранных значений, пустая выборка и изоляция scan проверены |
 
 ## 18. DEFERRED
 
